@@ -50,7 +50,7 @@ export default function AhnentafelView({
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-50 dark:bg-slate-950">
+    <div className="absolute inset-0 pt-14 overflow-y-auto bg-slate-50 dark:bg-slate-950">
       <div className="max-w-3xl mx-auto py-8 px-4">
         <div className="mb-6">
           <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Tableau Ahnentafel</h2>
