@@ -28,7 +28,7 @@ export default function ViewSelector({ current }: ViewSelectorProps) {
   }, [router, searchParams]);
 
   return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-md">
+    <div className="absolute top-[72px] left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-md">
       {VIEWS.map(v => (
         <button
           key={v.id}
