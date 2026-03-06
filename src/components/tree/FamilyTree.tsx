@@ -9,8 +9,6 @@ import Header from '../ui/Header';
 import Sidebar from '../ui/Sidebar';
 import Loading from '../ui/Loading';
 
-const DEFAULT_ROOT = '50'; // First person in the GEDCOM
-
 export default function FamilyTree() {
   useEffect(() => {
     document.body.classList.add('tree-page');
@@ -19,7 +17,8 @@ export default function FamilyTree() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const focusId = searchParams.get('focus') || DEFAULT_ROOT;
+  // null = full tree (default on login); string = focused on one person
+  const focusId = searchParams.get('focus') || null;
 
   const { treeData, loading, error, loadTree } = useTreeData();
   const { nodes, links } = useTreeLayout(treeData);
@@ -42,10 +41,14 @@ export default function FamilyTree() {
     return () => window.removeEventListener('resize', updateDimensions);
   }, [sidebarOpen]);
 
-  // Load tree when focus changes
+  // Load tree when focus changes (null = full tree)
   useEffect(() => {
     loadTree(focusId);
   }, [focusId, loadTree]);
+
+  const handleResetView = useCallback(() => {
+    router.push('/', { scroll: false });
+  }, [router]);
 
   const handleNodeClick = useCallback((id: string) => {
     setSelectedId(id);
@@ -105,7 +108,7 @@ export default function FamilyTree() {
           <TreeCanvas
             nodes={nodes}
             links={links}
-            rootId={treeData?.rootId || focusId}
+            rootId={treeData?.rootId || focusId || ''}
             selectedId={selectedId}
             onNodeClick={handleNodeClick}
             onNodeDoubleClick={handleNodeDoubleClick}

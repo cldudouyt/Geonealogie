@@ -511,6 +511,48 @@ export function getTreeCentered(rootId: string): { rootId: string; nodes: any[];
   return { rootId, nodes, links };
 }
 
+/** Returns the entire family tree (all persons + all links). */
+export function getFullTree(): { rootId: string; nodes: any[]; links: any[] } {
+  const s = getStore();
+
+  // Root = oldest person with no parents (most likely a founding ancestor)
+  const founders = Array.from(s.persons.values()).filter(
+    p => !(s.childToParents.get(p.id)?.length)
+  );
+  const oldest = founders.sort((a, b) => {
+    const ay = parseInt(a.birthYear || '9999');
+    const by = parseInt(b.birthYear || '9999');
+    return ay - by;
+  })[0] ?? s.persons.values().next().value;
+
+  const nodes = Array.from(s.persons.values()).map((p: any) => ({
+    id: p.id,
+    displayName: p.displayName,
+    sex: p.sex,
+    birthYear: p.birthYear,
+    deathYear: p.deathYear,
+    occupation: p.occupation,
+  }));
+
+  const links: any[] = [];
+  const linkSet = new Set<string>();
+  const addLink = (source: string, target: string, type: string) => {
+    const key = `${source}-${target}-${type}`;
+    const rkey = `${target}-${source}-${type}`;
+    if (!linkSet.has(key) && !linkSet.has(rkey)) {
+      linkSet.add(key);
+      links.push({ source, target, type });
+    }
+  };
+
+  for (const id of s.persons.keys()) {
+    for (const parentId of (s.childToParents.get(id) || [])) addLink(parentId, id, 'parent');
+    for (const rel of (s.spouseRelations.get(id) || [])) addLink(id, rel.spouseId, 'spouse');
+  }
+
+  return { rootId: oldest.id, nodes, links };
+}
+
 export function searchPersons(query: string, limit = 20): PersonRecord[] {
   const q = query.toLowerCase();
   const results: Array<{ person: PersonRecord; score: number }> = [];

@@ -8,12 +8,14 @@ export function useTreeData() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadTree = useCallback(async (personId: string, mode: 'full' | 'ancestors' | 'descendants' = 'full') => {
+  // personId = null → load the full tree (all persons)
+  const loadTree = useCallback(async (personId: string | null) => {
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(`/api/tree/${personId}?mode=${mode}`);
+      const url = personId ? `/api/tree/${personId}` : '/api/tree';
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to load tree');
       const data: TreeData = await res.json();
       setTreeData(data);
