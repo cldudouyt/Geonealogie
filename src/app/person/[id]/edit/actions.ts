@@ -16,6 +16,8 @@ export async function saveEdit(
 ): Promise<EditState> {
   const get = (k: string) => formData.get(k)?.toString().trim() || undefined;
 
+  const isAdoptedRaw = formData.get('isAdopted')?.toString();
+
   const edit: PersonEdit = {
     givenNames:     get('givenNames'),
     surname:        get('surname'),
@@ -31,6 +33,7 @@ export async function saveEdit(
     chrPlace:       get('chrPlace'),
     occupation:     get('occupation'),
     nationality:    get('nationality'),
+    isAdopted:      isAdoptedRaw !== undefined ? isAdoptedRaw === 'yes' : undefined,
     notes:          get('notes'),
   };
 

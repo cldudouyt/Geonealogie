@@ -82,7 +82,7 @@ interface GedcomStore {
   spouseRelations: Map<string, SpouseRelEntry[]>;
 }
 
-let store: GedcomStore | null = null;
+let storePromise: Promise<GedcomStore> | null = null;
 
 function stripXref(pointer: string | undefined): string {
   if (!pointer) return '';
@@ -126,8 +126,7 @@ function parseCoord(str: string | undefined): number | undefined {
   return val * (dir === 'S' || dir === 'W' ? -1 : 1);
 }
 
-export async function getStore(): Promise<GedcomStore> {
-  if (store) return store;
+async function buildStore(): Promise<GedcomStore> {
 
   const gedcomPath = path.resolve(process.cwd(), 'Dudouyt Heredis 2014-Export.ged');
   const fileBuffer = fs.readFileSync(gedcomPath);
@@ -213,7 +212,7 @@ export async function getStore(): Promise<GedcomStore> {
     const filVal = getVal(indi.get('_FIL'));
     const isAdopted = filVal === 'ADOPTED_CHILD';
 
-    const natVal = getVal(indi.get('NATI')?.get('CAUS'));
+    const natVal = getVal(indi.get('NATI'));
 
     // Helper to extract a standard event node into a LifeEvent
     function parseStdEvent(node: any, label: string): LifeEvent | null {
@@ -375,13 +374,20 @@ export async function getStore(): Promise<GedcomStore> {
     }
   }
 
-  store = { persons, families, childToParents, parentToChildren, spouseRelations };
+  const s: GedcomStore = { persons, families, childToParents, parentToChildren, spouseRelations };
 
   // Apply manual overrides on top of GEDCOM data
-  await applyOverrides(store);
+  await applyOverrides(s);
 
   console.log(`[GedcomStore] Loaded ${persons.size} persons, ${families.size} families`);
-  return store;
+  return s;
+}
+
+export function getStore(): Promise<GedcomStore> {
+  if (!storePromise) {
+    storePromise = buildStore();
+  }
+  return storePromise;
 }
 
 function newPersonToRecord(np: NewPerson): PersonRecord {
@@ -480,7 +486,7 @@ async function applyOverrides(s: GedcomStore): Promise<void> {
 
 /** Call after saving overrides to force store re-initialization on next request */
 export function clearStore(): void {
-  store = null;
+  storePromise = null;
   clearOverridesCache();
 }
 

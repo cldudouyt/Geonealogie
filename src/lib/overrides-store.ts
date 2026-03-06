@@ -1,4 +1,5 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { runSingleQuery } from './neo4j';
 
@@ -38,7 +39,7 @@ export interface Overrides {
 }
 
 const DATA_FILE = path.join(process.cwd(), 'data', 'overrides.json');
-const TMP_FILE = '/tmp/geonealogie-overrides.json';
+const TMP_FILE = path.join(os.tmpdir(), 'geonealogie-overrides.json');
 const DB_KEY = 'global';
 
 let _cache: Overrides | null = null;

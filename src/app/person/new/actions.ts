@@ -24,6 +24,8 @@ export async function createPerson(
 
   const id = `custom-${Date.now()}`;
 
+  const isAdoptedRaw = formData.get('isAdopted')?.toString();
+
   const person: NewPerson = {
     id,
     givenNames,
@@ -40,6 +42,7 @@ export async function createPerson(
     chrPlace:    get('chrPlace'),
     occupation:  get('occupation'),
     nationality: get('nationality'),
+    isAdopted:   isAdoptedRaw === 'yes',
     notes:       get('notes'),
     relType:     get('relType') as NewPerson['relType'],
     relPersonId: get('relPersonId') || undefined,

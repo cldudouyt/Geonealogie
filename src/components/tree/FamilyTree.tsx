@@ -14,8 +14,6 @@ import Header from '../ui/Header';
 import Sidebar from '../ui/Sidebar';
 import Loading from '../ui/Loading';
 
-const DEFAULT_ROOT = '50';
-
 export default function FamilyTree({ defaultRootId }: { defaultRootId?: string }) {
   useEffect(() => {
     document.body.classList.add('tree-page');
@@ -24,7 +22,7 @@ export default function FamilyTree({ defaultRootId }: { defaultRootId?: string }
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const focusId = searchParams.get('focus') || defaultRootId || DEFAULT_ROOT;
+  const focusId = searchParams.get('focus') || defaultRootId || '';
   const viewMode = (searchParams.get('view') as ViewMode) || 'tree';
 
   const { treeData, loading, error, loadTree } = useTreeData();

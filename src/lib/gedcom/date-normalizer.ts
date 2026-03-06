@@ -4,23 +4,25 @@ const MONTHS: Record<string, string> = {
   SEP: '09', OCT: '10', NOV: '11', DEC: '12',
 };
 
-const DATE_PREFIXES = ['ABT', 'BEF', 'AFT', 'EST', 'CAL', 'FROM', 'TO', 'BET', 'AND', 'INT'];
+const DATE_PREFIXES = ['ABT', 'BEF', 'AFT', 'EST', 'CAL', 'INT'];
 
 export function normalizeDate(rawDate: string | undefined): string | undefined {
   if (!rawDate) return undefined;
 
   let cleaned = rawDate.trim();
 
-  // Remove prefixes like ABT, BEF, AFT, etc.
+  // Handle "FROM date1 TO date2" and "BET date1 AND date2" — take the first date
+  if (cleaned.startsWith('FROM ')) {
+    cleaned = cleaned.replace(/^FROM\s+/, '').split(/\s+TO\s+/)[0].trim();
+  } else if (cleaned.startsWith('BET ')) {
+    cleaned = cleaned.replace(/^BET\s+/, '').split(/\s+AND\s+/)[0].trim();
+  }
+
+  // Remove simple qualifiers
   for (const prefix of DATE_PREFIXES) {
     if (cleaned.startsWith(prefix + ' ')) {
       cleaned = cleaned.substring(prefix.length + 1).trim();
     }
-  }
-
-  // Handle "BET date1 AND date2" - take date1
-  if (cleaned.includes(' AND ')) {
-    cleaned = cleaned.split(' AND ')[0].trim();
   }
 
   // Full date: "10 JUN 1952"

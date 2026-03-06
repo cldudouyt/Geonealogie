@@ -1,15 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { PersonSummary, SpouseInfo } from '@/lib/types';
+import type { PersonSummary } from '@/lib/types';
 import type { PersonRecord } from '@/lib/gedcom-store';
 import { Monogram } from './Monogram';
+
+interface SpouseEntry {
+  person: PersonSummary;
+  familyId: string;
+  marriageDate?: string;
+  marriageDateRaw?: string;
+  marriagePlace?: string;
+  divorceDate?: string;
+  divorceDateRaw?: string;
+}
 
 interface PersonDetailData {
   person: PersonRecord;
   parents: PersonSummary[];
   children: PersonSummary[];
-  spouses: SpouseInfo[];
+  spouses: SpouseEntry[];
   siblings: PersonSummary[];
 }
 
@@ -117,6 +127,11 @@ export default function Sidebar({ personId, onClose, onFocus, onNavigate }: Side
                     <p className="text-xs text-slate-400 ml-8">
                       Mariage : {s.marriageDateRaw || s.marriageDate}
                       {s.marriagePlace && ` - ${s.marriagePlace}`}
+                    </p>
+                  )}
+                  {s.divorceDateRaw && (
+                    <p className="text-xs text-slate-400 ml-8">
+                      Divorce : {s.divorceDateRaw}
                     </p>
                   )}
                 </div>

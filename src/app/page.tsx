@@ -2,7 +2,6 @@ import { Suspense } from 'react';
 import FamilyTree from '@/components/tree/FamilyTree';
 import Dashboard from '@/components/Dashboard';
 import Loading from '@/components/ui/Loading';
-import { getDefaultPersonId } from '@/lib/gedcom-store';
 
 export default async function Home({
   searchParams,
@@ -15,11 +14,9 @@ export default async function Home({
     return <Dashboard />;
   }
 
-  const defaultRootId = await getDefaultPersonId();
-
   return (
     <Suspense fallback={<Loading message="Chargement..." />}>
-      <FamilyTree defaultRootId={defaultRootId} />
+      <FamilyTree />
     </Suspense>
   );
 }
