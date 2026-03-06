@@ -39,6 +39,10 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans, Arial, Helvetica, sans-serif);
   margin: 0;
+}
+
+/* Applied only to the tree page to prevent double scrollbars */
+body.tree-page {
   overflow: hidden;
   height: 100vh;
 }

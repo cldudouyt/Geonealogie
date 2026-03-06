@@ -12,6 +12,11 @@ import Loading from '../ui/Loading';
 const DEFAULT_ROOT = '50'; // First person in the GEDCOM
 
 export default function FamilyTree() {
+  useEffect(() => {
+    document.body.classList.add('tree-page');
+    return () => document.body.classList.remove('tree-page');
+  }, []);
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const focusId = searchParams.get('focus') || DEFAULT_ROOT;
