@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { upload } from '@vercel/blob/client';
 import type { DocumentMeta } from '@/lib/documents-store';
+
+const USE_BLOB = process.env.NEXT_PUBLIC_USE_BLOB === 'true';
 
 const MIME_ICON: Record<string, string> = {
   'application/pdf': '📄',
@@ -32,6 +35,7 @@ export default function DocumentsSection({
   const [error, setError] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -41,22 +45,48 @@ export default function DocumentsSection({
     setUploading(true);
     setError('');
 
-    const fd = new FormData(e.currentTarget);
-
     try {
-      const res = await fetch(`/api/persons/${personId}/documents`, {
-        method: 'POST',
-        body: fd,
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Erreur lors du téléversement');
-        return;
+      if (USE_BLOB) {
+        // Upload direct depuis le navigateur vers Vercel Blob (contourne la limite 4.5 Mo)
+        const blob = await upload(file.name, file, {
+          access: 'public',
+          handleUploadUrl: '/api/blob-upload',
+        });
+        // Enregistrement des métadonnées uniquement (JSON)
+        const res = await fetch(`/api/persons/${personId}/documents`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: blob.url,
+            originalName: file.name,
+            title: titleRef.current?.value.trim() || undefined,
+            mimeType: file.type,
+            size: file.size,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || 'Erreur lors de l\'enregistrement');
+          return;
+        }
+        setDocs(prev => [...prev, data.document]);
+      } else {
+        // Mode local : envoi du fichier via FormData
+        const fd = new FormData(e.currentTarget);
+        const res = await fetch(`/api/persons/${personId}/documents`, {
+          method: 'POST',
+          body: fd,
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || 'Erreur lors du téléversement');
+          return;
+        }
+        setDocs(prev => [...prev, data.document]);
       }
-      setDocs(prev => [...prev, data.document]);
       formRef.current?.reset();
     } catch {
-      setError('Erreur réseau');
+      setError('Erreur lors du téléversement');
     } finally {
       setUploading(false);
     }
@@ -122,6 +152,7 @@ export default function DocumentsSection({
         </p>
         <div className="flex flex-wrap gap-3 items-end">
           <input
+            ref={titleRef}
             name="title"
             type="text"
             placeholder="Titre (facultatif)"

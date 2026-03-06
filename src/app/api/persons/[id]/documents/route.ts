@@ -36,6 +36,34 @@ export async function POST(
     return NextResponse.json({ error: 'Personne introuvable' }, { status: 404 });
   }
 
+  const contentType = req.headers.get('content-type') ?? '';
+
+  // ── Mode blob : le client a déjà uploadé le fichier, on reçoit juste les métadonnées en JSON ──
+  if (contentType.includes('application/json')) {
+    let body: { url: string; originalName: string; title?: string; mimeType: string; size: number };
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Corps JSON invalide' }, { status: 400 });
+    }
+    if (!body.url || !body.originalName || !body.mimeType || !body.size) {
+      return NextResponse.json({ error: 'Champs manquants' }, { status: 400 });
+    }
+    const doc = {
+      id: randomUUID(),
+      personId: id,
+      url: body.url,
+      originalName: body.originalName,
+      title: body.title?.trim() || undefined,
+      mimeType: body.mimeType,
+      size: body.size,
+      uploadedAt: new Date().toISOString(),
+    };
+    await saveDocumentMeta(doc);
+    return NextResponse.json({ document: doc }, { status: 201 });
+  }
+
+  // ── Mode local : upload via FormData (développement) ──
   let formData: FormData;
   try {
     formData = await req.formData();
@@ -59,8 +87,7 @@ export async function POST(
   const rawExt = file.name.includes('.')
     ? file.name.split('.').pop()!.toLowerCase().replace(/[^a-z0-9]/g, '')
     : 'bin';
-  const ext = rawExt || 'bin';
-  const storedFilename = `${docId}.${ext}`;
+  const storedFilename = `${docId}.${rawExt || 'bin'}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const url = await uploadToStorage(id, storedFilename, buffer, file.type);
