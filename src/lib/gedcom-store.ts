@@ -7,6 +7,7 @@ import path from 'path';
 import { readGedcom } from 'read-gedcom';
 import { cleanRtf } from './gedcom/rtf-cleaner';
 import { normalizeDate, extractYear } from './gedcom/date-normalizer';
+import { loadOverrides, clearOverridesCache, type NewPerson } from './overrides-store';
 
 export interface LifeEvent {
   type: string;
@@ -375,11 +376,126 @@ export function getStore(): GedcomStore {
   }
 
   store = { persons, families, childToParents, parentToChildren, spouseRelations };
+
+  // Apply manual overrides on top of GEDCOM data
+  applyOverrides(store);
+
   console.log(`[GedcomStore] Loaded ${persons.size} persons, ${families.size} families`);
   return store;
 }
 
-// Expose helpers
+function newPersonToRecord(np: NewPerson): PersonRecord {
+  const displayName = `${np.givenNames.split(',')[0].trim()} ${np.surname}`.trim();
+  return {
+    id: np.id,
+    givenNames: np.givenNames,
+    surname: np.surname,
+    displayName,
+    nickname: np.nickname,
+    sex: np.sex,
+    birthDateRaw: np.birthDateRaw,
+    birthDate: np.birthDateRaw ? normalizeDate(np.birthDateRaw) : undefined,
+    birthYear: np.birthDateRaw ? extractYear(np.birthDateRaw) : undefined,
+    birthPlace: np.birthPlace,
+    birthPlaceFull: np.birthPlaceFull,
+    deathDateRaw: np.deathDateRaw,
+    deathDate: np.deathDateRaw ? normalizeDate(np.deathDateRaw) : undefined,
+    deathYear: np.deathDateRaw ? extractYear(np.deathDateRaw) : undefined,
+    deathPlace: np.deathPlace,
+    deathPlaceFull: np.deathPlaceFull,
+    burialDateRaw: np.burialDateRaw,
+    burialPlace: np.burialPlace,
+    chrDateRaw: np.chrDateRaw,
+    chrPlace: np.chrPlace,
+    occupation: np.occupation,
+    occupations: np.occupation ? [np.occupation] : [],
+    nationality: np.nationality,
+    isAdopted: np.isAdopted || false,
+    events: [],
+    notes: np.notes,
+  };
+}
+
+function applyOverrides(s: GedcomStore): void {
+  const overrides = loadOverrides();
+
+  // Apply edits to existing persons
+  for (const [id, edit] of Object.entries(overrides.persons)) {
+    const person = s.persons.get(id);
+    if (!person) continue;
+    if (edit.givenNames  !== undefined) person.givenNames  = edit.givenNames;
+    if (edit.surname     !== undefined) person.surname     = edit.surname;
+    if (edit.nickname    !== undefined) person.nickname    = edit.nickname;
+    if (edit.sex         !== undefined) person.sex         = edit.sex;
+    if (edit.birthDateRaw  !== undefined) { person.birthDateRaw  = edit.birthDateRaw; person.birthDate  = normalizeDate(edit.birthDateRaw); person.birthYear  = extractYear(edit.birthDateRaw); }
+    if (edit.birthPlace  !== undefined) person.birthPlace  = edit.birthPlace;
+    if (edit.birthPlaceFull !== undefined) person.birthPlaceFull = edit.birthPlaceFull;
+    if (edit.deathDateRaw  !== undefined) { person.deathDateRaw  = edit.deathDateRaw; person.deathDate  = normalizeDate(edit.deathDateRaw); person.deathYear  = extractYear(edit.deathDateRaw); }
+    if (edit.deathPlace  !== undefined) person.deathPlace  = edit.deathPlace;
+    if (edit.deathPlaceFull !== undefined) person.deathPlaceFull = edit.deathPlaceFull;
+    if (edit.burialDateRaw !== undefined) person.burialDateRaw   = edit.burialDateRaw;
+    if (edit.burialPlace !== undefined) person.burialPlace       = edit.burialPlace;
+    if (edit.chrDateRaw  !== undefined) person.chrDateRaw        = edit.chrDateRaw;
+    if (edit.chrPlace    !== undefined) person.chrPlace          = edit.chrPlace;
+    if (edit.occupation  !== undefined) { person.occupation = edit.occupation; if (!person.occupations.includes(edit.occupation)) person.occupations = [edit.occupation, ...person.occupations]; }
+    if (edit.nationality !== undefined) person.nationality       = edit.nationality;
+    if (edit.isAdopted   !== undefined) person.isAdopted         = edit.isAdopted;
+    if (edit.notes       !== undefined) person.notes             = edit.notes;
+    // Recompute displayName
+    person.displayName = `${person.givenNames.split(',')[0].trim()} ${person.surname}`.trim();
+  }
+
+  // Add new persons and wire up relationships
+  for (const np of overrides.newPersons) {
+    const record = newPersonToRecord(np);
+    s.persons.set(np.id, record);
+
+    if (np.relType === 'child' && np.relPersonId) {
+      // np is a child of relPersonId
+      s.childToParents.set(np.id, [np.relPersonId]);
+      const arr = s.parentToChildren.get(np.relPersonId) || [];
+      if (!arr.includes(np.id)) arr.push(np.id);
+      s.parentToChildren.set(np.relPersonId, arr);
+    } else if (np.relType === 'parent' && np.relPersonId) {
+      // np is a parent of relPersonId
+      const arr = s.childToParents.get(np.relPersonId) || [];
+      if (!arr.includes(np.id)) arr.push(np.id);
+      s.childToParents.set(np.relPersonId, arr);
+      s.parentToChildren.set(np.id, [np.relPersonId]);
+    } else if (np.relType === 'spouse' && np.relPersonId) {
+      // Bidirectional spouse relation
+      const fakeFamily = `FAM-custom-${np.id}`;
+      const addSpouse = (personId: string, spouseId: string) => {
+        const rels = s.spouseRelations.get(personId) || [];
+        if (!rels.find(r => r.spouseId === spouseId)) {
+          rels.push({ spouseId, familyId: fakeFamily });
+        }
+        s.spouseRelations.set(personId, rels);
+      };
+      addSpouse(np.id, np.relPersonId);
+      addSpouse(np.relPersonId, np.id);
+    }
+  }
+}
+
+/** Call after saving overrides to force store re-initialization on next request */
+export function clearStore(): void {
+  store = null;
+  clearOverridesCache();
+}
+
+export function getDefaultPersonId(): string {
+  const s = getStore();
+  let earliest: { id: string; year: number } | null = null;
+  for (const p of s.persons.values()) {
+    const year = p.birthYear ? parseInt(p.birthYear) : null;
+    if (year && (!earliest || year < earliest.year)) {
+      earliest = { id: p.id, year };
+    }
+  }
+  return earliest?.id ?? (s.persons.keys().next().value as string) ?? '';
+}
+
 export function getPerson(id: string): PersonRecord | undefined {
   return getStore().persons.get(id);
 }
@@ -511,21 +627,47 @@ export function getTreeCentered(rootId: string): { rootId: string; nodes: any[];
   return { rootId, nodes, links };
 }
 
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  const dp: number[] = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    let prev = i;
+    for (let j = 1; j <= n; j++) {
+      const val = a[i - 1] === b[j - 1] ? dp[j - 1] : Math.min(dp[j - 1], dp[j], prev) + 1;
+      dp[j - 1] = prev;
+      prev = val;
+    }
+    dp[n] = prev;
+  }
+  return dp[n];
+}
+
 export function searchPersons(query: string, limit = 20): PersonRecord[] {
-  const q = query.toLowerCase();
+  const q = query.toLowerCase().trim();
+  if (!q) return [];
   const results: Array<{ person: PersonRecord; score: number }> = [];
 
   for (const p of getStore().persons.values()) {
     let score = 0;
     const name = p.displayName.toLowerCase();
     const surname = p.surname.toLowerCase();
+    const given = p.givenNames.toLowerCase();
 
-    if (surname.startsWith(q)) score = 3;
-    else if (name.startsWith(q)) score = 2;
-    else if (name.includes(q)) score = 1;
-    else if (p.birthPlaceFull?.toLowerCase().includes(q)) score = 0.5;
-    else if (p.occupation?.toLowerCase().includes(q)) score = 0.5;
-    else continue;
+    if (surname.startsWith(q)) score = 10;
+    else if (name.startsWith(q)) score = 8;
+    else if (surname.includes(q)) score = 6;
+    else if (name.includes(q)) score = 5;
+    else if (p.birthPlaceFull?.toLowerCase().includes(q)) score = 3;
+    else if (p.occupation?.toLowerCase().includes(q)) score = 3;
+    else {
+      // Fuzzy: try Levenshtein on surname and given name tokens
+      const surnameDist = levenshtein(q, surname.substring(0, q.length + 2));
+      const givenDist = levenshtein(q, given.substring(0, q.length + 2));
+      const minDist = Math.min(surnameDist, givenDist);
+      const tolerance = q.length <= 3 ? 0 : q.length <= 5 ? 1 : 2;
+      if (minDist <= tolerance) score = Math.max(1, 3 - minDist);
+      else continue;
+    }
 
     results.push({ person: p, score });
   }
