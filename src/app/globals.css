@@ -47,6 +47,9 @@ body.tree-page {
   height: 100vh;
 }
 
+/* Leaflet map */
+@import "leaflet/dist/leaflet.css";
+
 /* Tree canvas styles */
 .tree-link-parent {
   fill: none;

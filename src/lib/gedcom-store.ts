@@ -37,6 +37,8 @@ export interface PersonRecord {
   deathYear?: string;
   deathPlace?: string;
   deathPlaceFull?: string;
+  deathLat?: number;
+  deathLon?: number;
   burialDateRaw?: string;
   burialPlace?: string;
   occupation?: string;
@@ -184,6 +186,13 @@ export function getStore(): GedcomStore {
     const deathParsed = parsePlace(deathPlaceFull);
     const deathPlace = deathParsed?.name || undefined;
 
+    let deathLat: number | undefined, deathLon: number | undefined;
+    try {
+      const dmap = death?.getPlace()?.get('MAP');
+      deathLat = parseCoord(getVal(dmap?.get('LATI')));
+      deathLon = parseCoord(getVal(dmap?.get('LONG')));
+    } catch {}
+
     // Burial
     const buri = indi.get('BURI');
     const burialDateRaw = getVal(buri?.get('DATE')) || undefined;
@@ -236,7 +245,7 @@ export function getStore(): GedcomStore {
       birthPlace, birthPlaceFull, birthLat, birthLon,
       chrDateRaw, chrPlace,
       deathDate, deathDateRaw, deathYear,
-      deathPlace, deathPlaceFull,
+      deathPlace, deathPlaceFull, deathLat, deathLon,
       burialDateRaw, burialPlace,
       occupation: occupations[0],
       occupations,
