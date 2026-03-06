@@ -447,6 +447,9 @@ async function applyOverrides(s: GedcomStore): Promise<void> {
     if (edit.nationality !== undefined) person.nationality       = edit.nationality;
     if (edit.isAdopted   !== undefined) person.isAdopted         = edit.isAdopted;
     if (edit.notes       !== undefined) person.notes             = edit.notes;
+    if (edit.events      !== undefined) person.events = edit.events.map(e => ({
+      type: e.type, dateRaw: e.dateRaw, place: e.place, note: e.note,
+    }));
     // Recompute displayName
     person.displayName = `${person.givenNames.split(',')[0].trim()} ${person.surname}`.trim();
   }

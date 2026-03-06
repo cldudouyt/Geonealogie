@@ -3,6 +3,13 @@ import os from 'os';
 import path from 'path';
 import { runSingleQuery } from './neo4j';
 
+export interface EventOverride {
+  type: string;
+  dateRaw?: string;
+  place?: string;
+  note?: string;
+}
+
 export interface PersonEdit {
   givenNames?: string;
   surname?: string;
@@ -22,6 +29,7 @@ export interface PersonEdit {
   nationality?: string;
   isAdopted?: boolean;
   notes?: string;
+  events?: EventOverride[];
 }
 
 export interface NewPerson extends PersonEdit {

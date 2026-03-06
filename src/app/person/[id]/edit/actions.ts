@@ -1,6 +1,6 @@
 'use server';
 
-import { savePersonEdit, type PersonEdit } from '@/lib/overrides-store';
+import { savePersonEdit, type PersonEdit, type EventOverride } from '@/lib/overrides-store';
 import { clearStore } from '@/lib/gedcom-store';
 import { redirect } from 'next/navigation';
 
@@ -17,6 +17,15 @@ export async function saveEdit(
   const get = (k: string) => formData.get(k)?.toString().trim() || undefined;
 
   const isAdoptedRaw = formData.get('isAdopted')?.toString();
+
+  let events: EventOverride[] | undefined;
+  const eventsJson = formData.get('events')?.toString();
+  if (eventsJson) {
+    try {
+      const parsed = JSON.parse(eventsJson) as EventOverride[];
+      events = parsed.filter(e => e.type?.trim());
+    } catch { /* ignore malformed JSON */ }
+  }
 
   const edit: PersonEdit = {
     givenNames:     get('givenNames'),
@@ -35,6 +44,7 @@ export async function saveEdit(
     nationality:    get('nationality'),
     isAdopted:      isAdoptedRaw !== undefined ? isAdoptedRaw === 'yes' : undefined,
     notes:          get('notes'),
+    events,
   };
 
   // Remove undefined keys
