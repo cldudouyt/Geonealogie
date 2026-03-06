@@ -273,9 +273,9 @@ async function importFamilies(session: Session, gedcom: any) {
 
     // Marriage info
     const marr = fam.get('MARR');
-    const marriageDateRaw = getTextValue(marr?.getDate());
+    const marriageDateRaw = getTextValue(marr?.get('DATE'));
     const marriageDate = normalizeDate(marriageDateRaw);
-    const marriagePlaceRaw = getTextValue(marr?.getPlace());
+    const marriagePlaceRaw = getTextValue(marr?.get('PLAC'));
     const marriageParsed = parsePlace(marriagePlaceRaw);
     const marriagePlace = marriageParsed ?
       `${marriageParsed.name}${marriageParsed.county ? ', ' + marriageParsed.county : ''}` :
