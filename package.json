@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "migrate:overrides": "tsx scripts/migrate-overrides-to-neo4j.ts"
   },
   "dependencies": {
     "@types/leaflet": "^1.9.21",

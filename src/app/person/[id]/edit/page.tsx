@@ -9,7 +9,7 @@ interface Props {
 
 export default async function EditPersonPage({ params }: Props) {
   const { id } = await params;
-  const person = getPerson(id);
+  const person = await getPerson(id);
   if (!person) return notFound();
 
   return (

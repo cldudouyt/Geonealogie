@@ -15,7 +15,7 @@ export default async function Home({
     return <Dashboard />;
   }
 
-  const defaultRootId = getDefaultPersonId();
+  const defaultRootId = await getDefaultPersonId();
 
   return (
     <Suspense fallback={<Loading message="Chargement..." />}>

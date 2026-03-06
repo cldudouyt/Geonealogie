@@ -8,17 +8,17 @@ export async function GET(
   const { id } = await params;
 
   try {
-    const person = getPerson(id);
+    const person = await getPerson(id);
     if (!person) {
       return NextResponse.json({ error: 'Person not found' }, { status: 404 });
     }
 
     return NextResponse.json({
       person,
-      parents: getParents(id),
-      children: getChildren(id),
-      spouses: getSpouses(id),
-      siblings: getSiblings(id),
+      parents: await getParents(id),
+      children: await getChildren(id),
+      spouses: await getSpouses(id),
+      siblings: await getSiblings(id),
     });
   } catch (error) {
     console.error('Person fetch error:', error);

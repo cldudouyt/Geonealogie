@@ -10,8 +10,8 @@ interface SurnameGroup {
   sampleNames: string[];
 }
 
-function buildSurnameGroups(): SurnameGroup[] {
-  const persons = getAllPersons();
+async function buildSurnameGroups(): Promise<SurnameGroup[]> {
+  const persons = await getAllPersons();
   const groups = new Map<string, { ids: string[]; names: Set<string>; oldest?: { id: string; year: number } }>();
 
   for (const p of persons) {
@@ -36,9 +36,9 @@ function buildSurnameGroups(): SurnameGroup[] {
     .sort((a, b) => b.count - a.count);
 }
 
-function getStats() {
-  const persons = getAllPersons();
-  const store = getStore();
+async function getStats() {
+  const persons = await getAllPersons();
+  const store = await getStore();
   const years = persons.map(p => p.birthYear ? parseInt(p.birthYear) : null).filter((y): y is number => y !== null);
   const minYear = years.length ? Math.min(...years) : null;
   const maxYear = years.length ? Math.max(...years) : null;
@@ -62,9 +62,9 @@ function getStats() {
   };
 }
 
-export default function Dashboard() {
-  const stats = getStats();
-  const surnameGroups = buildSurnameGroups();
+export default async function Dashboard() {
+  const stats = await getStats();
+  const surnameGroups = await buildSurnameGroups();
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">

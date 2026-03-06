@@ -126,7 +126,7 @@ function parseCoord(str: string | undefined): number | undefined {
   return val * (dir === 'S' || dir === 'W' ? -1 : 1);
 }
 
-export function getStore(): GedcomStore {
+export async function getStore(): Promise<GedcomStore> {
   if (store) return store;
 
   const gedcomPath = path.resolve(process.cwd(), 'Dudouyt Heredis 2014-Export.ged');
@@ -378,7 +378,7 @@ export function getStore(): GedcomStore {
   store = { persons, families, childToParents, parentToChildren, spouseRelations };
 
   // Apply manual overrides on top of GEDCOM data
-  applyOverrides(store);
+  await applyOverrides(store);
 
   console.log(`[GedcomStore] Loaded ${persons.size} persons, ${families.size} families`);
   return store;
@@ -416,8 +416,8 @@ function newPersonToRecord(np: NewPerson): PersonRecord {
   };
 }
 
-function applyOverrides(s: GedcomStore): void {
-  const overrides = loadOverrides();
+async function applyOverrides(s: GedcomStore): Promise<void> {
+  const overrides = await loadOverrides();
 
   // Apply edits to existing persons
   for (const [id, edit] of Object.entries(overrides.persons)) {
@@ -484,8 +484,8 @@ export function clearStore(): void {
   clearOverridesCache();
 }
 
-export function getDefaultPersonId(): string {
-  const s = getStore();
+export async function getDefaultPersonId(): Promise<string> {
+  const s = await getStore();
   let earliest: { id: string; year: number } | null = null;
   for (const p of s.persons.values()) {
     const year = p.birthYear ? parseInt(p.birthYear) : null;
@@ -496,30 +496,30 @@ export function getDefaultPersonId(): string {
   return earliest?.id ?? (s.persons.keys().next().value as string) ?? '';
 }
 
-export function getPerson(id: string): PersonRecord | undefined {
-  return getStore().persons.get(id);
+export async function getPerson(id: string): Promise<PersonRecord | undefined> {
+  return (await getStore()).persons.get(id);
 }
 
-export function getAllPersons(): PersonRecord[] {
-  return Array.from(getStore().persons.values());
+export async function getAllPersons(): Promise<PersonRecord[]> {
+  return Array.from((await getStore()).persons.values());
 }
 
-export function getParents(id: string): PersonRecord[] {
-  const s = getStore();
+export async function getParents(id: string): Promise<PersonRecord[]> {
+  const s = await getStore();
   return (s.childToParents.get(id) || [])
     .map(pid => s.persons.get(pid))
     .filter(Boolean) as PersonRecord[];
 }
 
-export function getChildren(id: string): PersonRecord[] {
-  const s = getStore();
+export async function getChildren(id: string): Promise<PersonRecord[]> {
+  const s = await getStore();
   return (s.parentToChildren.get(id) || [])
     .map(cid => s.persons.get(cid))
     .filter(Boolean) as PersonRecord[];
 }
 
-export function getSpouses(id: string) {
-  const s = getStore();
+export async function getSpouses(id: string) {
+  const s = await getStore();
   return (s.spouseRelations.get(id) || []).map(rel => ({
     person: s.persons.get(rel.spouseId),
     familyId: rel.familyId,
@@ -531,8 +531,8 @@ export function getSpouses(id: string) {
   })).filter(s => s.person);
 }
 
-export function getSiblings(id: string): PersonRecord[] {
-  const s = getStore();
+export async function getSiblings(id: string): Promise<PersonRecord[]> {
+  const s = await getStore();
   const parents = s.childToParents.get(id) || [];
   const siblingSet = new Set<string>();
   for (const parentId of parents) {
@@ -545,8 +545,8 @@ export function getSiblings(id: string): PersonRecord[] {
     .filter(Boolean) as PersonRecord[];
 }
 
-export function getTreeCentered(rootId: string): { rootId: string; nodes: any[]; links: any[] } {
-  const s = getStore();
+export async function getTreeCentered(rootId: string): Promise<{ rootId: string; nodes: any[]; links: any[] }> {
+  const s = await getStore();
   const nodeIds = new Set<string>();
   const directLineIds = new Set<string>();
 
@@ -642,12 +642,12 @@ function levenshtein(a: string, b: string): number {
   return dp[n];
 }
 
-export function searchPersons(query: string, limit = 20): PersonRecord[] {
+export async function searchPersons(query: string, limit = 20): Promise<PersonRecord[]> {
   const q = query.toLowerCase().trim();
   if (!q) return [];
   const results: Array<{ person: PersonRecord; score: number }> = [];
 
-  for (const p of getStore().persons.values()) {
+  for (const p of (await getStore()).persons.values()) {
     let score = 0;
     const name = p.displayName.toLowerCase();
     const surname = p.surname.toLowerCase();

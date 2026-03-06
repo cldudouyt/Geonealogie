@@ -1,6 +1,6 @@
 'use server';
 
-import { addNewPerson, commitOverridesToGitHub, type NewPerson } from '@/lib/overrides-store';
+import { addNewPerson, type NewPerson } from '@/lib/overrides-store';
 import { clearStore } from '@/lib/gedcom-store';
 import { redirect } from 'next/navigation';
 
@@ -51,8 +51,8 @@ export async function createPerson(
     if (p[key] === undefined) delete p[key];
   }
 
-  addNewPerson(person);
-  void commitOverridesToGitHub();
+  await addNewPerson(person);
+  
   clearStore();
 
   redirect(`/person/${id}`);

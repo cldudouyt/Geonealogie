@@ -12,7 +12,7 @@ interface PersonPageProps {
 export default async function PersonPage({ params }: PersonPageProps) {
   const { id } = await params;
 
-  const person = getPerson(id);
+  const person = await getPerson(id);
   if (!person) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -24,10 +24,10 @@ export default async function PersonPage({ params }: PersonPageProps) {
     );
   }
 
-  const parents = getParents(id);
-  const children = getChildren(id);
-  const spouses = getSpouses(id);
-  const siblings = getSiblings(id);
+  const parents = await getParents(id);
+  const children = await getChildren(id);
+  const spouses = await getSpouses(id);
+  const siblings = await getSiblings(id);
 
   const borderColor = person.sex === 'M' ? 'border-male' : person.sex === 'F' ? 'border-female' : 'border-neutral';
 

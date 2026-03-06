@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   try {
     if (allMarkers) {
       const markers: { lat: number; lon: number; personId: string; label: string; surname: string; eventType: string; dateRaw?: string; place?: string }[] = [];
-      for (const p of getAllPersons()) {
+      for (const p of await getAllPersons()) {
         if (p.birthLat != null && p.birthLon != null) {
           markers.push({
             lat: p.birthLat, lon: p.birthLon,
@@ -36,15 +36,15 @@ export async function GET(request: NextRequest) {
     }
 
     if (autocomplete && q) {
-      return NextResponse.json({ persons: searchPersons(q, limit) });
+      return NextResponse.json({ persons: await searchPersons(q, limit) });
     }
 
     if (q) {
-      const results = searchPersons(q, 500);
+      const results = await searchPersons(q, 500);
       return NextResponse.json({ persons: results.slice(skip, skip + limit), total: results.length, page, limit });
     }
 
-    let results = getAllPersons();
+    let results = await getAllPersons();
     if (surname) results = results.filter(p => p.surname.toLowerCase().includes(surname.toLowerCase()));
     if (place) results = results.filter(p =>
       p.birthPlaceFull?.toLowerCase().includes(place.toLowerCase()) ||

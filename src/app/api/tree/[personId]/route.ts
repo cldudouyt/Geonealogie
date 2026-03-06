@@ -8,7 +8,7 @@ export async function GET(
   const { personId } = await params;
 
   try {
-    const tree = getTreeCentered(personId);
+    const tree = await getTreeCentered(personId);
     return NextResponse.json(tree);
   } catch (error) {
     console.error('Tree fetch error:', error);
