@@ -13,6 +13,8 @@ export interface LifeEvent {
   dateRaw?: string;
   place?: string;
   placeFull?: string;
+  lat?: number;
+  lon?: number;
   note?: string;
 }
 
@@ -226,7 +228,14 @@ export function getStore(): GedcomStore {
       const rawNote = evt.get('NOTE')?.value()?.toString() || '';
       const evtNote = cleanRtf(rawNote) || undefined;
 
-      events.push({ type, dateRaw: evtDateRaw, place: evtPlace, placeFull: evtPlaceFull || undefined, note: evtNote });
+      let evtLat: number | undefined, evtLon: number | undefined;
+      try {
+        const evtMap = evt.get('PLAC')?.get('MAP');
+        evtLat = parseCoord(getVal(evtMap?.get('LATI')));
+        evtLon = parseCoord(getVal(evtMap?.get('LONG')));
+      } catch {}
+
+      events.push({ type, dateRaw: evtDateRaw, place: evtPlace, placeFull: evtPlaceFull || undefined, lat: evtLat, lon: evtLon, note: evtNote });
     }
 
     // Notes (main notes + occupation notes; EVEN notes are already in events)

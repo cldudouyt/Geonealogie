@@ -56,6 +56,19 @@ export default async function PersonPage({ params }: PersonPageProps) {
   spouses.forEach(s => s.person && addMarkers(s.person as PersonRecord));
   siblings.forEach(addMarkers);
 
+  // Add life event markers for the main person
+  for (const evt of person.events) {
+    if (evt.lat != null && evt.lon != null) {
+      mapMarkers.push({
+        lat: evt.lat, lon: evt.lon,
+        label: person.displayName, surname: '',
+        eventType: 'event', eventLabel: evt.type,
+        dateRaw: evt.dateRaw, place: evt.placeFull || evt.place,
+        personId: person.id,
+      });
+    }
+  }
+
   // Build chronological timeline
   const timeline: Array<{ label: string; dateRaw?: string; place?: string; icon: string; note?: string }> = [];
 
