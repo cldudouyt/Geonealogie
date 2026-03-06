@@ -43,4 +43,8 @@ next-env.d.ts
 # Claude Code internal files
 .claude/
 
+# Uploaded documents (stored locally, not committed)
+/public/documents/*
+!/public/documents/.gitkeep
+
 .vercel

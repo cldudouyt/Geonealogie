@@ -4,6 +4,8 @@ import type { PersonRecord } from '@/lib/gedcom-store';
 import type { MapMarker } from '@/components/map/PersonMap';
 import PersonMapWrapper from '@/components/map/PersonMapWrapper';
 import { Monogram } from '@/components/ui/Monogram';
+import DocumentsSection from '@/components/DocumentsSection';
+import { getDocumentsForPerson } from '@/lib/documents-store';
 
 interface PersonPageProps {
   params: Promise<{ id: string }>;
@@ -26,6 +28,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
 
   const parents = await getParents(id);
   const children = await getChildren(id);
+  const documents = getDocumentsForPerson(id);
   const spouses = await getSpouses(id);
   const siblings = await getSiblings(id);
 
@@ -222,6 +225,9 @@ export default async function PersonPage({ params }: PersonPageProps) {
             <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">{person.notes}</p>
           </div>
         )}
+
+        {/* Documents */}
+        <DocumentsSection personId={id} initialDocs={documents} />
       </main>
     </div>
   );
