@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   try {
     if (allMarkers) {
-      const markers: GlobalMarker[] = [];
+      const markers: { lat: number; lon: number; personId: string; label: string; surname: string; eventType: string; dateRaw?: string; place?: string }[] = [];
       for (const p of getAllPersons()) {
         if (p.birthLat != null && p.birthLon != null) {
           markers.push({
