@@ -46,8 +46,9 @@ export async function createPerson(
   };
 
   // Clean undefined
-  for (const key of Object.keys(person) as (keyof NewPerson)[]) {
-    if ((person as Record<string, unknown>)[key] === undefined) delete (person as Record<string, unknown>)[key];
+  const p = person as unknown as Record<string, unknown>;
+  for (const key of Object.keys(p)) {
+    if (p[key] === undefined) delete p[key];
   }
 
   addNewPerson(person);
