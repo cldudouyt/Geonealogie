@@ -49,7 +49,7 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="h-screen overflow-y-auto bg-slate-50 dark:bg-slate-950">
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center gap-4">
           <Link href="/" className="text-sm text-primary hover:underline flex items-center gap-1">
