@@ -5,9 +5,9 @@ import type { TreeData, TreeNode, TreeLink, LayoutNode, LayoutLink } from '@/lib
 
 const NODE_WIDTH = 180;
 const NODE_HEIGHT = 80;
-const GENERATION_GAP = 140;
-const SIBLING_GAP = 30;
-const SPOUSE_GAP = 20;
+const GENERATION_GAP = 150;
+const H_GAP = 40;        // gap between unrelated nodes/couples
+const SPOUSE_GAP = 20;   // gap between spouses
 
 interface LayoutResult {
   nodes: LayoutNode[];
@@ -21,22 +21,22 @@ export function useTreeLayout(treeData: TreeData | null): LayoutResult {
     }
 
     const { rootId, nodes, links } = treeData;
+    const nodeSet = new Set(nodes.map(n => n.id));
 
-    // Build adjacency maps
+    // ─── Build adjacency maps ───────────────────────────────────────────────
     const childToParents = new Map<string, string[]>();
     const parentToChildren = new Map<string, string[]>();
     const spouseMap = new Map<string, string[]>();
 
     for (const link of links) {
       if (link.type === 'parent') {
-        // source = parent, target = child
-        const parents = childToParents.get(link.target) || [];
-        parents.push(link.source);
-        childToParents.set(link.target, parents);
+        const p = childToParents.get(link.target) || [];
+        p.push(link.source);
+        childToParents.set(link.target, p);
 
-        const children = parentToChildren.get(link.source) || [];
-        children.push(link.target);
-        parentToChildren.set(link.source, children);
+        const c = parentToChildren.get(link.source) || [];
+        c.push(link.target);
+        parentToChildren.set(link.source, c);
       } else if (link.type === 'spouse') {
         const s1 = spouseMap.get(link.source) || [];
         s1.push(link.target);
@@ -48,208 +48,189 @@ export function useTreeLayout(treeData: TreeData | null): LayoutResult {
       }
     }
 
-    // Assign generations via BFS from root
+    // ─── Assign generations via BFS ─────────────────────────────────────────
     const generations = new Map<string, number>();
     const visited = new Set<string>();
-    const queue: Array<{ id: string; gen: number }> = [{ id: rootId, gen: 0 }];
+    const q: Array<{ id: string; gen: number }> = [{ id: rootId, gen: 0 }];
     visited.add(rootId);
 
-    while (queue.length > 0) {
-      const { id, gen } = queue.shift()!;
+    while (q.length > 0) {
+      const { id, gen } = q.shift()!;
       generations.set(id, gen);
 
-      // Parents -> negative generation
-      const parents = childToParents.get(id) || [];
-      for (const parentId of parents) {
-        if (!visited.has(parentId)) {
-          visited.add(parentId);
-          queue.push({ id: parentId, gen: gen - 1 });
-        }
+      for (const pid of (childToParents.get(id) || [])) {
+        if (!visited.has(pid)) { visited.add(pid); q.push({ id: pid, gen: gen - 1 }); }
       }
-
-      // Children -> positive generation
-      const children = parentToChildren.get(id) || [];
-      for (const childId of children) {
-        if (!visited.has(childId)) {
-          visited.add(childId);
-          queue.push({ id: childId, gen: gen + 1 });
-        }
+      for (const cid of (parentToChildren.get(id) || [])) {
+        if (!visited.has(cid)) { visited.add(cid); q.push({ id: cid, gen: gen + 1 }); }
       }
-
-      // Spouses -> same generation
-      const spouses = spouseMap.get(id) || [];
-      for (const spouseId of spouses) {
-        if (!visited.has(spouseId)) {
-          visited.add(spouseId);
-          queue.push({ id: spouseId, gen: gen });
-        }
+      for (const sid of (spouseMap.get(id) || [])) {
+        if (!visited.has(sid)) { visited.add(sid); q.push({ id: sid, gen }); }
       }
     }
 
-    // For any nodes not reached by BFS, assign generation 0
-    const nodeMap = new Map<string, TreeNode>();
     for (const node of nodes) {
-      nodeMap.set(node.id, node);
-      if (!generations.has(node.id)) {
-        generations.set(node.id, 0);
-      }
+      if (!generations.has(node.id)) generations.set(node.id, 0);
     }
 
-    // Group by generation
+    // Group by generation (only nodes present in our set)
     const genGroups = new Map<number, string[]>();
     for (const [id, gen] of generations.entries()) {
-      const group = genGroups.get(gen) || [];
-      group.push(id);
-      genGroups.set(gen, group);
+      if (!nodeSet.has(id)) continue;
+      const g = genGroups.get(gen) || [];
+      g.push(id);
+      genGroups.set(gen, g);
     }
 
-    // Sort generation keys
-    const sortedGens = Array.from(genGroups.keys()).sort((a, b) => a - b);
-
-    // Position nodes
     const positions = new Map<string, { x: number; y: number }>();
 
-    for (const gen of sortedGens) {
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+
+    // Build couple-units for a generation (person + their same-gen spouses)
+    function buildUnits(gen: number): string[][] {
       const group = genGroups.get(gen) || [];
-      const y = gen * GENERATION_GAP;
-
-      // Identify couples in this generation
-      const placed = new Set<string>();
-      const items: Array<{ ids: string[]; width: number }> = [];
-
+      const done = new Set<string>();
+      const units: string[][] = [];
       for (const id of group) {
-        if (placed.has(id)) continue;
-
+        if (done.has(id)) continue;
+        done.add(id);
         const spouses = (spouseMap.get(id) || []).filter(
-          sid => generations.get(sid) === gen && !placed.has(sid) && group.includes(sid)
+          s => generations.get(s) === gen && !done.has(s) && nodeSet.has(s)
         );
-
-        if (spouses.length > 0) {
-          const coupleIds = [id, ...spouses];
-          coupleIds.forEach(cid => placed.add(cid));
-          items.push({
-            ids: coupleIds,
-            width: coupleIds.length * NODE_WIDTH + (coupleIds.length - 1) * SPOUSE_GAP,
-          });
-        } else {
-          placed.add(id);
-          items.push({ ids: [id], width: NODE_WIDTH });
-        }
+        spouses.forEach(s => done.add(s));
+        units.push([id, ...spouses]);
       }
-
-      // Calculate total width
-      const totalWidth = items.reduce((sum, item) => sum + item.width, 0) + (items.length - 1) * SIBLING_GAP;
-      let x = -totalWidth / 2;
-
-      // Try to center children under their parents
-      for (const item of items) {
-        const firstId = item.ids[0];
-        const parents = childToParents.get(firstId) || [];
-        const parentPositions = parents
-          .map(pid => positions.get(pid))
-          .filter(Boolean) as Array<{ x: number; y: number }>;
-
-        if (parentPositions.length > 0 && gen > 0) {
-          // Center under parents
-          const parentCenterX = parentPositions.reduce((sum, p) => sum + p.x, 0) / parentPositions.length;
-          x = parentCenterX - item.width / 2 + NODE_WIDTH / 2;
-        }
-
-        for (let i = 0; i < item.ids.length; i++) {
-          const nodeX = x + i * (NODE_WIDTH + SPOUSE_GAP);
-          positions.set(item.ids[i], { x: nodeX, y });
-        }
-
-        x += item.width + SIBLING_GAP;
-      }
+      return units;
     }
 
-    // Second pass: center parents above their children for ancestor generations
-    for (const gen of sortedGens) {
-      if (gen >= 0) continue;
-      const group = genGroups.get(gen) || [];
+    // Width of a couple-unit
+    function unitWidth(unit: string[]): number {
+      return unit.length * NODE_WIDTH + (unit.length - 1) * SPOUSE_GAP;
+    }
 
-      for (const id of group) {
-        const children = (parentToChildren.get(id) || []).filter(
-          cid => generations.has(cid)
+    // Expected center-x for a unit based on its reference nodes in the adjacent generation
+    // For ancestors (gen < 0): reference = children in gen+1 (already placed)
+    // For descendants (gen > 0): reference = parents in gen-1 (already placed)
+    function refX(unit: string[], gen: number): number | null {
+      let refs: string[] = [];
+      if (gen <= 0) {
+        refs = unit.flatMap(uid =>
+          (parentToChildren.get(uid) || []).filter(
+            cid => generations.get(cid) === gen + 1 && positions.has(cid)
+          )
         );
-
-        if (children.length > 0) {
-          const childPositions = children
-            .map(cid => positions.get(cid))
-            .filter(Boolean) as Array<{ x: number; y: number }>;
-
-          if (childPositions.length > 0) {
-            const centerX = childPositions.reduce((sum, p) => sum + p.x, 0) / childPositions.length;
-            const pos = positions.get(id);
-            if (pos) {
-              // Check if this person has a spouse placed already
-              const spouses = (spouseMap.get(id) || []).filter(
-                sid => generations.get(sid) === gen && positions.has(sid)
-              );
-
-              if (spouses.length > 0) {
-                // Position couple centered over child
-                const spouseId = spouses[0];
-                const offset = (NODE_WIDTH + SPOUSE_GAP) / 2;
-                positions.set(id, { x: centerX - offset, y: pos.y });
-                positions.set(spouseId, { x: centerX + offset, y: pos.y });
-              } else {
-                positions.set(id, { x: centerX, y: pos.y });
-              }
-            }
-          }
-        }
+      } else {
+        refs = unit.flatMap(uid =>
+          (childToParents.get(uid) || []).filter(
+            pid => generations.get(pid) === gen - 1 && positions.has(pid)
+          )
+        );
       }
+      if (refs.length === 0) return null;
+      const xs = refs.map(id => positions.get(id)!.x);
+      return xs.reduce((a, b) => a + b, 0) / xs.length;
     }
 
-    // Resolve overlaps within each generation
-    for (const gen of sortedGens) {
-      const group = genGroups.get(gen) || [];
-      const sorted = group
-        .map(id => ({ id, pos: positions.get(id)! }))
-        .filter(item => item.pos)
-        .sort((a, b) => a.pos.x - b.pos.x);
+    // Place a generation's couple-units, sorted by refX to minimize crossings
+    function placeGeneration(gen: number) {
+      const y = gen * GENERATION_GAP;
+      const units = buildUnits(gen);
+      if (units.length === 0) return;
 
-      for (let i = 1; i < sorted.length; i++) {
-        const prev = sorted[i - 1];
-        const curr = sorted[i];
-        const minGap = NODE_WIDTH + SIBLING_GAP;
+      // Compute reference x for each unit
+      const refs = units.map(unit => ({ unit, rx: refX(unit, gen), w: unitWidth(unit) }));
 
-        // Check if spouse pair
-        const isSpouse = (spouseMap.get(prev.id) || []).includes(curr.id);
-        const gap = isSpouse ? NODE_WIDTH + SPOUSE_GAP : minGap;
-
-        if (curr.pos.x - prev.pos.x < gap) {
-          const shift = gap - (curr.pos.x - prev.pos.x);
-          curr.pos.x += shift;
-          positions.set(curr.id, curr.pos);
-        }
-      }
-    }
-
-    // Build layout nodes
-    const layoutNodes: LayoutNode[] = nodes
-      .filter(node => positions.has(node.id))
-      .map(node => ({
-        ...node,
-        ...positions.get(node.id)!,
-      }));
-
-    // Build layout links
-    const layoutLinks: LayoutLink[] = links
-      .filter(link => positions.has(link.source) && positions.has(link.target))
-      .map(link => {
-        const sourcePos = positions.get(link.source)!;
-        const targetPos = positions.get(link.target)!;
-        return {
-          ...link,
-          sourceX: sourcePos.x,
-          sourceY: sourcePos.y,
-          targetX: targetPos.x,
-          targetY: targetPos.y,
-        };
+      // Sort by reference x (units with no reference go to the end)
+      refs.sort((a, b) => {
+        if (a.rx === null && b.rx === null) return 0;
+        if (a.rx === null) return 1;
+        if (b.rx === null) return -1;
+        return a.rx - b.rx;
       });
+
+      // Greedy placement: place each unit at its target x, but never left of the cursor
+      // target_x is the left edge of the unit such that its center = refX
+      const placed: Array<{ unit: string[]; left: number; w: number }> = [];
+      let cursor = -Infinity;
+
+      for (const { unit, rx, w } of refs) {
+        // Target left edge so center of unit = rx
+        const target = rx !== null ? rx - w / 2 + NODE_WIDTH / 2 : cursor === -Infinity ? 0 : cursor;
+        const left = Math.max(cursor === -Infinity ? target : cursor, target);
+        placed.push({ unit, left, w });
+        cursor = left + w + H_GAP;
+      }
+
+      // Center the whole generation around the weighted center of refX values
+      const hasRef = refs.filter(r => r.rx !== null);
+      if (hasRef.length > 0) {
+        const desiredCenter = hasRef.reduce((s, r) => s + r.rx!, 0) / hasRef.length;
+        const firstLeft = placed[0].left;
+        const lastRight = placed[placed.length - 1].left + placed[placed.length - 1].w;
+        const currentCenter = (firstLeft + lastRight) / 2;
+        const shift = desiredCenter - currentCenter;
+
+        // Apply shift but re-resolve overlaps afterwards
+        for (const item of placed) item.left += shift;
+        for (let i = 1; i < placed.length; i++) {
+          const minLeft = placed[i - 1].left + placed[i - 1].w + H_GAP;
+          if (placed[i].left < minLeft) placed[i].left = minLeft;
+        }
+      }
+
+      // Write positions
+      for (const { unit, left } of placed) {
+        for (let i = 0; i < unit.length; i++) {
+          positions.set(unit[i], { x: left + i * (NODE_WIDTH + SPOUSE_GAP), y });
+        }
+      }
+    }
+
+    // ─── Place gen 0 (root) ────────────────────────────────────────────────
+    // Root at center, spouse(s) adjacent, group centered around 0
+    const gen0Done = new Set<string>();
+    const rootUnit: string[] = [rootId];
+    gen0Done.add(rootId);
+    for (const sid of (spouseMap.get(rootId) || []).filter(s => nodeSet.has(s) && generations.get(s) === 0)) {
+      rootUnit.push(sid);
+      gen0Done.add(sid);
+    }
+
+    // Any remaining gen-0 nodes (non-spouse, non-root)
+    const gen0Extra = (genGroups.get(0) || []).filter(id => !gen0Done.has(id));
+
+    const gen0Units = [rootUnit, ...gen0Extra.map(id => [id])];
+    const gen0TotalWidth = gen0Units.reduce((s, u) => s + unitWidth(u), 0) + (gen0Units.length - 1) * H_GAP;
+    let x0 = -gen0TotalWidth / 2;
+    for (const unit of gen0Units) {
+      for (let i = 0; i < unit.length; i++) {
+        positions.set(unit[i], { x: x0 + i * (NODE_WIDTH + SPOUSE_GAP), y: 0 });
+      }
+      x0 += unitWidth(unit) + H_GAP;
+    }
+
+    // ─── Place ancestor generations (gen -1, -2, …) ───────────────────────
+    const negGens = Array.from(genGroups.keys()).filter(g => g < 0).sort((a, b) => b - a);
+    for (const gen of negGens) placeGeneration(gen);
+
+    // ─── Place descendant generations (gen 1, 2, …) ───────────────────────
+    const posGens = Array.from(genGroups.keys()).filter(g => g > 0).sort((a, b) => a - b);
+    for (const gen of posGens) placeGeneration(gen);
+
+    // ─── Build output ──────────────────────────────────────────────────────
+    const layoutNodes: LayoutNode[] = nodes
+      .filter(n => positions.has(n.id))
+      .map(n => ({ ...n, ...positions.get(n.id)! }));
+
+    const layoutLinks: LayoutLink[] = links
+      .filter(l => positions.has(l.source) && positions.has(l.target))
+      .map(l => ({
+        ...l,
+        sourceX: positions.get(l.source)!.x,
+        sourceY: positions.get(l.source)!.y,
+        targetX: positions.get(l.target)!.x,
+        targetY: positions.get(l.target)!.y,
+      }));
 
     return { nodes: layoutNodes, links: layoutLinks };
   }, [treeData]);
