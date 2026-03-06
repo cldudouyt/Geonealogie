@@ -285,22 +285,26 @@ export function getSiblings(id: string): PersonRecord[] {
 
 export function getTreeCentered(rootId: string): { rootId: string; nodes: any[]; links: any[] } {
   const s = getStore();
-  const visited = new Set<string>();
   const nodeIds = new Set<string>();
+  // Track which persons are direct ancestors (or root) so we only add THEIR spouses
+  const directLineIds = new Set<string>();
 
-  // BFS ancestors (up to 6 generations)
-  function addAncestors(id: string, depth: number) {
-    if (depth <= 0 || visited.has(id)) return;
-    visited.add(id);
+  // Traverse only direct ancestors (no lateral expansion)
+  function addDirectAncestors(id: string, depth: number) {
+    if (depth < 0 || directLineIds.has(id)) return;
+    directLineIds.add(id);
     nodeIds.add(id);
     for (const pid of (s.childToParents.get(id) || [])) {
-      addAncestors(pid, depth - 1);
+      addDirectAncestors(pid, depth - 1);
     }
   }
 
-  // BFS descendants (up to 3 generations)
+  const descendantIds = new Set<string>();
+
+  // BFS descendants from root (up to 3 generations)
   function addDescendants(id: string, depth: number) {
     if (depth <= 0) return;
+    descendantIds.add(id);
     nodeIds.add(id);
     for (const cid of (s.parentToChildren.get(id) || [])) {
       if (!nodeIds.has(cid)) {
@@ -309,17 +313,36 @@ export function getTreeCentered(rootId: string): { rootId: string; nodes: any[];
     }
   }
 
-  addAncestors(rootId, 6);
+  addDirectAncestors(rootId, 6);
   addDescendants(rootId, 3);
 
-  // Add spouses of all included persons
-  const spouseIds = new Set<string>();
-  for (const id of nodeIds) {
-    for (const rel of (s.spouseRelations.get(id) || [])) {
-      spouseIds.add(rel.spouseId);
+  // For direct ancestors (not root): only add the co-parent of their child in the direct lineage.
+  // This excludes ex-spouses who didn't contribute to the ancestry of the root.
+  for (const id of directLineIds) {
+    if (id === rootId) {
+      // Root: show all spouses
+      for (const rel of (s.spouseRelations.get(id) || [])) {
+        nodeIds.add(rel.spouseId);
+      }
+    } else {
+      // Ancestor: only add the co-parent(s) of their direct-line child
+      const directLineChildren = (s.parentToChildren.get(id) || [])
+        .filter(cid => directLineIds.has(cid));
+      for (const child of directLineChildren) {
+        for (const coParentId of (s.childToParents.get(child) || [])) {
+          if (coParentId !== id) nodeIds.add(coParentId);
+        }
+      }
     }
   }
-  for (const sid of spouseIds) nodeIds.add(sid);
+
+  // Descendants: add all their spouses (they are the root's own children/grandchildren)
+  for (const id of descendantIds) {
+    if (id === rootId) continue;
+    for (const rel of (s.spouseRelations.get(id) || [])) {
+      nodeIds.add(rel.spouseId);
+    }
+  }
 
   // Build nodes
   const nodes = Array.from(nodeIds)
