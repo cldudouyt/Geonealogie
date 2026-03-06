@@ -2,11 +2,7 @@ import Link from 'next/link';
 import { getPerson, getParents, getChildren, getSpouses, getSiblings } from '@/lib/gedcom-store';
 import type { PersonRecord, LifeEvent } from '@/lib/gedcom-store';
 import type { MapMarker } from '@/components/map/PersonMap';
-import dynamic from 'next/dynamic';
-
-const PersonMap = dynamic(() => import('@/components/map/PersonMap'), { ssr: false, loading: () => (
-  <div className="h-[380px] bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />
-) });
+import PersonMapWrapper from '@/components/map/PersonMapWrapper';
 
 interface PersonPageProps {
   params: Promise<{ id: string }>;
@@ -149,7 +145,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
         {mapMarkers.length > 0 && (
           <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm mb-6">
             <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">Carte des naissances et décès</h2>
-            <PersonMap markers={mapMarkers} centerId={id} />
+            <PersonMapWrapper markers={mapMarkers} centerId={id} />
           </div>
         )}
 
