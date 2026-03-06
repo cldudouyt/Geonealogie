@@ -101,7 +101,6 @@ export function savePersonEdit(id: string, edit: PersonEdit): void {
 
 export function addNewPerson(person: NewPerson): void {
   const overrides = loadOverrides();
-  // Remove existing entry with same id if any
   overrides.newPersons = overrides.newPersons.filter(p => p.id !== person.id);
   overrides.newPersons.push(person);
   persistOverrides(overrides);
@@ -109,4 +108,63 @@ export function addNewPerson(person: NewPerson): void {
 
 export function clearOverridesCache(): void {
   _cache = null;
+}
+
+// ---------------------------------------------------------------------------
+// GitHub persistence — commits data/overrides.json back to the repo so that
+// edits survive Vercel restarts and are version-controlled.
+// Requires GITHUB_TOKEN with contents:write (fine-grained) or repo (classic).
+// ---------------------------------------------------------------------------
+
+const GITHUB_REPO = 'cldudouyt/Geonealogie';
+const GITHUB_FILE = 'data/overrides.json';
+
+export async function commitOverridesToGitHub(): Promise<void> {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) {
+    console.warn('[overrides] GITHUB_TOKEN not set — skipping GitHub commit');
+    return;
+  }
+
+  const overrides = loadOverrides();
+  const json = JSON.stringify(overrides, null, 2) + '\n';
+  const content = Buffer.from(json).toString('base64');
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'Content-Type': 'application/json',
+  };
+
+  // Get current file SHA (required for update)
+  const getRes = await fetch(
+    `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`,
+    { headers },
+  );
+  if (!getRes.ok) {
+    console.error('[overrides] GitHub GET failed:', await getRes.text());
+    return;
+  }
+  const fileData = await getRes.json() as { sha: string };
+
+  // Commit updated file
+  const putRes = await fetch(
+    `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`,
+    {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({
+        message: 'chore: update genealogy overrides [skip ci]',
+        content,
+        sha: fileData.sha,
+      }),
+    },
+  );
+
+  if (!putRes.ok) {
+    console.error('[overrides] GitHub PUT failed:', await putRes.text());
+  } else {
+    console.log('[overrides] Committed overrides to GitHub');
+  }
 }

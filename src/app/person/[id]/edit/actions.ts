@@ -1,6 +1,6 @@
 'use server';
 
-import { savePersonEdit, type PersonEdit } from '@/lib/overrides-store';
+import { savePersonEdit, commitOverridesToGitHub, type PersonEdit } from '@/lib/overrides-store';
 import { clearStore } from '@/lib/gedcom-store';
 import { redirect } from 'next/navigation';
 
@@ -40,7 +40,9 @@ export async function saveEdit(
   }
 
   savePersonEdit(id, edit);
-  clearStore(); // Force store re-init on next request
+  // Commit to GitHub for Vercel persistence (fire-and-forget, non-blocking)
+  void commitOverridesToGitHub();
+  clearStore();
 
   redirect(`/person/${id}`);
 }
