@@ -23,11 +23,14 @@ export function cleanRtf(text: string): string {
   result = result.replace(/\{\\colortbl[^}]*\}/g, '');
   result = result.replace(/\{\\\*\\expandedcolortbl[^}]*\}/g, '');
 
-  // Remove RTF header
-  result = result.replace(/^\{\\rtf1\\ansi[^}]*\n?/m, '');
+  // Remove RTF header (use [^\n}]* to avoid consuming the whole document across newlines)
+  result = result.replace(/^\{\\rtf1\\ansi[^\n}]*\n?/m, '');
 
   // Remove \pard and paragraph formatting
   result = result.replace(/\\pard[^\n]*/g, '');
+
+  // Remove RTF line-break markers (backslash at end of line)
+  result = result.replace(/\\\n/g, '\n');
 
   // Replace RTF escapes with actual characters
   for (const [escape, char] of Object.entries(RTF_ESCAPE_MAP)) {

@@ -214,6 +214,24 @@ export function getStore(): GedcomStore {
 
     const natVal = getVal(indi.get('NATI')?.get('CAUS'));
 
+    // Helper to extract a standard event node into a LifeEvent
+    function parseStdEvent(node: any, label: string): LifeEvent | null {
+      if (!node) return null;
+      const dateRaw = getVal(node.get('DATE')) || undefined;
+      const placeFull = getVal(node.get('PLAC')) || undefined;
+      const place = parsePlace(placeFull)?.name || undefined;
+      const rawNote = node.get('NOTE')?.value()?.toString() || '';
+      const note = cleanRtf(rawNote) || undefined;
+      let lat: number | undefined, lon: number | undefined;
+      try {
+        const map = node.get('PLAC')?.get('MAP');
+        lat = parseCoord(getVal(map?.get('LATI')));
+        lon = parseCoord(getVal(map?.get('LONG')));
+      } catch {}
+      if (!dateRaw && !place && !note) return null;
+      return { type: label, dateRaw, place, placeFull, lat, lon, note };
+    }
+
     // Custom events (EVEN)
     const events: LifeEvent[] = [];
     for (const evt of (indi.get('EVEN')?.arraySelect() || [])) {
@@ -236,6 +254,18 @@ export function getStore(): GedcomStore {
       } catch {}
 
       events.push({ type, dateRaw: evtDateRaw, place: evtPlace, placeFull: evtPlaceFull || undefined, lat: evtLat, lon: evtLon, note: evtNote });
+    }
+
+    // Standard biographical events (GRAD, EDUC)
+    const LABEL_MAP: Record<string, string> = {
+      GRAD: 'Diplôme',
+      EDUC: 'Éducation',
+    };
+    for (const tag of Object.keys(LABEL_MAP)) {
+      for (const node of (indi.get(tag)?.arraySelect() || [])) {
+        const evt = parseStdEvent(node, LABEL_MAP[tag]);
+        if (evt) events.push(evt);
+      }
     }
 
     // Notes (main notes + occupation notes; EVEN notes are already in events)
