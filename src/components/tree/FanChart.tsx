@@ -116,7 +116,7 @@ export default function FanChart({
 
         return { a, path, textX, textY, textRotate, label, startAngle, endAngle, midAngle };
       })
-      .filter(Boolean) as NonNullable<ReturnType<typeof arcs>[number]>[];
+      .filter(Boolean) as { a: AncestorNode; path: string; textX: number; textY: number; textRotate: number; label: string; startAngle: number; endAngle: number; midAngle: number }[];
   }, [ancestors]);
 
   const root = ancestors.find(a => a.gen === 0);
