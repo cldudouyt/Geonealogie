@@ -69,8 +69,17 @@ export function useTreeLayout(treeData: TreeData | null): LayoutResult {
       }
     }
 
+    // For nodes not reached by BFS (disconnected sub-trees), estimate generation
+    // from birth year so they spread across rows instead of piling at gen 0.
+    const rootNode = nodes.find(n => n.id === rootId);
+    const rootYear = parseInt(rootNode?.birthYear || '1900');
+    const GEN_YEARS = 27; // ~27 years per generation
+
     for (const node of nodes) {
-      if (!generations.has(node.id)) generations.set(node.id, 0);
+      if (!generations.has(node.id)) {
+        const year = parseInt(node.birthYear || '0');
+        generations.set(node.id, year > 0 ? Math.round((year - rootYear) / GEN_YEARS) : 0);
+      }
     }
 
     // Group by generation (only nodes present in our set)

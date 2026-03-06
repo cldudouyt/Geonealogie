@@ -515,15 +515,18 @@ export function getTreeCentered(rootId: string): { rootId: string; nodes: any[];
 export function getFullTree(): { rootId: string; nodes: any[]; links: any[] } {
   const s = getStore();
 
-  // Root = oldest person with no parents (most likely a founding ancestor)
-  const founders = Array.from(s.persons.values()).filter(
-    p => !(s.childToParents.get(p.id)?.length)
-  );
-  const oldest = founders.sort((a, b) => {
-    const ay = parseInt(a.birthYear || '9999');
-    const by = parseInt(b.birthYear || '9999');
-    return ay - by;
-  })[0] ?? s.persons.values().next().value;
+  // Root = person with the most direct connections (parent of most children)
+  // This maximises how many people the BFS reaches before falling back to year-based layout
+  let bestRoot = s.persons.keys().next().value as string;
+  let bestScore = 0;
+  for (const [id] of s.persons) {
+    const score =
+      (s.parentToChildren.get(id)?.length || 0) * 3 +
+      (s.childToParents.get(id)?.length || 0) +
+      (s.spouseRelations.get(id)?.length || 0);
+    if (score > bestScore) { bestScore = score; bestRoot = id; }
+  }
+  const oldest = s.persons.get(bestRoot) ?? s.persons.values().next().value;
 
   const nodes = Array.from(s.persons.values()).map((p: any) => ({
     id: p.id,
@@ -550,7 +553,7 @@ export function getFullTree(): { rootId: string; nodes: any[]; links: any[] } {
     for (const rel of (s.spouseRelations.get(id) || [])) addLink(id, rel.spouseId, 'spouse');
   }
 
-  return { rootId: oldest.id, nodes, links };
+  return { rootId: oldest?.id ?? bestRoot, nodes, links };
 }
 
 export function searchPersons(query: string, limit = 20): PersonRecord[] {
