@@ -89,7 +89,7 @@ export default function DocumentsSection({
               </span>
               <div className="flex-1 min-w-0">
                 <a
-                  href={`/documents/${doc.personId}/${doc.filename}`}
+                  href={doc.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline truncate block"

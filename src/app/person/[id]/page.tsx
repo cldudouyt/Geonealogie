@@ -28,7 +28,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
 
   const parents = await getParents(id);
   const children = await getChildren(id);
-  const documents = getDocumentsForPerson(id);
+  const documents = await getDocumentsForPerson(id);
   const spouses = await getSpouses(id);
   const siblings = await getSiblings(id);
 

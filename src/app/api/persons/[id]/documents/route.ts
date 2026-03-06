@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
-import fs from 'fs';
 import {
   getDocumentsForPerson,
   saveDocumentMeta,
-  ensurePersonDocsDir,
-  getDocumentFilePath,
+  uploadToStorage,
 } from '@/lib/documents-store';
 import { getPerson } from '@/lib/gedcom-store';
 
@@ -24,7 +22,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  return NextResponse.json({ documents: getDocumentsForPerson(id) });
+  return NextResponse.json({ documents: await getDocumentsForPerson(id) });
 }
 
 export async function POST(
@@ -64,14 +62,13 @@ export async function POST(
   const ext = rawExt || 'bin';
   const storedFilename = `${docId}.${ext}`;
 
-  ensurePersonDocsDir(id);
   const buffer = Buffer.from(await file.arrayBuffer());
-  fs.writeFileSync(getDocumentFilePath(id, storedFilename), buffer);
+  const url = await uploadToStorage(id, storedFilename, buffer, file.type);
 
   const doc = {
     id: docId,
     personId: id,
-    filename: storedFilename,
+    url,
     originalName: file.name,
     title,
     mimeType: file.type,
@@ -79,6 +76,6 @@ export async function POST(
     uploadedAt: new Date().toISOString(),
   };
 
-  saveDocumentMeta(doc);
+  await saveDocumentMeta(doc);
   return NextResponse.json({ document: doc }, { status: 201 });
 }
