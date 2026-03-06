@@ -10,9 +10,31 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100);
   const autocomplete = searchParams.get('autocomplete') === 'true';
+  const allMarkers = searchParams.get('allMarkers') === 'true';
   const skip = (page - 1) * limit;
 
   try {
+    if (allMarkers) {
+      const markers: GlobalMarker[] = [];
+      for (const p of getAllPersons()) {
+        if (p.birthLat != null && p.birthLon != null) {
+          markers.push({
+            lat: p.birthLat, lon: p.birthLon,
+            personId: p.id, label: p.displayName, surname: p.surname,
+            eventType: 'birth', dateRaw: p.birthDateRaw, place: p.birthPlaceFull,
+          });
+        }
+        if (p.deathLat != null && p.deathLon != null) {
+          markers.push({
+            lat: p.deathLat, lon: p.deathLon,
+            personId: p.id, label: p.displayName, surname: p.surname,
+            eventType: 'death', dateRaw: p.deathDateRaw, place: p.deathPlaceFull,
+          });
+        }
+      }
+      return NextResponse.json({ markers });
+    }
+
     if (autocomplete && q) {
       return NextResponse.json({ persons: searchPersons(q, limit) });
     }

@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import type { PersonSummary, SpouseInfo } from '@/lib/types';
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { PersonRecord } from '@/lib/gedcom-store';
+import { Monogram } from './Monogram';
 
 interface PersonDetailData {
-  person: any;
+  person: PersonRecord;
   parents: PersonSummary[];
   children: PersonSummary[];
   spouses: SpouseInfo[];
@@ -41,7 +41,7 @@ export default function Sidebar({ personId, onClose, onFocus, onNavigate }: Side
   if (!personId) return null;
 
   const person = data?.person;
-  const sex = (person?.sex as string) || 'U';
+  const sex = person?.sex ?? 'U';
   const borderColor = sex === 'M' ? 'border-male' : sex === 'F' ? 'border-female' : 'border-neutral';
 
   return (
@@ -66,16 +66,19 @@ export default function Sidebar({ personId, onClose, onFocus, onNavigate }: Side
         <div className="p-6">
           {/* Header */}
           <div className={`border-l-4 ${borderColor} pl-4 mb-6`}>
-            <h2 className="text-xl font-bold">{person.displayName as string}</h2>
+            <div className="flex items-center gap-3 mb-1">
+              <Monogram name={person.displayName} sex={person.sex} size="sm" />
+              <h2 className="text-xl font-bold">{person.displayName}</h2>
+            </div>
             <p className="text-sm text-slate-500 mt-1">
               {person.birthYear && `${person.birthDateRaw || person.birthYear}`}
               {person.deathYear && ` - ${person.deathDateRaw || person.deathYear}`}
             </p>
             {person.birthPlaceFull && (
-              <p className="text-sm text-slate-500">{person.birthPlaceFull as string}</p>
+              <p className="text-sm text-slate-500">{person.birthPlaceFull}</p>
             )}
             {person.occupation && (
-              <p className="text-sm text-primary-light font-medium mt-1">{person.occupation as string}</p>
+              <p className="text-sm text-primary-light font-medium mt-1">{person.occupation}</p>
             )}
           </div>
 
@@ -142,10 +145,7 @@ export default function Sidebar({ personId, onClose, onFocus, onNavigate }: Side
           {/* Notes */}
           {person.notes && (
             <Section title="Notes">
-              <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">
-                {(person.notes as string).substring(0, 500)}
-                {(person.notes as string).length > 500 && '...'}
-              </p>
+              <ExpandableText text={person.notes} limit={500} />
             </Section>
           )}
         </div>
@@ -176,5 +176,25 @@ function PersonLink({ person, onClick }: { person: PersonSummary; onClick: () =>
         <span className="text-xs text-slate-400 ml-auto">{person.birthDate?.substring(0, 4)}</span>
       )}
     </button>
+  );
+}
+
+function ExpandableText({ text, limit }: { text: string; limit: number }) {
+  const [expanded, setExpanded] = useState(false);
+  if (text.length <= limit) {
+    return <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">{text}</p>;
+  }
+  return (
+    <div>
+      <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">
+        {expanded ? text : text.substring(0, limit) + '…'}
+      </p>
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="text-xs text-primary hover:text-primary-light mt-1 transition-colors"
+      >
+        {expanded ? 'Voir moins' : 'Voir plus'}
+      </button>
+    </div>
   );
 }

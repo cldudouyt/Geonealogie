@@ -1,4 +1,17 @@
 {
-  "persons": {},
+  "persons": {
+    "72": {
+      "givenNames": "Charles, Louis",
+      "surname": "DUDOUYT",
+      "sex": "M",
+      "birthDateRaw": "17 OCT 1844",
+      "birthPlace": "Cerences,50510,Manche,Basse-Normandie,FRANCE,",
+      "deathDateRaw": "12 OCT 1904",
+      "deathPlace": "Paris,75000,Ville-de-Paris,Ile-de-France,FRANCE,",
+      "burialDateRaw": "14 DEC 1904",
+      "burialPlace": "Bagneux",
+      "occupation": "Commissaire priseur , Receveur de rentes"
+    }
+  },
   "newPersons": []
 }

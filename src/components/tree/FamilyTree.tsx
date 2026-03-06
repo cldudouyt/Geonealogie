@@ -16,7 +16,7 @@ import Loading from '../ui/Loading';
 
 const DEFAULT_ROOT = '50';
 
-export default function FamilyTree() {
+export default function FamilyTree({ defaultRootId }: { defaultRootId?: string }) {
   useEffect(() => {
     document.body.classList.add('tree-page');
     return () => document.body.classList.remove('tree-page');
@@ -24,7 +24,7 @@ export default function FamilyTree() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const focusId = searchParams.get('focus') || DEFAULT_ROOT;
+  const focusId = searchParams.get('focus') || defaultRootId || DEFAULT_ROOT;
   const viewMode = (searchParams.get('view') as ViewMode) || 'tree';
 
   const { treeData, loading, error, loadTree } = useTreeData();
@@ -82,6 +82,14 @@ export default function FamilyTree() {
     setSidebarOpen(false);
     setSelectedId(null);
   }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleCloseSidebar();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [handleCloseSidebar]);
 
   const rootId = treeData?.rootId || focusId;
   const ready = !loading && !error && dimensions.width > 0;

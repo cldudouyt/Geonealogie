@@ -130,17 +130,17 @@ export default function SearchPage() {
         {searched && (
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm overflow-hidden">
             <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800">
-              <p className="text-sm text-slate-500">{total} resultat{total !== 1 ? 's' : ''}</p>
+              <p className="text-sm text-slate-500">{total} résultat{total !== 1 ? 's' : ''}</p>
             </div>
 
             {results.length === 0 ? (
               <div className="p-12 text-center text-slate-400">
-                Aucun resultat
+                Aucun résultat
               </div>
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {results.map((person) => {
-                  const dot = person.sex === 'M' ? 'bg-blue-500' : person.sex === 'F' ? 'bg-pink-500' : 'bg-gray-400';
+                  const dot = person.sex === 'M' ? 'bg-male' : person.sex === 'F' ? 'bg-female' : 'bg-neutral';
                   return (
                     <div
                       key={person.id}
@@ -184,7 +184,7 @@ export default function SearchPage() {
                   disabled={page <= 1}
                   className="px-3 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 >
-                  Precedent
+                  Précédent
                 </button>
                 <span className="text-sm text-slate-500">
                   Page {page} / {Math.ceil(total / limit)}

@@ -5,7 +5,7 @@ import { logout } from '@/app/login/actions';
 
 export default function LogoutButton() {
   const pathname = usePathname();
-  if (pathname === '/login') return null;
+  if (pathname === '/login' || pathname === '/feedback') return null;
 
   return (
     <form action={logout} style={{ position: 'fixed', bottom: '1rem', right: '1rem', zIndex: 100 }}>
