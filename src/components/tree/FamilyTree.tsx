@@ -5,11 +5,16 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useTreeData } from './useTreeData';
 import { useTreeLayout } from './useTreeLayout';
 import TreeCanvas from './TreeCanvas';
+import HorizontalTree from './HorizontalTree';
+import FanChart from './FanChart';
+import WheelChart from './WheelChart';
+import AhnentafelView from './AhnentafelView';
+import ViewSelector, { type ViewMode } from './ViewSelector';
 import Header from '../ui/Header';
 import Sidebar from '../ui/Sidebar';
 import Loading from '../ui/Loading';
 
-const DEFAULT_ROOT = '50'; // First person in the GEDCOM
+const DEFAULT_ROOT = '50';
 
 export default function FamilyTree() {
   useEffect(() => {
@@ -20,6 +25,7 @@ export default function FamilyTree() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const focusId = searchParams.get('focus') || DEFAULT_ROOT;
+  const viewMode = (searchParams.get('view') as ViewMode) || 'tree';
 
   const { treeData, loading, error, loadTree } = useTreeData();
   const { nodes, links } = useTreeLayout(treeData);
@@ -28,21 +34,18 @@ export default function FamilyTree() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  // Update dimensions on resize
   useEffect(() => {
     const updateDimensions = () => {
       setDimensions({
         width: window.innerWidth - (sidebarOpen ? 400 : 0),
-        height: window.innerHeight - 56, // header height
+        height: window.innerHeight - 56,
       });
     };
-
     updateDimensions();
     window.addEventListener('resize', updateDimensions);
     return () => window.removeEventListener('resize', updateDimensions);
   }, [sidebarOpen]);
 
-  // Load tree when focus changes
   useEffect(() => {
     loadTree(focusId);
   }, [focusId, loadTree]);
@@ -53,27 +56,35 @@ export default function FamilyTree() {
   }, []);
 
   const handleNodeDoubleClick = useCallback((id: string) => {
-    // Focus tree on this person
-    router.push(`/?focus=${id}`, { scroll: false });
-  }, [router]);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('focus', id);
+    router.push(`/?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
 
   const handleFocus = useCallback((id: string) => {
     setSidebarOpen(false);
-    router.push(`/?focus=${id}`, { scroll: false });
-  }, [router]);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('focus', id);
+    router.push(`/?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
 
   const handleNavigate = useCallback((id: string) => {
     router.push(`/person/${id}`);
   }, [router]);
 
   const handleSearchSelect = useCallback((id: string) => {
-    router.push(`/?focus=${id}`, { scroll: false });
-  }, [router]);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('focus', id);
+    router.push(`/?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
 
   const handleCloseSidebar = useCallback(() => {
     setSidebarOpen(false);
     setSelectedId(null);
   }, []);
+
+  const rootId = treeData?.rootId || focusId;
+  const ready = !loading && !error && dimensions.width > 0;
 
   return (
     <div className="h-screen flex flex-col">
@@ -101,15 +112,64 @@ export default function FamilyTree() {
           </div>
         )}
 
-        {!loading && !error && nodes.length > 0 && dimensions.width > 0 && (
+        {/* Sélecteur de vue */}
+        {!loading && !error && treeData && (
+          <ViewSelector current={viewMode} />
+        )}
+
+        {/* Arbre vertical (défaut) */}
+        {ready && treeData && viewMode === 'tree' && nodes.length > 0 && (
           <TreeCanvas
             nodes={nodes}
             links={links}
-            rootId={treeData?.rootId || focusId}
+            rootId={rootId}
             selectedId={selectedId}
             onNodeClick={handleNodeClick}
             onNodeDoubleClick={handleNodeDoubleClick}
             dimensions={dimensions}
+          />
+        )}
+
+        {/* Arbre horizontal */}
+        {ready && treeData && viewMode === 'horizontal' && nodes.length > 0 && (
+          <HorizontalTree
+            treeData={treeData}
+            selectedId={selectedId}
+            onNodeClick={handleNodeClick}
+            onNodeDoubleClick={handleNodeDoubleClick}
+            dimensions={dimensions}
+          />
+        )}
+
+        {/* Éventail demi-cercle */}
+        {ready && treeData && viewMode === 'fan' && (
+          <FanChart
+            treeData={treeData}
+            selectedId={selectedId}
+            onNodeClick={handleNodeClick}
+            onNodeDoubleClick={handleNodeDoubleClick}
+            dimensions={dimensions}
+          />
+        )}
+
+        {/* Roue généalogique 360° */}
+        {ready && treeData && viewMode === 'wheel' && (
+          <WheelChart
+            treeData={treeData}
+            selectedId={selectedId}
+            onNodeClick={handleNodeClick}
+            onNodeDoubleClick={handleNodeDoubleClick}
+            dimensions={dimensions}
+          />
+        )}
+
+        {/* Liste Ahnentafel */}
+        {ready && treeData && viewMode === 'ahnentafel' && (
+          <AhnentafelView
+            treeData={treeData}
+            selectedId={selectedId}
+            onNodeClick={handleNodeClick}
+            onNodeDoubleClick={handleNodeDoubleClick}
           />
         )}
 
