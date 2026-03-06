@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { getPerson, getParents, getChildren, getSpouses, getSiblings } from '@/lib/gedcom-store';
-import type { PersonRecord } from '@/lib/gedcom-store';
+import type { PersonRecord, LifeEvent } from '@/lib/gedcom-store';
 
 interface PersonPageProps {
   params: Promise<{ id: string }>;
@@ -28,6 +28,25 @@ export default async function PersonPage({ params }: PersonPageProps) {
 
   const borderColor = person.sex === 'M' ? 'border-blue-500' : person.sex === 'F' ? 'border-pink-500' : 'border-gray-400';
 
+  // Build chronological timeline
+  const timeline: Array<{ label: string; dateRaw?: string; place?: string; icon: string; note?: string }> = [];
+
+  if (person.chrDateRaw || person.chrPlace) {
+    timeline.push({ label: 'Baptême', dateRaw: person.chrDateRaw, place: person.chrPlace, icon: '✦' });
+  }
+  if (person.birthDateRaw || person.birthPlaceFull) {
+    timeline.push({ label: 'Naissance', dateRaw: person.birthDateRaw, place: person.birthPlaceFull, icon: '★' });
+  }
+  for (const evt of person.events) {
+    timeline.push({ label: evt.type, dateRaw: evt.dateRaw, place: evt.placeFull || evt.place, icon: '◆', note: evt.note });
+  }
+  if (person.deathDateRaw || person.deathPlaceFull) {
+    timeline.push({ label: 'Décès', dateRaw: person.deathDateRaw, place: person.deathPlaceFull, icon: '†' });
+  }
+  if (person.burialDateRaw || person.burialPlace) {
+    timeline.push({ label: 'Inhumation', dateRaw: person.burialDateRaw, place: person.burialPlace, icon: '⚰' });
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
@@ -48,40 +67,75 @@ export default async function PersonPage({ params }: PersonPageProps) {
       </header>
 
       <main className="max-w-4xl mx-auto p-6">
+        {/* Identity card */}
         <div className={`bg-white dark:bg-slate-900 rounded-xl border-l-4 ${borderColor} p-8 shadow-sm mb-6`}>
           <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">{person.displayName}</h1>
-          <div className="mt-3 space-y-1 text-slate-600 dark:text-slate-400">
-            {person.birthDateRaw && (
-              <p><span className="font-medium">Naissance :</span> {person.birthDateRaw}{person.birthPlaceFull && ` — ${person.birthPlaceFull}`}</p>
-            )}
-            {person.deathDateRaw && (
-              <p><span className="font-medium">Décès :</span> {person.deathDateRaw}{person.deathPlaceFull && ` — ${person.deathPlaceFull}`}</p>
-            )}
-            {person.occupation && (
-              <p><span className="font-medium">Profession :</span> {person.occupation}</p>
+          {person.nickname && (
+            <p className="text-slate-500 dark:text-slate-400 mt-1 italic">&ldquo;{person.nickname}&rdquo;</p>
+          )}
+          <div className="mt-4 space-y-1 text-slate-600 dark:text-slate-400 text-sm">
+            {person.occupations.length > 0 && (
+              <p><span className="font-medium text-slate-700 dark:text-slate-300">Profession :</span> {person.occupations.join(', ')}</p>
             )}
             {person.nationality && (
-              <p><span className="font-medium">Nationalité :</span> {person.nationality}</p>
+              <p><span className="font-medium text-slate-700 dark:text-slate-300">Nationalité :</span> {person.nationality}</p>
             )}
-            {person.isAdopted && <p className="text-amber-600 font-medium">Adopté(e)</p>}
+            {person.isAdopted && (
+              <p className="text-amber-600 dark:text-amber-400 font-medium">Adopté(e)</p>
+            )}
           </div>
         </div>
 
+        {/* Timeline */}
+        {timeline.length > 0 && (
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm mb-6">
+            <h2 className="text-lg font-semibold mb-5 text-slate-700 dark:text-slate-300">Chronologie</h2>
+            <ol className="relative border-l-2 border-slate-200 dark:border-slate-700 space-y-5 ml-3">
+              {timeline.map((item, i) => (
+                <li key={i} className="ml-6">
+                  <span className="absolute -left-3 flex items-center justify-center w-6 h-6 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 text-xs">
+                    {item.icon}
+                  </span>
+                  <div>
+                    <p className="font-medium text-slate-800 dark:text-slate-200 text-sm">{item.label}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {item.dateRaw && <span>{item.dateRaw}</span>}
+                      {item.dateRaw && item.place && <span> — </span>}
+                      {item.place && <span>{item.place}</span>}
+                    </p>
+                    {item.note && (
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 whitespace-pre-wrap leading-relaxed">{item.note}</p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
+        {/* Family */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {parents.length > 0 && <FamilySection title="Parents" persons={parents} />}
           {siblings.length > 0 && <FamilySection title="Fratrie" persons={siblings} />}
           {spouses.length > 0 && (
             <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm">
               <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">Conjoints</h2>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {spouses.map((s) => s.person && (
                   <div key={s.familyId}>
                     <PersonListItem person={s.person} />
-                    {s.marriageDateRaw && (
-                      <p className="text-xs text-slate-400 ml-5 mt-0.5">
-                        Mariage : {s.marriageDateRaw}{s.marriagePlace && ` — ${s.marriagePlace}`}
-                      </p>
-                    )}
+                    <div className="ml-5 mt-1 space-y-0.5">
+                      {s.marriageDateRaw && (
+                        <p className="text-xs text-slate-400">
+                          Mariage : {s.marriageDateRaw}{s.marriagePlace && ` — ${s.marriagePlace}`}
+                        </p>
+                      )}
+                      {s.divorceDateRaw && (
+                        <p className="text-xs text-slate-400">
+                          Divorce : {s.divorceDateRaw}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -90,6 +144,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
           {children.length > 0 && <FamilySection title="Enfants" persons={children} />}
         </div>
 
+        {/* Biographical notes */}
         {person.notes && (
           <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm mt-6">
             <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">Notes biographiques</h2>

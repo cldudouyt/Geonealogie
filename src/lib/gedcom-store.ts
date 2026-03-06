@@ -8,6 +8,14 @@ import { readGedcom } from 'read-gedcom';
 import { cleanRtf } from './gedcom/rtf-cleaner';
 import { normalizeDate, extractYear } from './gedcom/date-normalizer';
 
+export interface LifeEvent {
+  type: string;
+  dateRaw?: string;
+  place?: string;
+  placeFull?: string;
+  note?: string;
+}
+
 export interface PersonRecord {
   id: string;
   givenNames: string;
@@ -22,15 +30,20 @@ export interface PersonRecord {
   birthPlaceFull?: string;
   birthLat?: number;
   birthLon?: number;
+  chrDateRaw?: string;
+  chrPlace?: string;
   deathDate?: string;
   deathDateRaw?: string;
   deathYear?: string;
   deathPlace?: string;
   deathPlaceFull?: string;
+  burialDateRaw?: string;
+  burialPlace?: string;
   occupation?: string;
   occupations: string[];
   nationality?: string;
   isAdopted: boolean;
+  events: LifeEvent[];
   notes?: string;
 }
 
@@ -42,14 +55,26 @@ export interface FamilyRecord {
   marriageDate?: string;
   marriageDateRaw?: string;
   marriagePlace?: string;
+  divorceDate?: string;
+  divorceDateRaw?: string;
+}
+
+interface SpouseRelEntry {
+  spouseId: string;
+  familyId: string;
+  marriageDate?: string;
+  marriageDateRaw?: string;
+  marriagePlace?: string;
+  divorceDate?: string;
+  divorceDateRaw?: string;
 }
 
 interface GedcomStore {
   persons: Map<string, PersonRecord>;
   families: Map<string, FamilyRecord>;
-  childToParents: Map<string, string[]>;   // personId -> parentIds
-  parentToChildren: Map<string, string[]>; // personId -> childIds
-  spouseRelations: Map<string, Array<{ spouseId: string; familyId: string; marriageDate?: string; marriageDateRaw?: string; marriagePlace?: string }>>;
+  childToParents: Map<string, string[]>;
+  parentToChildren: Map<string, string[]>;
+  spouseRelations: Map<string, SpouseRelEntry[]>;
 }
 
 let store: GedcomStore | null = null;
@@ -65,6 +90,17 @@ function getVal(node: any): string | undefined {
     if (Array.isArray(v)) return v[0]?.toString() || undefined;
     return v?.toString() || undefined;
   } catch { return undefined; }
+}
+
+function getAllVals(node: any): string[] {
+  try {
+    const nodes = node?.arraySelect() || [];
+    if (nodes.length === 0) {
+      const v = getVal(node);
+      return v ? [v] : [];
+    }
+    return nodes.map((n: any) => getVal(n)).filter(Boolean) as string[];
+  } catch { return []; }
 }
 
 function parsePlace(placeStr: string | undefined) {
@@ -100,7 +136,7 @@ export function getStore(): GedcomStore {
   const families = new Map<string, FamilyRecord>();
   const childToParents = new Map<string, string[]>();
   const parentToChildren = new Map<string, string[]>();
-  const spouseRelations = new Map<string, Array<{ spouseId: string; familyId: string; marriageDate?: string; marriageDateRaw?: string; marriagePlace?: string }>>();
+  const spouseRelations = new Map<string, SpouseRelEntry[]>();
 
   // Parse individuals
   const individuals = gedcom.getIndividualRecord().arraySelect();
@@ -117,6 +153,7 @@ export function getStore(): GedcomStore {
     const sexVal = getVal(indi.getSex());
     const sex = sexVal === 'M' ? 'M' : sexVal === 'F' ? 'F' : 'U';
 
+    // Birth
     const birth = indi.getEventBirth();
     const birthDateRaw = getVal(birth?.getDate());
     const birthDate = normalizeDate(birthDateRaw);
@@ -132,6 +169,13 @@ export function getStore(): GedcomStore {
       birthLon = parseCoord(getVal(map?.get('LONG')));
     } catch {}
 
+    // Christening
+    const chr = indi.get('CHR');
+    const chrDateRaw = getVal(chr?.get('DATE')) || undefined;
+    const chrPlaceFull = getVal(chr?.get('PLAC')) || undefined;
+    const chrPlace = parsePlace(chrPlaceFull)?.name || undefined;
+
+    // Death
     const death = indi.getEventDeath();
     const deathDateRaw = getVal(death?.getDate());
     const deathDate = normalizeDate(deathDateRaw);
@@ -140,6 +184,13 @@ export function getStore(): GedcomStore {
     const deathParsed = parsePlace(deathPlaceFull);
     const deathPlace = deathParsed?.name || undefined;
 
+    // Burial
+    const buri = indi.get('BURI');
+    const burialDateRaw = getVal(buri?.get('DATE')) || undefined;
+    const burialPlaceFull = getVal(buri?.get('PLAC')) || undefined;
+    const burialPlace = parsePlace(burialPlaceFull)?.name || undefined;
+
+    // Occupations
     const occuNodes = indi.get('OCCU')?.arraySelect() || [];
     const occupations: string[] = [];
     for (const occ of occuNodes) {
@@ -152,7 +203,24 @@ export function getStore(): GedcomStore {
 
     const natVal = getVal(indi.get('NATI')?.get('CAUS'));
 
-    // Notes
+    // Custom events (EVEN)
+    const events: LifeEvent[] = [];
+    for (const evt of (indi.get('EVEN')?.arraySelect() || [])) {
+      // When Heredis exports 2 TYPE lines, the last is the human-readable description
+      const types = getAllVals(evt.get('TYPE'));
+      const type = types[types.length - 1] || types[0];
+      if (!type) continue;
+
+      const evtDateRaw = getVal(evt.get('DATE')) || undefined;
+      const evtPlaceFull = getVal(evt.get('PLAC')) || undefined;
+      const evtPlace = parsePlace(evtPlaceFull)?.name || undefined;
+      const rawNote = evt.get('NOTE')?.value()?.toString() || '';
+      const evtNote = cleanRtf(rawNote) || undefined;
+
+      events.push({ type, dateRaw: evtDateRaw, place: evtPlace, placeFull: evtPlaceFull || undefined, note: evtNote });
+    }
+
+    // Notes (main notes + occupation notes; EVEN notes are already in events)
     let notes = '';
     const addNote = (n: string) => { if (n) notes += (notes ? '\n\n' : '') + cleanRtf(n); };
     for (const n of (indi.get('NOTE')?.arraySelect() || [])) {
@@ -161,20 +229,20 @@ export function getStore(): GedcomStore {
     for (const occ of occuNodes) {
       addNote(occ.get('NOTE')?.value()?.toString() || '');
     }
-    for (const evt of (indi.get('EVEN')?.arraySelect() || [])) {
-      addNote(evt.get('NOTE')?.value()?.toString() || '');
-    }
 
     persons.set(id, {
       id, givenNames, surname, displayName, nickname,
       sex, birthDate, birthDateRaw, birthYear,
       birthPlace, birthPlaceFull, birthLat, birthLon,
+      chrDateRaw, chrPlace,
       deathDate, deathDateRaw, deathYear,
       deathPlace, deathPlaceFull,
+      burialDateRaw, burialPlace,
       occupation: occupations[0],
       occupations,
       nationality: natVal,
       isAdopted,
+      events,
       notes: notes || undefined,
     });
   }
@@ -197,22 +265,32 @@ export function getStore(): GedcomStore {
       `${marriageParsed.name}${marriageParsed.county ? ', ' + marriageParsed.county : ''}` :
       undefined;
 
+    const div = fam.get('DIV');
+    const divorceDateRaw = getVal(div?.get('DATE')) || undefined;
+    const divorceDate = normalizeDate(divorceDateRaw);
+
     const childrenIds: string[] = [];
     for (const childNode of (fam.getChild()?.arraySelect() || [])) {
       const childId = stripXref(getVal(childNode));
       if (childId) childrenIds.push(childId);
     }
 
-    families.set(famId, { id: famId, husbandId: husbId, wifeId, childrenIds, marriageDate, marriageDateRaw, marriagePlace });
+    families.set(famId, {
+      id: famId, husbandId: husbId, wifeId, childrenIds,
+      marriageDate, marriageDateRaw, marriagePlace,
+      divorceDate, divorceDateRaw,
+    });
 
     // Build relationships
     if (husbId && wifeId) {
+      const entry: SpouseRelEntry = { spouseId: wifeId, familyId: famId, marriageDate, marriageDateRaw, marriagePlace, divorceDate, divorceDateRaw };
       const h = spouseRelations.get(husbId) || [];
-      h.push({ spouseId: wifeId, familyId: famId, marriageDate, marriageDateRaw, marriagePlace });
+      h.push(entry);
       spouseRelations.set(husbId, h);
 
+      const entry2: SpouseRelEntry = { spouseId: husbId, familyId: famId, marriageDate, marriageDateRaw, marriagePlace, divorceDate, divorceDateRaw };
       const w = spouseRelations.get(wifeId) || [];
-      w.push({ spouseId: husbId, familyId: famId, marriageDate, marriageDateRaw, marriagePlace });
+      w.push(entry2);
       spouseRelations.set(wifeId, w);
     }
 
@@ -266,6 +344,8 @@ export function getSpouses(id: string) {
     marriageDate: rel.marriageDate,
     marriageDateRaw: rel.marriageDateRaw,
     marriagePlace: rel.marriagePlace,
+    divorceDate: rel.divorceDate,
+    divorceDateRaw: rel.divorceDateRaw,
   })).filter(s => s.person);
 }
 
@@ -286,10 +366,8 @@ export function getSiblings(id: string): PersonRecord[] {
 export function getTreeCentered(rootId: string): { rootId: string; nodes: any[]; links: any[] } {
   const s = getStore();
   const nodeIds = new Set<string>();
-  // Track which persons are direct ancestors (or root) so we only add THEIR spouses
   const directLineIds = new Set<string>();
 
-  // Traverse only direct ancestors (no lateral expansion)
   function addDirectAncestors(id: string, depth: number) {
     if (depth < 0 || directLineIds.has(id)) return;
     directLineIds.add(id);
@@ -301,33 +379,23 @@ export function getTreeCentered(rootId: string): { rootId: string; nodes: any[];
 
   const descendantIds = new Set<string>();
 
-  // BFS descendants from root (up to 3 generations)
   function addDescendants(id: string, depth: number) {
     if (depth <= 0) return;
     descendantIds.add(id);
     nodeIds.add(id);
     for (const cid of (s.parentToChildren.get(id) || [])) {
-      if (!nodeIds.has(cid)) {
-        addDescendants(cid, depth - 1);
-      }
+      if (!nodeIds.has(cid)) addDescendants(cid, depth - 1);
     }
   }
 
   addDirectAncestors(rootId, 6);
   addDescendants(rootId, 3);
 
-  // For direct ancestors (not root): only add the co-parent of their child in the direct lineage.
-  // This excludes ex-spouses who didn't contribute to the ancestry of the root.
   for (const id of directLineIds) {
     if (id === rootId) {
-      // Root: show all spouses
-      for (const rel of (s.spouseRelations.get(id) || [])) {
-        nodeIds.add(rel.spouseId);
-      }
+      for (const rel of (s.spouseRelations.get(id) || [])) nodeIds.add(rel.spouseId);
     } else {
-      // Ancestor: only add the co-parent(s) of their direct-line child
-      const directLineChildren = (s.parentToChildren.get(id) || [])
-        .filter(cid => directLineIds.has(cid));
+      const directLineChildren = (s.parentToChildren.get(id) || []).filter(cid => directLineIds.has(cid));
       for (const child of directLineChildren) {
         for (const coParentId of (s.childToParents.get(child) || [])) {
           if (coParentId !== id) nodeIds.add(coParentId);
@@ -336,15 +404,11 @@ export function getTreeCentered(rootId: string): { rootId: string; nodes: any[];
     }
   }
 
-  // Descendants: add all their spouses (they are the root's own children/grandchildren)
   for (const id of descendantIds) {
     if (id === rootId) continue;
-    for (const rel of (s.spouseRelations.get(id) || [])) {
-      nodeIds.add(rel.spouseId);
-    }
+    for (const rel of (s.spouseRelations.get(id) || [])) nodeIds.add(rel.spouseId);
   }
 
-  // Build nodes
   const nodes = Array.from(nodeIds)
     .map(id => s.persons.get(id))
     .filter(Boolean)
@@ -357,7 +421,6 @@ export function getTreeCentered(rootId: string): { rootId: string; nodes: any[];
       occupation: p.occupation,
     }));
 
-  // Build links
   const links: any[] = [];
   const linkSet = new Set<string>();
 
@@ -371,17 +434,11 @@ export function getTreeCentered(rootId: string): { rootId: string; nodes: any[];
   };
 
   for (const id of nodeIds) {
-    // Parent links
     for (const parentId of (s.childToParents.get(id) || [])) {
-      if (nodeIds.has(parentId)) {
-        addLink(parentId, id, 'parent');
-      }
+      if (nodeIds.has(parentId)) addLink(parentId, id, 'parent');
     }
-    // Spouse links
     for (const rel of (s.spouseRelations.get(id) || [])) {
-      if (nodeIds.has(rel.spouseId)) {
-        addLink(id, rel.spouseId, 'spouse');
-      }
+      if (nodeIds.has(rel.spouseId)) addLink(id, rel.spouseId, 'spouse');
     }
   }
 
