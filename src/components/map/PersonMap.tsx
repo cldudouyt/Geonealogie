@@ -70,13 +70,15 @@ export default function PersonMap({ markers, centerId }: PersonMapProps) {
 
   useEffect(() => {
     if (!mapRef.current || markers.length === 0) return;
+    let cancelled = false;
+
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
       mapInstanceRef.current = null;
     }
 
     import('leaflet').then((L) => {
-      if (!mapRef.current) return;
+      if (cancelled || !mapRef.current) return;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -119,6 +121,7 @@ export default function PersonMap({ markers, centerId }: PersonMapProps) {
     });
 
     return () => {
+      cancelled = true;
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
