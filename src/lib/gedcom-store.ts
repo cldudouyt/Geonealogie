@@ -268,14 +268,32 @@ export function getStore(): GedcomStore {
       }
     }
 
-    // Notes (main notes + occupation notes; EVEN notes are already in events)
+    // OCCU with date or note → timeline event (others stay as occupation label only)
+    for (const occ of occuNodes) {
+      const occName = getVal(occ);
+      const occDateRaw = getVal(occ.get('DATE')) || undefined;
+      const rawOccNote = occ.get('NOTE')?.value()?.toString() || '';
+      const occNote = cleanRtf(rawOccNote) || undefined;
+      if (occDateRaw || occNote) {
+        const occPlaceFull = getVal(occ.get('PLAC')) || undefined;
+        const occPlace = parsePlace(occPlaceFull)?.name || undefined;
+        events.push({
+          type: occName || 'Carrière',
+          dateRaw: occDateRaw,
+          place: occPlace,
+          placeFull: occPlaceFull,
+          lat: undefined,
+          lon: undefined,
+          note: occNote,
+        });
+      }
+    }
+
+    // Notes: only top-level INDI NOTE tags (EVEN/GRAD/OCCU notes are in events)
     let notes = '';
     const addNote = (n: string) => { if (n) notes += (notes ? '\n\n' : '') + cleanRtf(n); };
     for (const n of (indi.get('NOTE')?.arraySelect() || [])) {
       addNote(n.value()?.toString() || '');
-    }
-    for (const occ of occuNodes) {
-      addNote(occ.get('NOTE')?.value()?.toString() || '');
     }
 
     persons.set(id, {

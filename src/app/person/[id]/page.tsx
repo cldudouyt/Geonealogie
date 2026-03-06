@@ -145,7 +145,14 @@ export default async function PersonPage({ params }: PersonPageProps) {
                       {item.place && <span>{item.place}</span>}
                     </p>
                     {item.note && (
-                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 whitespace-pre-wrap leading-relaxed">{item.note}</p>
+                      item.note.length > 250 ? (
+                        <details className="mt-1">
+                          <summary className="text-xs text-blue-500 cursor-pointer hover:text-blue-400 select-none">Voir la note…</summary>
+                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 whitespace-pre-wrap leading-relaxed">{item.note}</p>
+                        </details>
+                      ) : (
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 whitespace-pre-wrap leading-relaxed">{item.note}</p>
+                      )
                     )}
                   </div>
                 </li>
