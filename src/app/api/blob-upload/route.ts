@@ -19,6 +19,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       onBeforeGenerateToken: async (_pathname) => ({
         allowedContentTypes: ALLOWED_TYPES,
         maximumSizeInBytes: 10 * 1024 * 1024,
+        allowOverwrite: true,
       }),
       onUploadCompleted: async ({ blob }) => {
         console.log('[blob] upload completed:', blob.url);
