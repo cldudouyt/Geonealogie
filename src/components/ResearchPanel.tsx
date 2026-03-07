@@ -24,10 +24,10 @@ interface Props {
 const EXTERNAL_SOURCES = [
   {
     label: 'Geneanet',
-    description: 'Base de données généalogiques',
+    description: 'Fonds d\'archives généalogiques',
     color: '#15803d',
     url: (_q: string, surname: string, given: string) =>
-      `https://www.geneanet.org/recherche/?action=recherche&lang=fr&nom=${encodeURIComponent(surname)}&prenom=${encodeURIComponent(given)}`,
+      `https://www.geneanet.org/fonds/individus/?size=10&nom=${encodeURIComponent(surname)}&prenom=${encodeURIComponent(given)}&go=1`,
   },
   {
     label: 'Google Scholar',
