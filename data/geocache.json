@@ -1,1 +1,273 @@
-{}
+{
+  "Barcelone,,,Cataluña,ESPAGNE,": {
+    "lat": 41.3825802,
+    "lon": 2.177073
+  },
+  "Paris 13,75013,Ville-de-Paris,Ile-de-France,FRANCE,": {
+    "lat": 48.8094124,
+    "lon": 2.4361395
+  },
+  "Paris 16,75016,Ville-de-Paris,Ile-de-France,FRANCE,": {
+    "lat": 48.8310386,
+    "lon": 2.2809023
+  },
+  "Paris 17,75017,Ville-de-Paris,Ile-de-France,FRANCE,": null,
+  "Paris 11,75011,Ville-de-Paris,Ile-de-France,FRANCE,": {
+    "lat": 48.8614264,
+    "lon": 2.3483146
+  },
+  "Santiago de Cuba,,,,CUBA,": {
+    "lat": 20.0214263,
+    "lon": -75.8294928
+  },
+  "Paris 17,75017,Ville-de-Paris,Ile-de-France,FRANCE,25 rue Rennequin": null,
+  "Barcelone,,,Cataluña,ESPAGNE,Calle de Illas y Vidal,24, barriada de San Gervasio (aujourd'hui Av del General Mitre)": null,
+  "La Havane,,,,CUBA,": {
+    "lat": 23.135305,
+    "lon": -82.3589631
+  },
+  "Pamplune,,,Navarra,ESPAGNE,": null,
+  "Agon,50230,Manche,Basse-Normandie,FRANCE,": null,
+  "Paris 3ème,,,,,": {
+    "lat": 48.8638732,
+    "lon": 2.3617859
+  },
+  "Paris 13,75013,Ville-de-Paris,Ile-de-France,FRANCE,85 rue du Moulin des Prés": null,
+  "Mantes,78200,Val-d'Oise,Ile-de-France,FRANCE,": {
+    "lat": 49.0593275,
+    "lon": 1.7290064
+  },
+  "San Miguel de Aras,,,Cantabria,ESPAGNE,": {
+    "lat": 43.3279492,
+    "lon": -3.5075243
+  },
+  "Paris 15,75015,Ville-de-Paris,Ile-de-France,FRANCE,": null,
+  "Soultz,68360,Haut-Rhin,Alsace,FRANCE,": {
+    "lat": 47.8870216,
+    "lon": 7.2288038
+  },
+  "Paris 10,75010,Ville-de-Paris,Ile-de-France,FRANCE,": null,
+  "Virum,,,,DANEMARK,": {
+    "lat": 55.7939593,
+    "lon": 12.4694709
+  },
+  "Princeton,,,,USA,": {
+    "lat": 40.3496953,
+    "lon": -74.6597376
+  },
+  "Bergharben,,,,ALLEMAGNE,": null,
+  "Paris 14,75014,Ville-de-Paris,Ile-de-France,FRANCE,": {
+    "lat": 48.8616509,
+    "lon": 2.3483583
+  },
+  "Moscou,,,,RUSSIE,": {
+    "lat": 55.625578,
+    "lon": 37.6063916
+  },
+  "Niederseebach,67160,Bas Rhin,Alsace,FRANCE,": {
+    "lat": 48.948673,
+    "lon": 7.9988843
+  },
+  "Puttelange,57510,Moselle,,,": {
+    "lat": 49.0530406,
+    "lon": 6.9316068
+  },
+  "Paris,,,,,75010": {
+    "lat": 48.876225,
+    "lon": 2.3595209
+  },
+  "Paris,,,,,": {
+    "lat": 48.8588897,
+    "lon": 2.320041
+  },
+  "Soultz,68360,Haut Rhin,,,": {
+    "lat": 47.8870216,
+    "lon": 7.2288038
+  },
+  "Paris,,,,,75003": {
+    "lat": 48.864212,
+    "lon": 2.360936
+  },
+  "Neuilly,92200,Hts de S,,,": null,
+  "Paris,,,,,75013": {
+    "lat": 48.8290105,
+    "lon": 2.3636124
+  },
+  "Paris,,,,,75017": {
+    "lat": 48.8869265,
+    "lon": 2.3065472
+  },
+  "Paris,,,,,75016": {
+    "lat": 48.854928,
+    "lon": 2.2553299
+  },
+  "Paris,,,,,75005": {
+    "lat": 48.8454189,
+    "lon": 2.3525824
+  },
+  "- hollande,,,,,": {
+    "lat": 52.552708,
+    "lon": 4.8315779
+  },
+  "Boulogne,92100,Hts de S,,,": null,
+  "Auschwitz,,,,POLOGNE,": {
+    "lat": 50.0264016,
+    "lon": 19.2039639
+  },
+  "Bergharben,ALLEMAGNE,,,FRANCE,": null,
+  "Suresnes,92150,Hts de S,,,92150": null,
+  "Neuilly,92200,Hts de S,,,92200": null,
+  "Alger,,,,ALGÉRIE,": {
+    "lat": 36.7729333,
+    "lon": 3.0588445
+  },
+  "Levallois,92300,Hts de Seine,,,": null,
+  "Rio de Janeiro,,,,BRÉSIL,": {
+    "lat": -22.9110137,
+    "lon": -43.2093727
+  },
+  "?,,,,BRESIL,": {
+    "lat": -10.3333333,
+    "lon": -53.2
+  },
+  "Alegrete,,,,BRÉSIL,": {
+    "lat": -29.790166,
+    "lon": -55.794862
+  },
+  "Paris,,,,,75015": {
+    "lat": 48.8411228,
+    "lon": 2.2927657
+  },
+  "Clamart,92140,Hts de S,,,": null,
+  "Paris 12,75012,Ville-de-Paris,Ile-de-France,FRANCE,": {
+    "lat": 48.8616344,
+    "lon": 2.3484385
+  },
+  "Nice,06000,Alpes Marit.,,,": null,
+  "Paris-Xviième,75117,Paris,Île-de-France,FRANCE,75017": null,
+  "Berne,,,,,": {
+    "lat": 46.9484742,
+    "lon": 7.4521749
+  },
+  "La Ferté Allais,91590,Essone,,,": null,
+  "?,,,,JAPON,": {
+    "lat": 36.5748441,
+    "lon": 139.2394179
+  },
+  "Cracovie,,,,POLOGNE,": {
+    "lat": 50.0469432,
+    "lon": 19.9971534
+  },
+  "Asnières,92600,Hts de Seine,,,": null,
+  "Castelnau Magnoac,65230,Htes Pyrénées,,,": null,
+  "Treves,,,,ALLEMAGNE,": {
+    "lat": 49.7596208,
+    "lon": 6.6441878
+  },
+  "Beyrouth,,,,LIBAN,": {
+    "lat": 33.8892265,
+    "lon": 35.5025585
+  },
+  "Paris,,,,,75011": {
+    "lat": 48.858416,
+    "lon": 2.379703
+  },
+  "Berck sur Mer,62600,Pas de Calais,,,": {
+    "lat": 50.4248731,
+    "lon": 1.5952889
+  },
+  "Suresnes,92150,Hts de S,,,": null,
+  "Recife,,,Pernambouc,BRESIL,": {
+    "lat": -8.0584933,
+    "lon": -34.8848193
+  },
+  "Saint Quay Portrieux,22410,Cotes du Nord,,,": {
+    "lat": 48.6521014,
+    "lon": -2.8306322
+  },
+  "Paris,,,,,75009": {
+    "lat": 48.876019,
+    "lon": 2.339962
+  },
+  "?,,,,HOLLANDE,": {
+    "lat": 52.552708,
+    "lon": 4.8315779
+  },
+  "Paris,,,,,75014": {
+    "lat": 48.8295585,
+    "lon": 2.323974
+  },
+  "Paris,,,,,75020": {
+    "lat": 48.865042,
+    "lon": 2.398929
+  },
+  "Paris,,,,,75002": {
+    "lat": 48.868743,
+    "lon": 2.341688
+  },
+  "Paris,,,,,75008": {
+    "lat": 48.8737284,
+    "lon": 2.3103932
+  },
+  "Pont Labbé,29120,Finistère,,,": null,
+  "Birkenau,,,,POLOGNE,": {
+    "lat": 50.0426055,
+    "lon": 19.1879702
+  },
+  "Le Caire,,,,EGYPTE,": {
+    "lat": 30.0443879,
+    "lon": 31.2357257
+  },
+  "Sèvres,92310,Hts de Seine,,,": null,
+  "Mauthausen,,,,AUTRICHE,": {
+    "lat": 48.2404063,
+    "lon": 14.5162667
+  },
+  "Paris,,,,,75004": {
+    "lat": 48.8543423,
+    "lon": 2.3576301
+  },
+  "Salvador,,,,BRESIL,": {
+    "lat": -12.9822499,
+    "lon": -38.4812772
+  },
+  "Saint-Dié,88413,Vosges,Lorraine,FRANCE,": {
+    "lat": 48.2873153,
+    "lon": 6.9477708
+  },
+  "Plessis-Robinson,92350,Hts de Seine,,,": null,
+  "Schaerbeck,,,,BELGIQUE,": null,
+  "Rach Gia,,,,VIET nam,": {
+    "lat": 10.0107104,
+    "lon": 105.0832623
+  },
+  "Cascais,,,,PARTUGAL,": null,
+  "Chatenay Malabry,92290,Hts de Seine,,,": null,
+  "Paris Xième,75011,Paris,Ile-de-France,FRANCE,": null,
+  "Paris,,,,,75012": {
+    "lat": 48.8396154,
+    "lon": 2.3957517
+  },
+  "La Paz,,,,BOLIVIE,": {
+    "lat": -16.4955455,
+    "lon": -68.1336229
+  },
+  "Guerry,18390,Cher,,,": {
+    "lat": 47.0352218,
+    "lon": 2.5237486
+  },
+  "Paris Xivème,75014,Paris,Ile-de-France,FRANCE,": null,
+  "Paris Xiiième,75013,Paris,Ile-de-France,FRANCE,": null,
+  "Bâle,,,,SUISSE,": {
+    "lat": 47.5581077,
+    "lon": 7.5878261
+  },
+  "Southwark,,,,ROYAUME UNI,": {
+    "lat": 51.5061349,
+    "lon": -0.1011379
+  },
+  "Casablanca  Maroc,,,,,": {
+    "lat": 33.5945144,
+    "lon": -7.6200284
+  }
+}
