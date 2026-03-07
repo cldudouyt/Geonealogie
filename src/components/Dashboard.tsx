@@ -121,7 +121,7 @@ export default async function Dashboard() {
         <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-4">
           Carte des origines
         </h2>
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm" style={{ height: '420px' }}>
           <GlobalMapWrapper />
         </div>
       </div>
