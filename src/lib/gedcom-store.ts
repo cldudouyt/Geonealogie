@@ -658,6 +658,53 @@ export async function getTreeCentered(rootId: string): Promise<{ rootId: string;
   return { rootId, nodes, links };
 }
 
+export interface RelationStep {
+  personId: string;
+  displayName: string;
+  relation: string; // how we got here from previous step
+}
+
+export async function findRelationshipPath(fromId: string, toId: string): Promise<RelationStep[] | null> {
+  const s = await getStore();
+  if (fromId === toId) return [];
+
+  // BFS
+  const queue: Array<{ id: string; path: RelationStep[] }> = [
+    { id: fromId, path: [{ personId: fromId, displayName: s.persons.get(fromId)?.displayName ?? fromId, relation: 'départ' }] }
+  ];
+  const visited = new Set<string>([fromId]);
+
+  while (queue.length > 0) {
+    const { id, path } = queue.shift()!;
+
+    const neighbors: Array<{ id: string; relation: string }> = [];
+
+    // Parents
+    for (const pid of (s.childToParents.get(id) || [])) {
+      neighbors.push({ id: pid, relation: 'parent' });
+    }
+    // Children
+    for (const cid of (s.parentToChildren.get(id) || [])) {
+      neighbors.push({ id: cid, relation: 'enfant' });
+    }
+    // Spouses
+    for (const rel of (s.spouseRelations.get(id) || [])) {
+      neighbors.push({ id: rel.spouseId, relation: 'conjoint' });
+    }
+
+    for (const { id: nid, relation } of neighbors) {
+      if (visited.has(nid)) continue;
+      visited.add(nid);
+      const p = s.persons.get(nid);
+      if (!p) continue;
+      const newPath = [...path, { personId: nid, displayName: p.displayName, relation }];
+      if (nid === toId) return newPath;
+      queue.push({ id: nid, path: newPath });
+    }
+  }
+  return null; // no path found
+}
+
 function levenshtein(a: string, b: string): number {
   const m = a.length, n = b.length;
   const dp: number[] = Array.from({ length: n + 1 }, (_, i) => i);

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import ShareButton from '@/components/ui/ShareButton';
 import { getPerson, getParents, getChildren, getSpouses, getSiblings } from '@/lib/gedcom-store';
 import type { PersonRecord } from '@/lib/gedcom-store';
 import type { MapMarker } from '@/components/map/PersonMap';
@@ -103,6 +104,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
             Accueil
           </Link>
           <div className="flex items-center gap-2">
+            <ShareButton personId={id} />
             <Link
               href={`/person/${id}/print`}
               target="_blank"
