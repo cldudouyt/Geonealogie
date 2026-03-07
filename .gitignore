@@ -48,3 +48,6 @@ next-env.d.ts
 !/public/documents/.gitkeep
 
 .vercel
+
+# Uploaded avatars (stored locally, not committed)
+/public/avatars/*

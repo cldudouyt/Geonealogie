@@ -30,6 +30,7 @@ export interface PersonEdit {
   isAdopted?: boolean;
   notes?: string;
   events?: EventOverride[];
+  photoUrl?: string;
 }
 
 export interface NewPerson extends PersonEdit {

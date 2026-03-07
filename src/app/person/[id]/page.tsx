@@ -3,7 +3,7 @@ import { getPerson, getParents, getChildren, getSpouses, getSiblings } from '@/l
 import type { PersonRecord } from '@/lib/gedcom-store';
 import type { MapMarker } from '@/components/map/PersonMap';
 import PersonMapWrapper from '@/components/map/PersonMapWrapper';
-import { Monogram } from '@/components/ui/Monogram';
+import { Avatar } from '@/components/ui/Avatar';
 import DocumentsSection from '@/components/DocumentsSection';
 import { getDocumentsForPerson } from '@/lib/documents-store';
 
@@ -126,7 +126,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
         {/* Identity card */}
         <div className={`bg-white dark:bg-slate-900 rounded-xl border-l-4 ${borderColor} p-8 shadow-sm mb-6`}>
           <div className="flex items-center gap-4 mb-2">
-            <Monogram name={person.displayName} sex={person.sex} size="lg" />
+            <Avatar name={person.displayName} sex={person.sex} photoUrl={person.photoUrl} size="xl" />
             <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">{person.displayName}</h1>
           </div>
           {person.nickname && (

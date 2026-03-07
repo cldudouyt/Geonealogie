@@ -50,6 +50,7 @@ export interface PersonRecord {
   isAdopted: boolean;
   events: LifeEvent[];
   notes?: string;
+  photoUrl?: string;
 }
 
 export interface FamilyRecord {
@@ -450,6 +451,7 @@ async function applyOverrides(s: GedcomStore): Promise<void> {
     if (edit.events      !== undefined) person.events = edit.events.map(e => ({
       type: e.type, dateRaw: e.dateRaw, place: e.place, note: e.note,
     }));
+    if (edit.photoUrl    !== undefined) person.photoUrl    = edit.photoUrl;
     // Recompute displayName
     person.displayName = `${person.givenNames.split(',')[0].trim()} ${person.surname}`.trim();
   }
@@ -610,6 +612,7 @@ export async function getTreeCentered(rootId: string): Promise<{ rootId: string;
       birthYear: p.birthYear,
       deathYear: p.deathYear,
       occupation: p.occupation,
+      photoUrl: p.photoUrl,
     }));
 
   const links: any[] = [];

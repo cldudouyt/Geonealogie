@@ -50,7 +50,39 @@ function PersonNodeComponent({ node, isRoot, isSelected, onClick, onDoubleClick 
         <rect x={0} y={0} width={4} height={NODE_HEIGHT} rx={8} />
       </clipPath>
 
-      <foreignObject x={12} y={8} width={NODE_WIDTH - 20} height={NODE_HEIGHT - 16}>
+      {/* Avatar circle */}
+      {node.photoUrl ? (
+        <>
+          <clipPath id={`avatar-clip-${node.id}`}>
+            <circle cx={26} cy={NODE_HEIGHT / 2} r={18} />
+          </clipPath>
+          <image
+            href={node.photoUrl}
+            x={8}
+            y={NODE_HEIGHT / 2 - 18}
+            width={36}
+            height={36}
+            clipPath={`url(#avatar-clip-${node.id})`}
+            preserveAspectRatio="xMidYMid slice"
+          />
+        </>
+      ) : (
+        <>
+          <circle cx={26} cy={NODE_HEIGHT / 2} r={16} fill={borderColor} opacity={0.15} />
+          <text
+            x={26}
+            y={NODE_HEIGHT / 2 + 5}
+            textAnchor="middle"
+            fontSize={12}
+            fontWeight={700}
+            fill={borderColor}
+          >
+            {node.displayName.split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase() || '?'}
+          </text>
+        </>
+      )}
+
+      <foreignObject x={50} y={8} width={NODE_WIDTH - 58} height={NODE_HEIGHT - 16}>
         <div
           style={{
             fontFamily: 'system-ui, sans-serif',

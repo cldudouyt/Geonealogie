@@ -45,6 +45,8 @@ export async function saveEdit(
     isAdopted:      isAdoptedRaw !== undefined ? isAdoptedRaw === 'yes' : undefined,
     notes:          get('notes'),
     events,
+    // photoUrl: empty string means "cleared", undefined means "field absent"
+    photoUrl:       formData.has('photoUrl') ? (formData.get('photoUrl')?.toString().trim() || '') : undefined,
   };
 
   // Remove undefined keys

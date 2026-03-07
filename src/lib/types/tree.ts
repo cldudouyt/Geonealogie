@@ -5,6 +5,7 @@ export interface TreeNode {
   birthYear?: string;
   deathYear?: string;
   occupation?: string;
+  photoUrl?: string;
   generation: number;
 }
 

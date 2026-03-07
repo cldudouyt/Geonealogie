@@ -1,9 +1,14 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useState, useRef } from 'react';
+import { upload } from '@vercel/blob/client';
+import Image from 'next/image';
 import { saveEdit, type EditState } from './actions';
 import type { PersonRecord } from '@/lib/gedcom-store';
+import { Monogram } from '@/components/ui/Monogram';
 import Link from 'next/link';
+
+const USE_BLOB = process.env.NEXT_PUBLIC_USE_BLOB === 'true';
 
 interface EventRow {
   type: string;
@@ -48,6 +53,39 @@ export default function EditForm({ person }: { person: PersonRecord }) {
   const boundSave = saveEdit.bind(null, person.id);
   const [state, action, pending] = useActionState<EditState | null, FormData>(boundSave, null);
 
+  // Avatar state
+  const [photoUrl, setPhotoUrl] = useState<string>(person.photoUrl || '');
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    setAvatarError('');
+    try {
+      if (USE_BLOB) {
+        const blob = await upload(file.name, file, {
+          access: 'public',
+          handleUploadUrl: '/api/blob-upload',
+        });
+        setPhotoUrl(blob.url);
+      } else {
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await fetch(`/api/persons/${person.id}/avatar`, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) { setAvatarError(data.error || 'Erreur upload'); return; }
+        setPhotoUrl(data.photoUrl);
+      }
+    } catch {
+      setAvatarError('Erreur lors du téléversement');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
   const [events, setEvents] = useState<EventRow[]>(
     person.events.map(e => ({
       type: e.type,
@@ -68,8 +106,62 @@ export default function EditForm({ person }: { person: PersonRecord }) {
 
   return (
     <form action={action} className="space-y-5">
-      {/* Hidden field: serialized events list */}
+      {/* Hidden fields */}
       <input type="hidden" name="events" value={JSON.stringify(events)} />
+      <input type="hidden" name="photoUrl" value={photoUrl} />
+
+      {/* Photo de profil */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6">
+        <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-4">Photo de profil</h3>
+        <div className="flex items-center gap-5">
+          <span className="relative shrink-0 w-20 h-20 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+            {photoUrl ? (
+              <Image src={photoUrl} alt={person.displayName} fill className="object-cover" unoptimized />
+            ) : (
+              <span className="flex items-center justify-center w-full h-full">
+                <Monogram name={person.displayName} sex={person.sex} size="lg" />
+              </span>
+            )}
+            {avatarUploading && (
+              <span className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                <svg className="w-5 h-5 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              </span>
+            )}
+          </span>
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={avatarUploading}
+              className="px-4 py-2 text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+            >
+              {photoUrl ? 'Changer la photo' : 'Choisir une photo'}
+            </button>
+            {photoUrl && (
+              <button
+                type="button"
+                onClick={() => setPhotoUrl('')}
+                className="block text-xs text-red-500 hover:text-red-400 transition-colors"
+              >
+                Supprimer la photo
+              </button>
+            )}
+            <p className="text-xs text-slate-400">JPG, PNG, WebP · Max 5 Mo</p>
+            {avatarError && <p className="text-xs text-red-500">{avatarError}</p>}
+          </div>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
+        </div>
+      </div>
+
       <Section title="Identité">
         <Field label="Prénom(s)" name="givenNames" defaultValue={person.givenNames} placeholder="ex: Jean Pierre" />
         <Field label="Nom de famille" name="surname" defaultValue={person.surname} placeholder="ex: DUPONT" />
