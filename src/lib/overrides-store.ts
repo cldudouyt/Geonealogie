@@ -122,13 +122,21 @@ function persistOverridesToFile(overrides: Overrides): void {
 }
 
 async function loadOverridesFromNeo4j(): Promise<Overrides> {
-  type Row = { personsJson?: string; newPersonsJson?: string };
+  type Row = {
+    personsJson?: string; newPersonsJson?: string;
+    mergedPersonsJson?: string; deletedPersonIdsJson?: string; ignoredDoublonsJson?: string;
+  };
 
   const row = await runSingleQuery<Row>(
     `
       MERGE (o:OverridesState {id: $id})
-      ON CREATE SET o.personsJson = '{}', o.newPersonsJson = '[]', o.updatedAt = datetime()
-      RETURN o.personsJson AS personsJson, o.newPersonsJson AS newPersonsJson
+      ON CREATE SET o.personsJson = '{}', o.newPersonsJson = '[]',
+                    o.mergedPersonsJson = '{}', o.deletedPersonIdsJson = '[]',
+                    o.ignoredDoublonsJson = '[]', o.updatedAt = datetime()
+      RETURN o.personsJson AS personsJson, o.newPersonsJson AS newPersonsJson,
+             o.mergedPersonsJson AS mergedPersonsJson,
+             o.deletedPersonIdsJson AS deletedPersonIdsJson,
+             o.ignoredDoublonsJson AS ignoredDoublonsJson
     `,
     { id: DB_KEY },
   );
@@ -136,9 +144,12 @@ async function loadOverridesFromNeo4j(): Promise<Overrides> {
   if (!row) return emptyOverrides();
 
   try {
-    const persons = JSON.parse(row.personsJson || '{}') as Overrides['persons'];
-    const newPersons = JSON.parse(row.newPersonsJson || '[]') as Overrides['newPersons'];
-    return { persons, newPersons };
+    const persons       = JSON.parse(row.personsJson || '{}') as Overrides['persons'];
+    const newPersons    = JSON.parse(row.newPersonsJson || '[]') as Overrides['newPersons'];
+    const mergedPersons = JSON.parse(row.mergedPersonsJson || '{}') as Overrides['mergedPersons'];
+    const deletedPersonIds = JSON.parse(row.deletedPersonIdsJson || '[]') as Overrides['deletedPersonIds'];
+    const ignoredDoublons  = JSON.parse(row.ignoredDoublonsJson || '[]') as Overrides['ignoredDoublons'];
+    return { persons, newPersons, mergedPersons, deletedPersonIds, ignoredDoublons };
   } catch (err) {
     console.error('[overrides] Failed to parse overrides from Neo4j:', err);
     return emptyOverrides();
@@ -146,18 +157,24 @@ async function loadOverridesFromNeo4j(): Promise<Overrides> {
 }
 
 async function persistOverridesToNeo4j(overrides: Overrides): Promise<void> {
-  const personsJson = JSON.stringify(overrides.persons);
-  const newPersonsJson = JSON.stringify(overrides.newPersons);
+  const personsJson          = JSON.stringify(overrides.persons);
+  const newPersonsJson       = JSON.stringify(overrides.newPersons);
+  const mergedPersonsJson    = JSON.stringify(overrides.mergedPersons ?? {});
+  const deletedPersonIdsJson = JSON.stringify(overrides.deletedPersonIds ?? []);
+  const ignoredDoublonsJson  = JSON.stringify(overrides.ignoredDoublons ?? []);
 
   await runSingleQuery(
     `
       MERGE (o:OverridesState {id: $id})
       SET o.personsJson = $personsJson,
           o.newPersonsJson = $newPersonsJson,
+          o.mergedPersonsJson = $mergedPersonsJson,
+          o.deletedPersonIdsJson = $deletedPersonIdsJson,
+          o.ignoredDoublonsJson = $ignoredDoublonsJson,
           o.updatedAt = datetime()
       RETURN o.id AS id
     `,
-    { id: DB_KEY, personsJson, newPersonsJson },
+    { id: DB_KEY, personsJson, newPersonsJson, mergedPersonsJson, deletedPersonIdsJson, ignoredDoublonsJson },
   );
 }
 

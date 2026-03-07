@@ -442,10 +442,14 @@ async function buildStore(): Promise<GedcomStore> {
     }
   }
 
+  const rawCount = persons.size;
+
   // Apply manual overrides on top of GEDCOM data
   await applyOverrides(s);
 
-  console.log(`[GedcomStore] Loaded ${persons.size} persons, ${families.size} families`);
+  const finalCount = s.persons.size;
+  const dedupMsg = finalCount < rawCount ? ` (${rawCount - finalCount} doublons supprimés)` : '';
+  console.log(`[GedcomStore] Loaded ${finalCount} persons, ${families.size} families${dedupMsg}`);
   return s;
 }
 
@@ -569,7 +573,12 @@ async function applyOverrides(s: GedcomStore): Promise<void> {
   }
 
   // ─── Handle merges (redirect deleteId's relations to keepId) ───────────────
-  for (const [deleteId, keepId] of Object.entries(overrides.mergedPersons || {})) {
+  // IDs in overrides may have leading/trailing @ (GEDCOM format) — normalize them
+  const cleanId = (id: string) => id.replace(/@/g, '');
+
+  for (const [rawDeleteId, rawKeepId] of Object.entries(overrides.mergedPersons || {})) {
+    const deleteId = cleanId(rawDeleteId);
+    const keepId   = cleanId(rawKeepId);
     if (!s.persons.has(keepId)) continue;
 
     // Transfer children of deleteId → keepId
@@ -620,8 +629,9 @@ async function applyOverrides(s: GedcomStore): Promise<void> {
   }
 
   // ─── Handle deletions ──────────────────────────────────────────────────────
-  for (const deleteId of (overrides.deletedPersonIds || [])) {
-    if (overrides.mergedPersons?.[deleteId]) continue; // already handled above
+  for (const rawDeleteId of (overrides.deletedPersonIds || [])) {
+    const deleteId = cleanId(rawDeleteId);
+    if (overrides.mergedPersons?.[rawDeleteId] || overrides.mergedPersons?.[deleteId]) continue; // already handled above
     // Remove from relation maps
     for (const parentId of (s.childToParents.get(deleteId) || [])) {
       const ch = s.parentToChildren.get(parentId) || [];
