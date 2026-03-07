@@ -53,12 +53,6 @@ const EXTERNAL_SOURCES = [
     color: '#1d4ed8',
     url: (q: string) => `https://www.familysearch.org/fr/search/record/results?q.givenName=${encodeURIComponent(q)}`,
   },
-  {
-    label: 'Archives nationales',
-    description: 'Archives en ligne',
-    color: '#6b21a8',
-    url: (q: string) => `https://www.siv.archives-nationales.culture.gouv.fr/siv/rechercheSimple?searchString=${encodeURIComponent(q)}`,
-  },
 ];
 
 async function searchWikipedia(lang: 'fr' | 'en', name: string): Promise<WikiResult[]> {
