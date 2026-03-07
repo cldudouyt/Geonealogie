@@ -2,6 +2,7 @@ import { getPerson, getParents, getChildren, getSpouses, getSiblings } from '@/l
 import type { PersonRecord } from '@/lib/gedcom-store';
 import { notFound } from 'next/navigation';
 import AutoPrint from './AutoPrint';
+import PrintButton from './PrintButton';
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -53,11 +54,7 @@ export default async function PrintPage({ params }: Props) {
         .print-btn:hover { background: #1d4ed8; }
       `}</style>
 
-      <button className="print-btn no-print" onClick={() => {}} style={{ position: 'fixed', top: 16, right: 16, padding: '8px 16px', background: '#1e40af', color: 'white', border: 'none', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'sans-serif' }}
-        suppressHydrationWarning
-      >
-        Imprimer / PDF
-      </button>
+      <PrintButton />
 
       <div className="page">
         {/* Header */}
