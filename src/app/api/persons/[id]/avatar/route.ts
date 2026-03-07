@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { uploadToStorage } from '@/lib/documents-store';
 
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
-const MAX_SIZE = 5 * 1024 * 1024; // 5 Mo
+const MAX_SIZE = 4 * 1024 * 1024; // 4 Mo (sous la limite Vercel de 4.5 Mo)
 
-// Local mode only — blob mode uses /api/blob-upload directly from the client
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -24,24 +22,18 @@ export async function POST(
     return NextResponse.json({ error: 'Fichier manquant' }, { status: 400 });
   }
   if (file.size > MAX_SIZE) {
-    return NextResponse.json({ error: 'Fichier trop volumineux (max 5 Mo)' }, { status: 400 });
+    return NextResponse.json({ error: 'Fichier trop volumineux (max 4 Mo)' }, { status: 400 });
   }
   if (!ALLOWED_TYPES.has(file.type)) {
     return NextResponse.json({ error: 'Format non autorisé (JPG, PNG, GIF, WebP uniquement)' }, { status: 400 });
   }
 
   const ext = file.type.split('/')[1].replace('jpeg', 'jpg');
-  const filename = `${id}.${ext}`;
-  const dir = path.join(process.cwd(), 'public', 'avatars');
-  fs.mkdirSync(dir, { recursive: true });
-
-  // Remove any previous avatar for this person
-  for (const f of fs.readdirSync(dir)) {
-    if (f.startsWith(`${id}.`)) fs.unlinkSync(path.join(dir, f));
-  }
-
+  const filename = `avatar-${id}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
-  fs.writeFileSync(path.join(dir, filename), buffer);
 
-  return NextResponse.json({ photoUrl: `/avatars/${filename}` });
+  // uploadToStorage uses Vercel Blob in production, local public/documents/ in dev
+  const photoUrl = await uploadToStorage(id, filename, buffer, file.type);
+
+  return NextResponse.json({ photoUrl });
 }

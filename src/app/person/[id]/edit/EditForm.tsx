@@ -1,14 +1,11 @@
 'use client';
 
 import { useActionState, useState, useRef } from 'react';
-import { upload } from '@vercel/blob/client';
 import Image from 'next/image';
 import { saveEdit, type EditState } from './actions';
 import type { PersonRecord } from '@/lib/gedcom-store';
 import { Monogram } from '@/components/ui/Monogram';
 import Link from 'next/link';
-
-const USE_BLOB = process.env.NEXT_PUBLIC_USE_BLOB === 'true';
 
 interface EventRow {
   type: string;
@@ -65,20 +62,12 @@ export default function EditForm({ person }: { person: PersonRecord }) {
     setAvatarUploading(true);
     setAvatarError('');
     try {
-      if (USE_BLOB) {
-        const blob = await upload(file.name, file, {
-          access: 'public',
-          handleUploadUrl: '/api/blob-upload',
-        });
-        setPhotoUrl(blob.url);
-      } else {
-        const fd = new FormData();
-        fd.append('file', file);
-        const res = await fetch(`/api/persons/${person.id}/avatar`, { method: 'POST', body: fd });
-        const data = await res.json();
-        if (!res.ok) { setAvatarError(data.error || 'Erreur upload'); return; }
-        setPhotoUrl(data.photoUrl);
-      }
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`/api/persons/${person.id}/avatar`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) { setAvatarError(data.error || 'Erreur upload'); return; }
+      setPhotoUrl(data.photoUrl);
     } catch {
       setAvatarError('Erreur lors du téléversement');
     } finally {
@@ -149,7 +138,7 @@ export default function EditForm({ person }: { person: PersonRecord }) {
                 Supprimer la photo
               </button>
             )}
-            <p className="text-xs text-slate-400">JPG, PNG, WebP · Max 5 Mo</p>
+            <p className="text-xs text-slate-400">JPG, PNG, WebP · Max 4 Mo</p>
             {avatarError && <p className="text-xs text-red-500">{avatarError}</p>}
           </div>
           <input
