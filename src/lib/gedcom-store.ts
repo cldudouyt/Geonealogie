@@ -8,6 +8,7 @@ import { readGedcom } from 'read-gedcom';
 import { cleanRtf } from './gedcom/rtf-cleaner';
 import { normalizeDate, extractYear } from './gedcom/date-normalizer';
 import { loadOverrides, clearOverridesCache, type NewPerson } from './overrides-store';
+import { applyGeoCache } from './geocoder';
 
 export interface LifeEvent {
   type: string;
@@ -376,6 +377,24 @@ async function buildStore(): Promise<GedcomStore> {
   }
 
   const s: GedcomStore = { persons, families, childToParents, parentToChildren, spouseRelations };
+
+  // Apply geocached coordinates for places that lack MAP/LATI/LONG in GEDCOM
+  const placeNames: string[] = [];
+  for (const p of persons.values()) {
+    if (p.birthPlaceFull && p.birthLat == null) placeNames.push(p.birthPlaceFull);
+    if (p.deathPlaceFull && p.deathLat == null) placeNames.push(p.deathPlaceFull);
+  }
+  const geoMap = applyGeoCache(placeNames);
+  for (const p of persons.values()) {
+    if (p.birthPlaceFull && p.birthLat == null) {
+      const pt = geoMap.get(p.birthPlaceFull);
+      if (pt) { p.birthLat = pt.lat; p.birthLon = pt.lon; }
+    }
+    if (p.deathPlaceFull && p.deathLat == null) {
+      const pt = geoMap.get(p.deathPlaceFull);
+      if (pt) { p.deathLat = pt.lat; p.deathLon = pt.lon; }
+    }
+  }
 
   // Apply manual overrides on top of GEDCOM data
   await applyOverrides(s);
