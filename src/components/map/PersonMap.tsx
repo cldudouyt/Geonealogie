@@ -35,20 +35,20 @@ function markerColor(surname: string): string {
 
 function makeSvg(eventType: 'birth' | 'death' | 'event', color: string): string {
   if (eventType === 'birth') {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
-      <circle cx="9" cy="9" r="8" fill="${color}" stroke="white" stroke-width="2"/>
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10" fill="${color}" stroke="white" stroke-width="2.5"/>
     </svg>`;
   }
   if (eventType === 'death') {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
-      <circle cx="9" cy="9" r="7" fill="white" stroke="${color}" stroke-width="2.5"/>
-      <line x1="5.5" y1="5.5" x2="12.5" y2="12.5" stroke="${color}" stroke-width="2"/>
-      <line x1="12.5" y1="5.5" x2="5.5" y2="12.5" stroke="${color}" stroke-width="2"/>
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9.5" fill="white" stroke="${color}" stroke-width="3"/>
+      <line x1="7" y1="7" x2="17" y2="17" stroke="${color}" stroke-width="2.5"/>
+      <line x1="17" y1="7" x2="7" y2="17" stroke="${color}" stroke-width="2.5"/>
     </svg>`;
   }
   // event: diamond shape
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
-    <polygon points="9,1 17,9 9,17 1,9" fill="${color}" stroke="white" stroke-width="1.5"/>
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+    <polygon points="12,1 23,12 12,23 1,12" fill="${color}" stroke="white" stroke-width="2"/>
   </svg>`;
 }
 
@@ -56,11 +56,12 @@ function makePopup(m: MapMarker, color: string): string {
   const typeLabel = m.eventType === 'birth' ? '● Naissance'
     : m.eventType === 'death' ? '✕ Décès'
     : `◆ ${m.eventLabel || 'Événement'}`;
-  return `<div style="font-family:system-ui,sans-serif;font-size:13px;min-width:160px">
+  return `<div style="font-family:system-ui,sans-serif;font-size:14px;min-width:180px;line-height:1.6">
     <strong style="color:${color}">${m.label}</strong><br/>
     <span style="color:#64748b">${typeLabel}</span><br/>
     ${m.dateRaw ? `<span>${m.dateRaw}</span><br/>` : ''}
-    ${m.place ? `<span style="color:#94a3b8">${m.place}</span>` : ''}
+    ${m.place ? `<span style="color:#94a3b8">${m.place}</span><br/>` : ''}
+    <a href="/person/${m.personId}" style="color:#3b82f6;text-decoration:underline;display:inline-block;margin-top:4px">Voir la fiche →</a>
   </div>`;
 }
 
@@ -95,13 +96,13 @@ export default function PersonMap({ markers, centerId }: PersonMapProps) {
         const icon = L.divIcon({
           html: makeSvg(m.eventType, color),
           className: '',
-          iconSize: [18, 18],
-          iconAnchor: [9, 9],
-          popupAnchor: [0, -12],
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+          popupAnchor: [0, -15],
         });
 
         L.marker([m.lat, m.lon], { icon })
-          .bindPopup(makePopup(m, color))
+          .bindPopup(makePopup(m, color), { maxWidth: 280 })
           .addTo(map);
 
         bounds.push([m.lat, m.lon]);
