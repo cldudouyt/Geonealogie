@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getAllPersons, getParents } from '@/lib/gedcom-store';
+import type { PersonRecord } from '@/lib/gedcom-store';
 
 interface Anomaly {
   personId: string;
@@ -56,6 +57,18 @@ export default async function AnomaliesPage() {
     }
   }
 
+  // ── Homonymes ──────────────────────────────────────────────────────────────
+  const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const nameGroups = new Map<string, PersonRecord[]>();
+  for (const p of persons) {
+    const firstName = p.givenNames.split(/[,\s]+/)[0];
+    if (!firstName || !p.surname) continue;
+    const key = `${norm(firstName)}_${norm(p.surname)}`;
+    if (!nameGroups.has(key)) nameGroups.set(key, []);
+    nameGroups.get(key)!.push(p);
+  }
+  const duplicateGroups = [...nameGroups.values()].filter(g => g.length > 1);
+
   // Sort: errors first, then warnings, then info
   const order = { error: 0, warning: 1, info: 2 };
   anomalies.sort((a, b) => order[a.severity] - order[b.severity] || a.name.localeCompare(b.name));
@@ -89,11 +102,12 @@ export default async function AnomaliesPage() {
 
       <main className="max-w-3xl mx-auto p-6 space-y-6">
         {/* Summary */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           {[
             { label: 'Erreurs', count: errors.length, cls: 'text-red-600' },
             { label: 'Avertissements', count: warnings.length, cls: 'text-yellow-600' },
             { label: 'Informations', count: infos.length, cls: 'text-slate-500' },
+            { label: 'Homonymes', count: duplicateGroups.length, cls: 'text-amber-600' },
           ].map(({ label, count, cls }) => (
             <div key={label} className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm text-center">
               <p className={`text-3xl font-bold ${cls}`}>{count}</p>
@@ -119,6 +133,31 @@ export default async function AnomaliesPage() {
                       {a.name}
                     </Link>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{a.message}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Homonymes */}
+        {duplicateGroups.length > 0 && (
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Homonymes potentiels</span>
+              <span className="text-xs text-slate-400">{duplicateGroups.length} groupe{duplicateGroups.length > 1 ? 's' : ''} détecté{duplicateGroups.length > 1 ? 's' : ''}</span>
+            </div>
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {duplicateGroups.map((group, i) => (
+                <div key={i} className="px-4 py-3 bg-amber-50 dark:bg-amber-900/5 border-l-4 border-amber-300">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">
+                    {group[0].givenNames.split(/[,\s]+/)[0]} {group[0].surname} — {group.length} personnes
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {group.map(p => (
+                      <Link key={p.id} href={`/person/${p.id}`} className="text-xs text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">
+                        {p.displayName}{p.birthYear ? ` (${p.birthYear})` : ''}
+                      </Link>
+                    ))}
                   </div>
                 </div>
               ))}

@@ -16,6 +16,7 @@ const PRIMARY_LINKS = [
 const MORE_LINKS = [
   { href: '/timeline', label: 'Frise chronologique' },
   { href: '/relation', label: 'Chemin de parenté' },
+  { href: '/network', label: 'Graphe de réseau' },
   { href: '/anniversaires', label: 'Anniversaires' },
   { href: '/anomalies', label: 'Rapport d\'anomalies' },
 ];

@@ -21,6 +21,12 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Geonealogie - Arbre Généalogique",
   description: "Explorez votre histoire familiale",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Génealogie",
+  },
 };
 
 export default function RootLayout({

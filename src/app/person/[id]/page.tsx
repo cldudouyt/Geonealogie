@@ -2,6 +2,55 @@ import Link from 'next/link';
 import ShareButton from '@/components/ui/ShareButton';
 import { getPerson, getParents, getChildren, getSpouses, getSiblings } from '@/lib/gedcom-store';
 import type { PersonRecord } from '@/lib/gedcom-store';
+
+function generateBio(
+  person: PersonRecord,
+  parents: PersonRecord[],
+  spouses: Array<{ person?: PersonRecord | null; marriageDateRaw?: string; marriagePlace?: string }>,
+  children: PersonRecord[]
+): string | null {
+  const hasData = person.birthDateRaw || person.deathDateRaw || person.deathYear || spouses.some(s => s.person);
+  if (!hasData) return null;
+  const f = person.sex === 'F';
+  const lines: string[] = [];
+
+  let intro = `${person.displayName} est né${f ? 'e' : ''}`;
+  if (person.birthDateRaw) intro += ` le ${person.birthDateRaw}`;
+  if (person.birthPlaceFull || person.birthPlace) intro += ` à ${person.birthPlaceFull || person.birthPlace}`;
+  if (parents.length > 0) intro += `, ${f ? 'fille' : 'fils'} de ${parents.map(p => p.displayName).join(' et ')}`;
+  lines.push(intro);
+
+  if (person.occupations.length > 0) {
+    lines.push(`${f ? 'Elle exerçait la profession de' : 'Il exerçait la profession de'} ${person.occupations.join(', ').toLowerCase()}`);
+  }
+
+  for (const s of spouses) {
+    if (!s.person) continue;
+    let m = `${f ? 'Elle s\'est mariée avec' : 'Il s\'est marié avec'} ${s.person.displayName}`;
+    if (s.marriageDateRaw) m += ` le ${s.marriageDateRaw}`;
+    if (s.marriagePlace) m += ` à ${s.marriagePlace}`;
+    lines.push(m);
+  }
+
+  if (children.length > 0) {
+    const names = children.slice(0, 3).map(c => c.displayName).join(', ');
+    const extra = children.length > 3 ? ` (et ${children.length - 3} autre${children.length - 3 > 1 ? 's' : ''})` : '';
+    lines.push(`${f ? 'Elle a eu' : 'Il a eu'} ${children.length} enfant${children.length > 1 ? 's' : ''} : ${names}${extra}`);
+  }
+
+  if (person.deathDateRaw || person.deathYear || person.deathPlaceFull) {
+    let d = `${f ? 'Elle est décédée' : 'Il est décédé'}`;
+    if (person.deathDateRaw) d += ` le ${person.deathDateRaw}`;
+    if (person.deathPlaceFull || person.deathPlace) d += ` à ${person.deathPlaceFull || person.deathPlace}`;
+    if (person.birthYear && person.deathYear) {
+      const age = parseInt(person.deathYear) - parseInt(person.birthYear);
+      if (age > 0 && age < 120) d += `, à l'âge de ${age} ans`;
+    }
+    lines.push(d);
+  }
+
+  return lines.join('. ') + '.';
+}
 import type { MapMarker } from '@/components/map/PersonMap';
 import PersonMapWrapper from '@/components/map/PersonMapWrapper';
 import { Avatar } from '@/components/ui/Avatar';
@@ -35,6 +84,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
   const siblings = await getSiblings(id);
 
   const borderColor = person.sex === 'M' ? 'border-male' : person.sex === 'F' ? 'border-female' : 'border-neutral';
+  const bio = generateBio(person, parents, spouses, children);
 
   // Build map markers for person + close relatives
   const mapMarkers: MapMarker[] = [];
@@ -157,6 +207,13 @@ export default async function PersonPage({ params }: PersonPageProps) {
             )}
           </div>
         </div>
+
+        {/* Bio narrative */}
+        {bio && (
+          <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl px-6 py-4 mb-6">
+            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed italic">{bio}</p>
+          </div>
+        )}
 
         {/* Timeline */}
         {timeline.length > 0 && (
