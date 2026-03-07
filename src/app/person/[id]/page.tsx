@@ -14,7 +14,9 @@ function generateBio(
   const f = person.sex === 'F';
   const lines: string[] = [];
 
-  let intro = `${person.displayName} est né${f ? 'e' : ''}`;
+  const birthName = person.surname;
+  let intro = `${person.givenNames.split(',')[0].trim()} ${birthName}`.trim();
+  intro += ` est né${f ? 'e' : ''}`;
   if (person.birthDateRaw) intro += ` le ${person.birthDateRaw}`;
   if (person.birthPlaceFull || person.birthPlace) intro += ` à ${person.birthPlaceFull || person.birthPlace}`;
   if (parents.length > 0) intro += `, ${f ? 'fille' : 'fils'} de ${parents.map(p => p.displayName).join(' et ')}`;
@@ -82,6 +84,14 @@ export default async function PersonPage({ params }: PersonPageProps) {
   const documents = await getDocumentsForPerson(id);
   const spouses = await getSpouses(id);
   const siblings = await getSiblings(id);
+
+  // Resolve adoptive parents and adopted children for link display
+  const adoptiveParents = person.adoptiveParentIds.length > 0
+    ? (await Promise.all(person.adoptiveParentIds.map(pid => getPerson(pid)))).filter(Boolean) as PersonRecord[]
+    : [];
+  const adoptedChildren = person.adoptedChildIds.length > 0
+    ? (await Promise.all(person.adoptedChildIds.map(cid => getPerson(cid)))).filter(Boolean) as PersonRecord[]
+    : [];
 
   const borderColor = person.sex === 'M' ? 'border-male' : person.sex === 'F' ? 'border-female' : 'border-neutral';
   const bio = generateBio(person, parents, spouses, children);
@@ -203,7 +213,9 @@ export default async function PersonPage({ params }: PersonPageProps) {
               <p><span className="font-medium text-slate-700 dark:text-slate-300">Nationalité :</span> {person.nationality}</p>
             )}
             {person.isAdopted && (
-              <p className="text-amber-600 dark:text-amber-400 font-medium">Adopté(e)</p>
+              <p className="text-amber-600 dark:text-amber-400 font-medium">
+                Adopté{person.sex === 'F' ? 'e' : ''}
+              </p>
             )}
           </div>
         </div>
@@ -259,7 +271,15 @@ export default async function PersonPage({ params }: PersonPageProps) {
 
         {/* Family */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {parents.length > 0 && <FamilySection title="Parents" persons={parents} />}
+          {(parents.length > 0 || adoptiveParents.length > 0) && (
+            <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm">
+              <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">Parents</h2>
+              <div className="space-y-2">
+                {parents.map(p => <PersonListItem key={p.id} person={p} />)}
+                {adoptiveParents.map(p => <PersonListItem key={p.id} person={p} badge="adoptif" />)}
+              </div>
+            </div>
+          )}
           {siblings.length > 0 && <FamilySection title="Fratrie" persons={siblings} />}
           {spouses.length > 0 && (
             <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm">
@@ -285,7 +305,15 @@ export default async function PersonPage({ params }: PersonPageProps) {
               </div>
             </div>
           )}
-          {children.length > 0 && <FamilySection title="Enfants" persons={children} />}
+          {(children.length > 0 || adoptedChildren.length > 0) && (
+            <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm">
+              <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">Enfants</h2>
+              <div className="space-y-2">
+                {children.map(p => <PersonListItem key={p.id} person={p} />)}
+                {adoptedChildren.map(p => <PersonListItem key={p.id} person={p} badge="adoptif" />)}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Biographical notes */}
@@ -323,7 +351,7 @@ function FamilySection({ title, persons }: { title: string; persons: PersonRecor
   );
 }
 
-function PersonListItem({ person }: { person: PersonRecord }) {
+function PersonListItem({ person, badge }: { person: PersonRecord; badge?: string }) {
   const dot = person.sex === 'M' ? 'bg-male' : person.sex === 'F' ? 'bg-female' : 'bg-neutral';
   return (
     <Link
@@ -332,6 +360,7 @@ function PersonListItem({ person }: { person: PersonRecord }) {
     >
       <span className={`w-2.5 h-2.5 rounded-full ${dot} shrink-0`} />
       <span className="text-sm group-hover:text-blue-600 transition-colors">{person.displayName}</span>
+      {badge && <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400">{badge}</span>}
       {person.birthYear && <span className="text-xs text-slate-400 ml-auto">{person.birthYear}</span>}
     </Link>
   );

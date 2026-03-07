@@ -12,7 +12,7 @@ export interface TreeNode {
 export interface TreeLink {
   source: string;
   target: string;
-  type: 'parent' | 'spouse';
+  type: 'parent' | 'spouse' | 'adoption';
 }
 
 export interface TreeData {

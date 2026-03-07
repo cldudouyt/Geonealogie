@@ -22,7 +22,7 @@ function PersonNodeComponent({ node, isRoot, isSelected, onClick, onDoubleClick 
   return (
     <g
       transform={`translate(${node.x - NODE_WIDTH / 2}, ${node.y - NODE_HEIGHT / 2})`}
-      className="person-node"
+      className={isRoot ? 'person-node person-node-root' : 'person-node'}
       onClick={(e) => { e.stopPropagation(); onClick(node.id); }}
       onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick(node.id); }}
     >

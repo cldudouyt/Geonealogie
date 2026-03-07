@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import type { LayoutNode, LayoutLink } from '@/lib/types';
 import { useTreeNavigation } from './useTreeNavigation';
 import PersonNode from './PersonNode';
@@ -36,6 +36,17 @@ export default function TreeCanvas({
     nodes,
     dimensions
   );
+
+  // Auto-center when the root person changes (e.g. after a search selection)
+  // Also triggers on initial load when nodes first populate
+  const centeredRootRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (nodes.length > 0 && centeredRootRef.current !== rootId) {
+      centeredRootRef.current = rootId;
+      centerOnRoot(rootId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rootId, nodes.length]);
 
   // Viewport culling: only render visible nodes
   const visibleNodes = useMemo(() => {

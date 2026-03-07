@@ -49,9 +49,13 @@ export interface PersonRecord {
   occupations: string[];
   nationality?: string;
   isAdopted: boolean;
+  adoptiveParentIds: string[]; // persons who legally adopted this person
+  adoptedChildIds: string[];   // persons this person has adopted
+  adoptionNote?: string;       // free-text note from EVEN TYPE Adopté (e.g. "Adoption simple par Jean DUDOUYT")
   events: LifeEvent[];
   notes?: string;
   photoUrl?: string;
+  marriedSurnames: string[]; // reserved for explicit GEDCOM married-name records (none present in current file)
 }
 
 export interface FamilyRecord {
@@ -214,6 +218,7 @@ async function buildStore(): Promise<GedcomStore> {
     const filVal = getVal(indi.get('_FIL'));
     const isAdopted = filVal === 'ADOPTED_CHILD';
 
+
     const natVal = getVal(indi.get('NATI'));
 
     // Helper to extract a standard event node into a LifeEvent
@@ -291,6 +296,20 @@ async function buildStore(): Promise<GedcomStore> {
       }
     }
 
+    // Extract adoption note from EVEN with type containing "Adopt"
+    let adoptionNote: string | undefined;
+    if (isAdopted) {
+      for (const evt of (indi.get('EVEN')?.arraySelect() || [])) {
+        const types = getAllVals(evt.get('TYPE'));
+        const type = (types[types.length - 1] || types[0] || '').toLowerCase();
+        if (type.includes('adopt')) {
+          const rawNote = evt.get('NOTE')?.value()?.toString() || '';
+          const cleaned = cleanRtf(rawNote);
+          if (cleaned) { adoptionNote = cleaned; break; }
+        }
+      }
+    }
+
     // Notes: only top-level INDI NOTE tags (EVEN/GRAD/OCCU notes are in events)
     let notes = '';
     const addNote = (n: string) => { if (n) notes += (notes ? '\n\n' : '') + cleanRtf(n); };
@@ -310,8 +329,12 @@ async function buildStore(): Promise<GedcomStore> {
       occupations,
       nationality: natVal,
       isAdopted,
+      adoptionNote,
+      adoptiveParentIds: [],
+      adoptedChildIds: [],
       events,
       notes: notes || undefined,
+      marriedSurnames: [],
     });
   }
 
@@ -372,6 +395,29 @@ async function buildStore(): Promise<GedcomStore> {
         const children = parentToChildren.get(parentId) || [];
         if (!children.includes(childId)) children.push(childId);
         parentToChildren.set(parentId, children);
+      }
+    }
+  }
+
+
+  // Resolve adoptive parent links from adoption notes (e.g. "Adoption simple par Jean DUDOUYT")
+  for (const person of persons.values()) {
+    if (!person.isAdopted || !person.adoptionNote) continue;
+    // Extract name(s) after "par " on the first line of the note
+    const match = person.adoptionNote.match(/par\s+(.+?)(?:\n|$)/i);
+    if (!match) continue;
+    const adopterName = normalize(match[1].trim());
+    // Find matching person: surname must match and first given name must appear in adopter string
+    for (const candidate of persons.values()) {
+      const candidateSurname = normalize(candidate.surname);
+      const candidateFirst = normalize(candidate.givenNames.split(',')[0].trim());
+      if (adopterName.includes(candidateSurname) && adopterName.includes(candidateFirst)) {
+        if (!person.adoptiveParentIds.includes(candidate.id)) {
+          person.adoptiveParentIds.push(candidate.id);
+        }
+        if (!candidate.adoptedChildIds.includes(person.id)) {
+          candidate.adoptedChildIds.push(person.id);
+        }
       }
     }
   }
@@ -437,8 +483,11 @@ function newPersonToRecord(np: NewPerson): PersonRecord {
     occupations: np.occupation ? [np.occupation] : [],
     nationality: np.nationality,
     isAdopted: np.isAdopted || false,
+    adoptiveParentIds: [],
+    adoptedChildIds: [],
     events: [],
     notes: np.notes,
+    marriedSurnames: [],
   };
 }
 
@@ -621,6 +670,14 @@ export async function getTreeCentered(rootId: string): Promise<{ rootId: string;
     for (const rel of (s.spouseRelations.get(id) || [])) nodeIds.add(rel.spouseId);
   }
 
+  // Expand nodeIds to include adoptive persons connected to anyone already in the tree
+  for (const id of [...nodeIds]) {
+    const p = s.persons.get(id);
+    if (!p) continue;
+    for (const pid of p.adoptiveParentIds) nodeIds.add(pid);
+    for (const cid of p.adoptedChildIds) nodeIds.add(cid);
+  }
+
   const nodes = Array.from(nodeIds)
     .map(id => s.persons.get(id))
     .filter(Boolean)
@@ -632,6 +689,7 @@ export async function getTreeCentered(rootId: string): Promise<{ rootId: string;
       deathYear: p.deathYear,
       occupation: p.occupation,
       photoUrl: p.photoUrl,
+      isAdopted: p.isAdopted,
     }));
 
   const links: any[] = [];
@@ -652,6 +710,12 @@ export async function getTreeCentered(rootId: string): Promise<{ rootId: string;
     }
     for (const rel of (s.spouseRelations.get(id) || [])) {
       if (nodeIds.has(rel.spouseId)) addLink(id, rel.spouseId, 'spouse');
+    }
+    const person = s.persons.get(id);
+    if (person) {
+      for (const adoptiveParentId of person.adoptiveParentIds) {
+        if (nodeIds.has(adoptiveParentId)) addLink(adoptiveParentId, id, 'adoption');
+      }
     }
   }
 
@@ -720,23 +784,27 @@ function levenshtein(a: string, b: string): number {
   return dp[n];
 }
 
+function normalize(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+}
+
 export async function searchPersons(query: string, limit = 20): Promise<PersonRecord[]> {
-  const q = query.toLowerCase().trim();
+  const q = normalize(query.trim());
   if (!q) return [];
   const results: Array<{ person: PersonRecord; score: number }> = [];
 
   for (const p of (await getStore()).persons.values()) {
     let score = 0;
-    const name = p.displayName.toLowerCase();
-    const surname = p.surname.toLowerCase();
-    const given = p.givenNames.toLowerCase();
+    const name = normalize(p.displayName);
+    const surname = normalize(p.surname);
+    const given = normalize(p.givenNames);
 
     if (surname.startsWith(q)) score = 10;
     else if (name.startsWith(q)) score = 8;
     else if (surname.includes(q)) score = 6;
     else if (name.includes(q)) score = 5;
-    else if (p.birthPlaceFull?.toLowerCase().includes(q)) score = 3;
-    else if (p.occupation?.toLowerCase().includes(q)) score = 3;
+    else if (p.birthPlaceFull && normalize(p.birthPlaceFull).includes(q)) score = 3;
+    else if (p.occupation && normalize(p.occupation).includes(q)) score = 3;
     else {
       // Fuzzy: try Levenshtein on surname and given name tokens
       const surnameDist = levenshtein(q, surname.substring(0, q.length + 2));

@@ -64,13 +64,39 @@ body.tree-page {
   stroke-dasharray: 6 4;
 }
 
+/* Adoptive link: amber dashed */
+.tree-link-adoption {
+  fill: none;
+  stroke: #f59e0b;
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+  opacity: 0.8;
+}
+
+/* Node entrance animation — opacity only (transform would conflict with SVG translate attribute) */
+@keyframes nodeEnter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 .person-node {
   cursor: pointer;
   transition: filter 0.2s ease;
+  animation: nodeEnter 0.3s ease-out both;
 }
 
 .person-node:hover {
   filter: brightness(0.95);
+}
+
+/* Pulse on root node */
+@keyframes rootPulse {
+  0%, 100% { filter: drop-shadow(0 0 0px transparent); }
+  50%       { filter: drop-shadow(0 0 6px rgba(99,102,241,0.5)); }
+}
+
+.person-node-root {
+  animation: nodeEnter 0.3s ease-out both, rootPulse 2.5s ease-in-out 0.5s infinite;
 }
 
 /* Print styles for person pages */

@@ -47,13 +47,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ persons: results.slice(skip, skip + limit), total: results.length, page, limit });
     }
 
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
     let results = await getAllPersons();
-    if (surname) results = results.filter(p => p.surname.toLowerCase().includes(surname.toLowerCase()));
-    if (place) results = results.filter(p =>
-      p.birthPlaceFull?.toLowerCase().includes(place.toLowerCase()) ||
-      p.deathPlaceFull?.toLowerCase().includes(place.toLowerCase())
-    );
-    if (occupation) results = results.filter(p => p.occupation?.toLowerCase().includes(occupation.toLowerCase()));
+    if (surname) { const sn = norm(surname); results = results.filter(p => norm(p.surname).includes(sn)); }
+    if (place) { const pl = norm(place); results = results.filter(p => (p.birthPlaceFull && norm(p.birthPlaceFull).includes(pl)) || (p.deathPlaceFull && norm(p.deathPlaceFull).includes(pl))); }
+    if (occupation) { const oc = norm(occupation); results = results.filter(p => p.occupation ? norm(p.occupation).includes(oc) : false); }
     if (sex) results = results.filter(p => p.sex === sex);
     if (birthFrom !== null) results = results.filter(p => p.birthYear && parseInt(p.birthYear) >= birthFrom);
     if (birthTo !== null) results = results.filter(p => p.birthYear && parseInt(p.birthYear) <= birthTo);

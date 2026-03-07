@@ -22,15 +22,19 @@ function FamilyLinkComponent({ link }: FamilyLinkProps) {
     return <line x1={x1} y1={y} x2={x2} y2={y} className="tree-link-spouse" />;
   }
 
-  // Parent-child: orthogonal elbow connector
+  // Parent/adoption: orthogonal elbow connector
   // Start at bottom-center of parent, end at top-center of child
   const srcX = link.sourceX;
-  const srcY = link.sourceY + NODE_HEIGHT / 2;      // bottom of parent card
+  const srcY = link.sourceY + NODE_HEIGHT / 2;
   const dstX = link.targetX;
-  const dstY = link.targetY - NODE_HEIGHT / 2;      // top of child card
+  const dstY = link.targetY - NODE_HEIGHT / 2;
   const junctionY = (srcY + dstY) / 2;
 
   const d = `M ${srcX} ${srcY} L ${srcX} ${junctionY} L ${dstX} ${junctionY} L ${dstX} ${dstY}`;
+
+  if (link.type === 'adoption') {
+    return <path d={d} className="tree-link-adoption" />;
+  }
   return <path d={d} className="tree-link-parent" />;
 }
 
