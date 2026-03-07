@@ -69,12 +69,12 @@ export default function GlobalMap() {
       for (const m of markers) {
         const color = markerColor(m.surname, m.eventType);
         const svg = m.eventType === 'birth'
-          ? `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="${color}" stroke="white" stroke-width="1.5"/></svg>`
-          : `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.5" fill="white" stroke="${color}" stroke-width="2"/><line x1="4" y1="4" x2="10" y2="10" stroke="${color}" stroke-width="1.5"/><line x1="10" y1="4" x2="4" y2="10" stroke="${color}" stroke-width="1.5"/></svg>`;
+          ? `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="${color}" stroke="white" stroke-width="2"/></svg>`
+          : `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="8.5" fill="white" stroke="${color}" stroke-width="2.5"/><line x1="6" y1="6" x2="16" y2="16" stroke="${color}" stroke-width="2"/><line x1="16" y1="6" x2="6" y2="16" stroke="${color}" stroke-width="2"/></svg>`;
 
-        const icon = L.divIcon({ html: svg, className: '', iconSize: [14, 14], iconAnchor: [7, 7], popupAnchor: [0, -9] });
-        const popup = `<div style="font-size:12px;min-width:130px"><strong style="color:${color}">${m.label}</strong><br/><span style="color:#64748b">${m.eventType === 'birth' ? '● Naissance' : '✕ Décès'}</span>${m.dateRaw ? `<br/>${m.dateRaw}` : ''}${m.place ? `<br/><span style="color:#94a3b8">${m.place}</span>` : ''}<br/><a href="/person/${m.personId}" style="color:#3b82f6;text-decoration:underline">Voir la fiche</a></div>`;
-        L.marker([m.lat, m.lon], { icon }).bindPopup(popup).addTo(map);
+        const icon = L.divIcon({ html: svg, className: '', iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -13] });
+        const popup = `<div style="font-size:14px;min-width:180px;line-height:1.5"><strong style="color:${color}">${m.label}</strong><br/><span style="color:#64748b">${m.eventType === 'birth' ? '● Naissance' : '✕ Décès'}</span>${m.dateRaw ? `<br/>${m.dateRaw}` : ''}${m.place ? `<br/><span style="color:#94a3b8">${m.place}</span>` : ''}<br/><a href="/person/${m.personId}" style="color:#3b82f6;text-decoration:underline;display:inline-block;margin-top:4px">Voir la fiche →</a></div>`;
+        L.marker([m.lat, m.lon], { icon }).bindPopup(popup, { maxWidth: 260 }).addTo(map);
         bounds.push([m.lat, m.lon]);
       }
 
