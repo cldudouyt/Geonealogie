@@ -19,6 +19,7 @@ const MORE_LINKS = [
   { href: '/network', label: 'Graphe de réseau' },
   { href: '/anniversaires', label: 'Anniversaires' },
   { href: '/anomalies', label: 'Rapport d\'anomalies' },
+  { href: '/doublons', label: 'Détection de doublons' },
 ];
 
 const EXPORT_LINKS = [

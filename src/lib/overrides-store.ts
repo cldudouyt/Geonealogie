@@ -33,18 +33,31 @@ export interface PersonEdit {
   photoUrl?: string;
 }
 
+export interface PersonRelation {
+  relType: 'child' | 'parent' | 'spouse';
+  relPersonId: string;
+}
+
 export interface NewPerson extends PersonEdit {
   id: string;
   givenNames: string;
   surname: string;
   sex: 'M' | 'F' | 'U';
+  /** Legacy single-relation (backward compat) */
   relType?: 'child' | 'parent' | 'spouse';
   relPersonId?: string;
+  /** Multiple relations */
+  relations?: PersonRelation[];
 }
 
 export interface Overrides {
   persons: Record<string, PersonEdit>;
   newPersons: NewPerson[];
+  deletedPersonIds?: string[];
+  /** deleteId → keepId */
+  mergedPersons?: Record<string, string>;
+  /** sorted "idA:idB" pairs to ignore in duplicate detection */
+  ignoredDoublons?: string[];
 }
 
 const DATA_FILE = path.join(process.cwd(), 'data', 'overrides.json');
@@ -58,7 +71,7 @@ function shouldUseNeo4j(): boolean {
 }
 
 function emptyOverrides(): Overrides {
-  return { persons: {}, newPersons: [] };
+  return { persons: {}, newPersons: [], deletedPersonIds: [], mergedPersons: {}, ignoredDoublons: [] };
 }
 
 function getFilePath(): string {
@@ -86,6 +99,9 @@ function loadOverridesFromFile(): Overrides {
     const parsed = JSON.parse(raw) as Overrides;
     parsed.persons ??= {};
     parsed.newPersons ??= [];
+    parsed.deletedPersonIds ??= [];
+    parsed.mergedPersons ??= {};
+    parsed.ignoredDoublons ??= [];
     return parsed;
   } catch {
     return emptyOverrides();
@@ -195,4 +211,37 @@ export function clearOverridesCache(): void {
 
 export async function commitOverridesToGitHub(): Promise<void> {
   // Kept for backward compatibility; DB persistence supersedes git commits.
+}
+
+export async function deletePerson(id: string): Promise<void> {
+  const overrides = await loadOverrides();
+  overrides.deletedPersonIds ??= [];
+  if (!overrides.deletedPersonIds.includes(id)) {
+    overrides.deletedPersonIds.push(id);
+  }
+  // Remove from newPersons if it's a custom person
+  overrides.newPersons = overrides.newPersons.filter(p => p.id !== id);
+  await persistOverrides(overrides);
+}
+
+export async function mergePerson(keepId: string, deleteId: string): Promise<void> {
+  const overrides = await loadOverrides();
+  overrides.mergedPersons ??= {};
+  overrides.mergedPersons[deleteId] = keepId;
+  overrides.deletedPersonIds ??= [];
+  if (!overrides.deletedPersonIds.includes(deleteId)) {
+    overrides.deletedPersonIds.push(deleteId);
+  }
+  overrides.newPersons = overrides.newPersons.filter(p => p.id !== deleteId);
+  await persistOverrides(overrides);
+}
+
+export async function ignoreDoublon(idA: string, idB: string): Promise<void> {
+  const overrides = await loadOverrides();
+  overrides.ignoredDoublons ??= [];
+  const key = [idA, idB].sort().join(':');
+  if (!overrides.ignoredDoublons.includes(key)) {
+    overrides.ignoredDoublons.push(key);
+  }
+  await persistOverrides(overrides);
 }

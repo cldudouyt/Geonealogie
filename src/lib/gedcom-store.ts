@@ -529,31 +529,116 @@ async function applyOverrides(s: GedcomStore): Promise<void> {
     const record = newPersonToRecord(np);
     s.persons.set(np.id, record);
 
-    if (np.relType === 'child' && np.relPersonId) {
-      // np is a child of relPersonId
-      s.childToParents.set(np.id, [np.relPersonId]);
-      const arr = s.parentToChildren.get(np.relPersonId) || [];
-      if (!arr.includes(np.id)) arr.push(np.id);
-      s.parentToChildren.set(np.relPersonId, arr);
-    } else if (np.relType === 'parent' && np.relPersonId) {
-      // np is a parent of relPersonId
-      const arr = s.childToParents.get(np.relPersonId) || [];
-      if (!arr.includes(np.id)) arr.push(np.id);
-      s.childToParents.set(np.relPersonId, arr);
-      s.parentToChildren.set(np.id, [np.relPersonId]);
-    } else if (np.relType === 'spouse' && np.relPersonId) {
-      // Bidirectional spouse relation
-      const fakeFamily = `FAM-custom-${np.id}`;
-      const addSpouse = (personId: string, spouseId: string) => {
-        const rels = s.spouseRelations.get(personId) || [];
-        if (!rels.find(r => r.spouseId === spouseId)) {
-          rels.push({ spouseId, familyId: fakeFamily });
-        }
-        s.spouseRelations.set(personId, rels);
-      };
-      addSpouse(np.id, np.relPersonId);
-      addSpouse(np.relPersonId, np.id);
+    // Collect all relations (support both legacy single + new array)
+    const allRelations: Array<{ relType: string; relPersonId: string }> = [];
+    if (np.relations?.length) {
+      allRelations.push(...np.relations);
+    } else if (np.relType && np.relPersonId) {
+      allRelations.push({ relType: np.relType, relPersonId: np.relPersonId });
     }
+
+    const fakeFamily = `FAM-custom-${np.id}`;
+    const addSpouse = (personId: string, spouseId: string) => {
+      const rels = s.spouseRelations.get(personId) || [];
+      if (!rels.find(r => r.spouseId === spouseId)) {
+        rels.push({ spouseId, familyId: fakeFamily });
+      }
+      s.spouseRelations.set(personId, rels);
+    };
+
+    for (const { relType, relPersonId } of allRelations) {
+      if (relType === 'child') {
+        const parents = s.childToParents.get(np.id) || [];
+        if (!parents.includes(relPersonId)) parents.push(relPersonId);
+        s.childToParents.set(np.id, parents);
+        const children = s.parentToChildren.get(relPersonId) || [];
+        if (!children.includes(np.id)) children.push(np.id);
+        s.parentToChildren.set(relPersonId, children);
+      } else if (relType === 'parent') {
+        const parents = s.childToParents.get(relPersonId) || [];
+        if (!parents.includes(np.id)) parents.push(np.id);
+        s.childToParents.set(relPersonId, parents);
+        const children = s.parentToChildren.get(np.id) || [];
+        if (!children.includes(relPersonId)) children.push(relPersonId);
+        s.parentToChildren.set(np.id, children);
+      } else if (relType === 'spouse') {
+        addSpouse(np.id, relPersonId);
+        addSpouse(relPersonId, np.id);
+      }
+    }
+  }
+
+  // ─── Handle merges (redirect deleteId's relations to keepId) ───────────────
+  for (const [deleteId, keepId] of Object.entries(overrides.mergedPersons || {})) {
+    if (!s.persons.has(keepId)) continue;
+
+    // Transfer children of deleteId → keepId
+    const delChildren = s.parentToChildren.get(deleteId) || [];
+    const keepChildren = s.parentToChildren.get(keepId) || [];
+    for (const childId of delChildren) {
+      if (!keepChildren.includes(childId)) keepChildren.push(childId);
+      const childParents = s.childToParents.get(childId) || [];
+      const idx = childParents.indexOf(deleteId);
+      if (idx !== -1) childParents[idx] = keepId;
+      else if (!childParents.includes(keepId)) childParents.push(keepId);
+      s.childToParents.set(childId, childParents);
+    }
+    s.parentToChildren.set(keepId, keepChildren);
+    s.parentToChildren.delete(deleteId);
+
+    // Transfer parents of deleteId → keepId
+    const delParents = s.childToParents.get(deleteId) || [];
+    const keepParents = s.childToParents.get(keepId) || [];
+    for (const parentId of delParents) {
+      if (!keepParents.includes(parentId)) keepParents.push(parentId);
+      const parentChildren = s.parentToChildren.get(parentId) || [];
+      const idx = parentChildren.indexOf(deleteId);
+      if (idx !== -1) parentChildren[idx] = keepId;
+      else if (!parentChildren.includes(keepId)) parentChildren.push(keepId);
+      s.parentToChildren.set(parentId, parentChildren);
+    }
+    s.childToParents.set(keepId, keepParents);
+    s.childToParents.delete(deleteId);
+
+    // Transfer spouses of deleteId → keepId
+    const delSpouses = s.spouseRelations.get(deleteId) || [];
+    const keepSpouses = s.spouseRelations.get(keepId) || [];
+    for (const rel of delSpouses) {
+      if (!keepSpouses.find(r => r.spouseId === rel.spouseId)) {
+        keepSpouses.push({ ...rel });
+      }
+      const spouseRels = s.spouseRelations.get(rel.spouseId) || [];
+      for (const sr of spouseRels) {
+        if (sr.spouseId === deleteId) sr.spouseId = keepId;
+      }
+      s.spouseRelations.set(rel.spouseId, spouseRels);
+    }
+    s.spouseRelations.set(keepId, keepSpouses);
+    s.spouseRelations.delete(deleteId);
+
+    s.persons.delete(deleteId);
+  }
+
+  // ─── Handle deletions ──────────────────────────────────────────────────────
+  for (const deleteId of (overrides.deletedPersonIds || [])) {
+    if (overrides.mergedPersons?.[deleteId]) continue; // already handled above
+    // Remove from relation maps
+    for (const parentId of (s.childToParents.get(deleteId) || [])) {
+      const ch = s.parentToChildren.get(parentId) || [];
+      s.parentToChildren.set(parentId, ch.filter(c => c !== deleteId));
+    }
+    for (const childId of (s.parentToChildren.get(deleteId) || [])) {
+      const pa = s.childToParents.get(childId) || [];
+      s.childToParents.set(childId, pa.filter(p => p !== deleteId));
+    }
+    for (const rel of (s.spouseRelations.get(deleteId) || [])) {
+      const sr = s.spouseRelations.get(rel.spouseId) || [];
+      s.spouseRelations.set(rel.spouseId, sr.filter(r => r.spouseId !== deleteId));
+    }
+    s.childToParents.delete(deleteId);
+    s.parentToChildren.delete(deleteId);
+    s.spouseRelations.delete(deleteId);
+    s.persons.delete(deleteId);
   }
 }
 
