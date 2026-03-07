@@ -6,7 +6,6 @@ export interface TreeNode {
   deathYear?: string;
   occupation?: string;
   photoUrl?: string;
-  generation: number;
 }
 
 export interface TreeLink {
