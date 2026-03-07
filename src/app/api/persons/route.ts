@@ -7,6 +7,9 @@ export async function GET(request: NextRequest) {
   const surname = searchParams.get('surname') || '';
   const place = searchParams.get('place') || '';
   const occupation = searchParams.get('occupation') || '';
+  const sex = searchParams.get('sex') || '';
+  const birthFrom = searchParams.get('birthFrom') ? parseInt(searchParams.get('birthFrom')!, 10) : null;
+  const birthTo = searchParams.get('birthTo') ? parseInt(searchParams.get('birthTo')!, 10) : null;
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100);
   const autocomplete = searchParams.get('autocomplete') === 'true';
@@ -51,6 +54,9 @@ export async function GET(request: NextRequest) {
       p.deathPlaceFull?.toLowerCase().includes(place.toLowerCase())
     );
     if (occupation) results = results.filter(p => p.occupation?.toLowerCase().includes(occupation.toLowerCase()));
+    if (sex) results = results.filter(p => p.sex === sex);
+    if (birthFrom !== null) results = results.filter(p => p.birthYear && parseInt(p.birthYear) >= birthFrom);
+    if (birthTo !== null) results = results.filter(p => p.birthYear && parseInt(p.birthYear) <= birthTo);
 
     results = results.sort((a, b) => a.surname.localeCompare(b.surname) || a.givenNames.localeCompare(b.givenNames));
     return NextResponse.json({ persons: results.slice(skip, skip + limit), total: results.length, page, limit });

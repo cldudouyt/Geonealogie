@@ -11,6 +11,9 @@ export default function SearchPage() {
   const [surname, setSurname] = useState('');
   const [place, setPlace] = useState('');
   const [occupation, setOccupation] = useState('');
+  const [sex, setSex] = useState('');
+  const [birthFrom, setBirthFrom] = useState('');
+  const [birthTo, setBirthTo] = useState('');
   const [results, setResults] = useState<PersonSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -27,6 +30,9 @@ export default function SearchPage() {
     if (surname) params.set('surname', surname);
     if (place) params.set('place', place);
     if (occupation) params.set('occupation', occupation);
+    if (sex) params.set('sex', sex);
+    if (birthFrom) params.set('birthFrom', birthFrom);
+    if (birthTo) params.set('birthTo', birthTo);
     params.set('page', String(pageNum));
     params.set('limit', String(limit));
 
@@ -41,7 +47,7 @@ export default function SearchPage() {
     } finally {
       setLoading(false);
     }
-  }, [query, surname, place, occupation]);
+  }, [query, surname, place, occupation, sex, birthFrom, birthTo]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,6 +117,41 @@ export default function SearchPage() {
                 value={occupation}
                 onChange={(e) => setOccupation(e.target.value)}
                 placeholder="Cultivateur, notaire..."
+                className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Sexe</label>
+              <select
+                value={sex}
+                onChange={(e) => setSex(e.target.value)}
+                className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+              >
+                <option value="">Tous</option>
+                <option value="M">Masculin</option>
+                <option value="F">Féminin</option>
+                <option value="U">Inconnu</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Naissance — de</label>
+              <input
+                type="number"
+                value={birthFrom}
+                onChange={(e) => setBirthFrom(e.target.value)}
+                placeholder="1800"
+                min={1000} max={2100}
+                className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Naissance — à</label>
+              <input
+                type="number"
+                value={birthTo}
+                onChange={(e) => setBirthTo(e.target.value)}
+                placeholder="1950"
+                min={1000} max={2100}
                 className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
               />
             </div>

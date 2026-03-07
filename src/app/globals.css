@@ -73,6 +73,17 @@ body.tree-page {
   filter: brightness(0.95);
 }
 
+/* Print styles for person pages */
+@media print {
+  header, nav, footer, button, .no-print { display: none !important; }
+  body { background: white !important; color: black !important; }
+  a { color: black !important; text-decoration: none !important; }
+  .shadow-sm { box-shadow: none !important; }
+  .bg-white, .dark\:bg-slate-900 { background: white !important; border: 1px solid #e2e8f0 !important; }
+  .text-slate-400, .text-slate-500, .text-slate-600 { color: #475569 !important; }
+  h1, h2 { color: black !important; }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

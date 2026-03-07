@@ -21,13 +21,20 @@ export default function Header({ onPersonSelect }: HeaderProps) {
         <SearchBar onSelect={onPersonSelect} />
       </div>
 
-      <nav className="flex items-center gap-2 shrink-0">
-        <a
-          href="/search"
-          className="px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
-        >
-          Recherche
-        </a>
+      <nav className="flex items-center gap-1 shrink-0">
+        {[
+          { href: '/search', label: 'Recherche' },
+          { href: '/map', label: 'Carte' },
+          { href: '/stats', label: 'Statistiques' },
+        ].map(({ href, label }) => (
+          <a
+            key={href}
+            href={href}
+            className="px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors whitespace-nowrap"
+          >
+            {label}
+          </a>
+        ))}
       </nav>
     </header>
   );
