@@ -7,6 +7,7 @@ import PersonMapWrapper from '@/components/map/PersonMapWrapper';
 import { Avatar } from '@/components/ui/Avatar';
 import DocumentsSection from '@/components/DocumentsSection';
 import { getDocumentsForPerson } from '@/lib/documents-store';
+import ResearchPanel from '@/components/ResearchPanel';
 
 interface PersonPageProps {
   params: Promise<{ id: string }>;
@@ -237,6 +238,15 @@ export default async function PersonPage({ params }: PersonPageProps) {
             <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">{person.notes}</p>
           </div>
         )}
+
+        {/* Online research */}
+        <ResearchPanel
+          givenNames={person.givenNames}
+          surname={person.surname}
+          birthYear={person.birthYear}
+          deathYear={person.deathYear}
+          birthPlace={person.birthPlace}
+        />
 
         {/* Documents */}
         <DocumentsSection personId={id} initialDocs={documents} />
