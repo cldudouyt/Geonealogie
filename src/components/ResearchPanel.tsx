@@ -45,7 +45,7 @@ const EXTERNAL_SOURCES = [
     label: 'Geni',
     description: 'Arbre généalogique mondial',
     color: '#c2410c',
-    url: (q: string) => `https://www.geni.com/search?search_type=people&names=${encodeURIComponent(q)}`,
+    url: (q: string) => `https://www.geni.com/search?names=${encodeURIComponent(q)}`,
   },
   {
     label: 'FamilySearch',
