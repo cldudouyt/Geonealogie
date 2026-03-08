@@ -1,5 +1,9 @@
 {
   "persons": {
+    "69": {
+      "burialPlace": "Moscou, cimetière des héros de l'Union Soviétique",
+      "notes": "Ramon Mercader est l'assassin de Léon Trotsky. Agent du NKVD soviétique d'origine catalane, il fut recruté par les services secrets de Staline sur recommandation de sa mère Caridad, militante communiste. Après avoir séduit Sylvia Ageloff, proche de Trotsky, il s'introduisit dans son entourage sous le faux nom de Frank Jacson. Le 20 août 1940, il assassina Léon Trotsky à Mexico City d'un coup de piolet. Arrêté sur place, il fut condamné à 20 ans de prison par la justice mexicaine et ne révéla jamais sa véritable identité. À sa libération en 1960, il fut exfiltré vers l'URSS où il reçut le titre de Héros de l'Union Soviétique et la médaille Lénine, sous le nom de Ramon Ivanovitch Lopez. Il vécut ensuite à Cuba où il mourut le 18 octobre 1978 à La Havane. Il fut inhumé à Moscou sous son nom de couverture soviétique."
+    },
     "72": {
       "givenNames": "Charles, Louis",
       "surname": "DUDOUYT",
@@ -130,7 +134,8 @@
     "@1007@": "@580@",
     "@811@": "@581@",
     "@812@": "@582@",
-    "@897@": "@494@"
+    "@897@": "@494@",
+    "@410@": "@69@"
   },
   "deletedPersonIds": [
     "@684@",
@@ -248,7 +253,8 @@
     "@1007@",
     "@811@",
     "@812@",
-    "@897@"
+    "@897@",
+    "@410@"
   ],
   "ignoredDoublons": []
 }

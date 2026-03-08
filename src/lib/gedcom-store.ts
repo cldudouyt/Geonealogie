@@ -765,12 +765,15 @@ export async function getTreeCentered(rootId: string): Promise<{ rootId: string;
     for (const rel of (s.spouseRelations.get(id) || [])) nodeIds.add(rel.spouseId);
   }
 
-  // Expand nodeIds to include adoptive persons connected to anyone already in the tree
+  // Expand nodeIds to include adoptive parents of anyone already in the tree,
+  // and adopted children of the root + descendants only (not ancestors).
   for (const id of [...nodeIds]) {
     const p = s.persons.get(id);
     if (!p) continue;
     for (const pid of p.adoptiveParentIds) nodeIds.add(pid);
-    for (const cid of p.adoptedChildIds) nodeIds.add(cid);
+    if (id === rootId || descendantIds.has(id)) {
+      for (const cid of p.adoptedChildIds) nodeIds.add(cid);
+    }
   }
 
   const nodes = Array.from(nodeIds)

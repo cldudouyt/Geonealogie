@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import Link from 'next/link';
 import ShareButton from '@/components/ui/ShareButton';
 import { getPerson, getParents, getChildren, getSpouses, getSiblings } from '@/lib/gedcom-store';

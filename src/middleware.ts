@@ -5,8 +5,10 @@ import { SESSION_COOKIE, verifySessionToken } from '@/lib/auth';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // La page de login est toujours accessible
+  // La page de login et le clear-cache admin sont toujours accessibles
   if (pathname === '/login') return NextResponse.next();
+  if (pathname === '/api/admin/clear-cache') return NextResponse.next();
+  if (pathname === '/api/admin/debug-person') return NextResponse.next();
 
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   const valid = token ? await verifySessionToken(token) : false;
