@@ -52,16 +52,20 @@ function makeSvg(eventType: 'birth' | 'death' | 'event', color: string): string 
   </svg>`;
 }
 
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function makePopup(m: MapMarker, color: string): string {
   const typeLabel = m.eventType === 'birth' ? '● Naissance'
     : m.eventType === 'death' ? '✕ Décès'
-    : `◆ ${m.eventLabel || 'Événement'}`;
+    : `◆ ${esc(m.eventLabel || 'Événement')}`;
   return `<div style="font-family:system-ui,sans-serif;font-size:14px;min-width:180px;line-height:1.6">
-    <strong style="color:${color}">${m.label}</strong><br/>
+    <strong style="color:${color}">${esc(m.label)}</strong><br/>
     <span style="color:#64748b">${typeLabel}</span><br/>
-    ${m.dateRaw ? `<span>${m.dateRaw}</span><br/>` : ''}
-    ${m.place ? `<span style="color:#94a3b8">${m.place}</span><br/>` : ''}
-    <a href="/person/${m.personId}" style="color:#3b82f6;text-decoration:underline;display:inline-block;margin-top:4px">Voir la fiche →</a>
+    ${m.dateRaw ? `<span>${esc(m.dateRaw)}</span><br/>` : ''}
+    ${m.place ? `<span style="color:#94a3b8">${esc(m.place)}</span><br/>` : ''}
+    <a href="/person/${esc(m.personId)}" style="color:#3b82f6;text-decoration:underline;display:inline-block;margin-top:4px">Voir la fiche →</a>
   </div>`;
 }
 

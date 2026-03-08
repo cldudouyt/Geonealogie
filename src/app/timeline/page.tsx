@@ -125,7 +125,7 @@ export default async function TimelinePage() {
                 {/* Events */}
                 <div className="space-y-2 pl-4">
                   {byDecade[decade].map((evt, i) => (
-                    <div key={i} className="flex items-start gap-4">
+                    <div key={`${evt.personId}-${evt.type}-${evt.year}-${i}`} className="flex items-start gap-4">
                       {/* Year */}
                       <div className="w-12 text-right shrink-0 pt-0.5">
                         <span className="text-xs text-slate-400">{evt.year}</span>

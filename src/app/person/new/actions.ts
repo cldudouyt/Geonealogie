@@ -51,7 +51,8 @@ export async function createPerson(
 
   const givenNames = get('givenNames');
   const surname    = get('surname');
-  const sex        = get('sex') as 'M' | 'F' | 'U' | undefined;
+  const sexRaw = get('sex');
+  const sex = (['M', 'F', 'U'] as const).find(v => v === sexRaw);
 
   if (!givenNames) return { error: 'Le prénom est obligatoire.' };
   if (!surname)    return { error: 'Le nom de famille est obligatoire.' };
