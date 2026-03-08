@@ -11,10 +11,12 @@ interface FeedbackRow {
 }
 
 async function getFeedbacks(): Promise<FeedbackRow[]> {
-  const rows = await runQuery<{ f: FeedbackRow }>(
-    `MATCH (f:Feedback) RETURN f ORDER BY f.createdAt DESC`,
+  return runQuery<FeedbackRow>(
+    `MATCH (f:Feedback)
+     RETURN f.id AS id, f.name AS name, f.title AS title,
+            f.description AS description, toString(f.createdAt) AS createdAt, f.status AS status
+     ORDER BY f.createdAt DESC`,
   );
-  return rows.map(r => r.f);
 }
 
 export default async function AdminFeedbackPage() {
