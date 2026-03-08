@@ -37,14 +37,13 @@ export async function submitFeedback(
     body: JSON.stringify({
       title: `[Suggestion] ${title}`,
       body,
-      labels: ['suggestion'],
     }),
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    console.error('GitHub API error:', err);
-    return { error: 'Erreur lors de l\'envoi. Réessayez plus tard.' };
+    console.error(`GitHub API error (${res.status}):`, JSON.stringify(err));
+    return { error: `Erreur lors de l'envoi (${res.status}). Réessayez plus tard.` };
   }
 
   return { success: true };
