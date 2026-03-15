@@ -40,7 +40,7 @@ const STOP_ICON: Record<string, string> = {
 };
 
 export default function MigrationSection({ stops }: MigrationSectionProps) {
-  const [showMap, setShowMap] = useState(false);
+  const [showMap, setShowMap] = useState(true);
 
   const stopsWithPlace = stops.filter(s => s.place);
   const stopsWithCoords = stops.filter(s => s.lat != null && s.lon != null);

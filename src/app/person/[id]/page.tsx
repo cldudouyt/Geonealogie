@@ -142,14 +142,21 @@ export default async function PersonPage({ params }: PersonPageProps) {
     }
   }
 
-  // Build life journey stops for migration section
+  // Build life journey stops for migration section (sorted chronologically)
+  function extractStopYear(dateRaw?: string): number {
+    if (!dateRaw) return 9999;
+    const m = dateRaw.match(/\b(\d{4})\b/);
+    return m ? parseInt(m[1]) : 9999;
+  }
+  const TYPE_ORDER: Record<string, number> = { birth: -1, event: 0, death: 1, burial: 2 };
+
   const journeyStops: JourneyStop[] = [];
   if (person.birthDateRaw || person.birthPlaceFull || person.birthPlace) {
     journeyStops.push({
       type: 'birth', label: 'Naissance',
       dateRaw: person.birthDateRaw,
       place: person.birthPlaceFull || person.birthPlace,
-      lat: person.birthLat, lon: person.birthLon,
+      lat: person.birthLat ?? null, lon: person.birthLon ?? null,
     });
   }
   for (const evt of person.events) {
@@ -158,7 +165,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
         type: 'event', label: evt.type,
         dateRaw: evt.dateRaw,
         place: evt.placeFull || evt.place,
-        lat: evt.lat, lon: evt.lon,
+        lat: evt.lat ?? null, lon: evt.lon ?? null,
       });
     }
   }
@@ -167,7 +174,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
       type: 'death', label: 'Décès',
       dateRaw: person.deathDateRaw,
       place: person.deathPlaceFull || person.deathPlace,
-      lat: person.deathLat, lon: person.deathLon,
+      lat: person.deathLat ?? null, lon: person.deathLon ?? null,
     });
   }
   if (person.burialDateRaw || person.burialPlace) {
@@ -178,6 +185,11 @@ export default async function PersonPage({ params }: PersonPageProps) {
       lat: null, lon: null,
     });
   }
+  journeyStops.sort((a, b) => {
+    const yearDiff = extractStopYear(a.dateRaw) - extractStopYear(b.dateRaw);
+    if (yearDiff !== 0) return yearDiff;
+    return (TYPE_ORDER[a.type] ?? 0) - (TYPE_ORDER[b.type] ?? 0);
+  });
 
   // Build chronological timeline
   const timeline: Array<{ label: string; dateRaw?: string; place?: string; icon: string; note?: string }> = [];
