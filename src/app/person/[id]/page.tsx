@@ -57,7 +57,6 @@ function generateBio(
 }
 import type { MapMarker } from '@/components/map/PersonMap';
 import PersonMapWrapper from '@/components/map/PersonMapWrapper';
-import { Avatar } from '@/components/ui/Avatar';
 import DocumentsSection from '@/components/DocumentsSection';
 import { getDocumentsForPerson } from '@/lib/documents-store';
 import ResearchPanel from '@/components/ResearchPanel';
@@ -95,7 +94,11 @@ export default async function PersonPage({ params }: PersonPageProps) {
     ? (await Promise.all(person.adoptedChildIds.map(cid => getPerson(cid)))).filter(Boolean) as PersonRecord[]
     : [];
 
-  const borderColor = person.sex === 'M' ? 'border-male' : person.sex === 'F' ? 'border-female' : 'border-neutral';
+  const heroGradient = person.sex === 'M'
+    ? 'linear-gradient(135deg, #1e3a5f 0%, #1e40af 60%, #2563eb 100%)'
+    : person.sex === 'F'
+      ? 'linear-gradient(135deg, #831843 0%, #be185d 60%, #ec4899 100%)'
+      : 'linear-gradient(135deg, #1e293b 0%, #334155 60%, #475569 100%)';
   const bio = generateBio(person, parents, spouses, children);
 
   // Build map markers for person + close relatives
@@ -156,11 +159,33 @@ export default async function PersonPage({ params }: PersonPageProps) {
     timeline.push({ label: 'Inhumation', dateRaw: person.burialDateRaw, place: person.burialPlace, icon: '⚰' });
   }
 
+  // Initials for avatar fallback
+  const initials = person.displayName.split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase() || '?';
+
   return (
     <div className="h-screen overflow-y-auto bg-slate-50 dark:bg-slate-950">
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <Link href="/" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+      {/* Hero header */}
+      <div className="relative overflow-hidden" style={{ background: heroGradient, minHeight: '260px' }}>
+        {/* Blurred photo background */}
+        {person.photoUrl && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={person.photoUrl}
+              alt=""
+              aria-hidden
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(12px)', transform: 'scale(1.1)', opacity: 0.45 }}
+            />
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 100%)' }} />
+          </>
+        )}
+
+        {/* Subtle texture overlay */}
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.04\'%3E%3Cpath d=\'M0 0h40v40H0z\' fill=\'none\'/%3E%3Ccircle cx=\'20\' cy=\'20\' r=\'1\'/%3E%3C/g%3E%3C/svg%3E")', pointerEvents: 'none' }} />
+
+        {/* Actions bar */}
+        <div className="relative z-10 flex items-center justify-between px-6 pt-4">
+          <Link href="/" className="flex items-center gap-1.5 text-white/75 hover:text-white text-sm transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
@@ -171,7 +196,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
             <Link
               href={`/person/${id}/print`}
               target="_blank"
-              className="px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 backdrop-blur-sm"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
@@ -180,7 +205,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
             </Link>
             <Link
               href={`/person/${id}/edit`}
-              className="px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 backdrop-blur-sm"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -189,38 +214,52 @@ export default async function PersonPage({ params }: PersonPageProps) {
             </Link>
             <Link
               href={`/?focus=${id}`}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-500 transition-colors"
+              className="px-3 py-1.5 bg-white text-slate-800 rounded-lg text-sm font-semibold hover:bg-white/90 transition-colors"
             >
               Voir dans l&apos;arbre
             </Link>
           </div>
         </div>
-      </header>
 
-      <main className="max-w-4xl mx-auto p-6">
-        {/* Identity card */}
-        <div className={`bg-white dark:bg-slate-900 rounded-xl border-l-4 ${borderColor} p-8 shadow-sm mb-6`}>
-          <div className="flex items-center gap-4 mb-2">
-            <Avatar name={person.displayName} sex={person.sex} photoUrl={person.photoUrl} size="xl" />
-            <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">{person.displayName}</h1>
-          </div>
-          {person.nickname && (
-            <p className="text-slate-500 dark:text-slate-400 mt-1 italic">&ldquo;{person.nickname}&rdquo;</p>
+        {/* Hero identity */}
+        <div className="relative z-10 px-6 pb-8 pt-6 flex items-end gap-5">
+          {/* Avatar */}
+          {person.photoUrl ? (
+            <div style={{ borderRadius: '50%', overflow: 'hidden', width: 88, height: 88, border: '3px solid rgba(255,255,255,0.5)', flexShrink: 0, boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={person.photoUrl} alt={person.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+          ) : (
+            <div style={{ borderRadius: '50%', width: 88, height: 88, background: 'rgba(255,255,255,0.18)', border: '3px solid rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 700, color: 'rgba(255,255,255,0.92)', flexShrink: 0, boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
+              {initials}
+            </div>
           )}
-          <div className="mt-4 space-y-1 text-slate-600 dark:text-slate-400 text-sm">
-            {person.occupations.length > 0 && (
-              <p><span className="font-medium text-slate-700 dark:text-slate-300">Profession :</span> {person.occupations.join(', ')}</p>
-            )}
-            {person.nationality && (
-              <p><span className="font-medium text-slate-700 dark:text-slate-300">Nationalité :</span> {person.nationality}</p>
+
+          {/* Name + dates */}
+          <div style={{ paddingBottom: 4 }}>
+            <h1 style={{ fontFamily: 'var(--font-serif, Georgia, serif)', fontSize: '2rem', fontWeight: 700, color: 'white', margin: 0, lineHeight: 1.2, textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>
+              {person.displayName}
+            </h1>
+            <p style={{ color: 'rgba(255,255,255,0.75)', margin: '6px 0 0', fontSize: '0.9rem' }}>
+              {person.birthYear || '?'}{person.deathYear ? ` – ${person.deathYear}` : ''}
+              {person.occupations.length > 0 && <span> · {person.occupations[0]}</span>}
+              {person.nationality && <span> · {person.nationality}</span>}
+            </p>
+            {person.nickname && (
+              <p style={{ color: 'rgba(255,255,255,0.6)', margin: '3px 0 0', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                &ldquo;{person.nickname}&rdquo;
+              </p>
             )}
             {person.isAdopted && (
-              <p className="text-amber-600 dark:text-amber-400 font-medium">
+              <span style={{ display: 'inline-block', marginTop: 6, fontSize: '0.75rem', padding: '2px 8px', borderRadius: 9999, background: 'rgba(217,119,6,0.7)', color: 'white', fontWeight: 600 }}>
                 Adopté{person.sex === 'F' ? 'e' : ''}
-              </p>
+              </span>
             )}
           </div>
         </div>
+      </div>
+
+      <main className="max-w-4xl mx-auto p-6">
 
         {/* Bio narrative */}
         {bio && (

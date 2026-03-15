@@ -3,9 +3,9 @@
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
-  --primary: #1e40af;
-  --primary-light: #3b82f6;
-  --accent: #f59e0b;
+  --primary: #166534;
+  --primary-light: #16a34a;
+  --accent: #d97706;
   --male: #3b82f6;
   --female: #ec4899;
   --neutral: #6b7280;
@@ -29,8 +29,8 @@
   :root {
     --background: #0f172a;
     --foreground: #e2e8f0;
-    --primary: #3b82f6;
-    --primary-light: #60a5fa;
+    --primary: #4ade80;
+    --primary-light: #86efac;
   }
 }
 
@@ -39,6 +39,10 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans, Arial, Helvetica, sans-serif);
   margin: 0;
+}
+
+.font-serif {
+  font-family: var(--font-serif, Georgia, "Times New Roman", serif);
 }
 
 /* Applied only to the tree page to prevent double scrollbars */
@@ -67,13 +71,13 @@ body.tree-page {
 /* Adoptive link: amber dashed */
 .tree-link-adoption {
   fill: none;
-  stroke: #f59e0b;
+  stroke: #d97706;
   stroke-width: 2;
   stroke-dasharray: 5 3;
   opacity: 0.8;
 }
 
-/* Node entrance animation — opacity only (transform would conflict with SVG translate attribute) */
+/* Node entrance animation */
 @keyframes nodeEnter {
   from { opacity: 0; }
   to   { opacity: 1; }
@@ -86,13 +90,13 @@ body.tree-page {
 }
 
 .person-node:hover {
-  filter: brightness(0.95);
+  filter: brightness(0.96) drop-shadow(0 4px 8px rgba(0,0,0,0.12));
 }
 
-/* Pulse on root node */
+/* Pulse on root node — forest green glow */
 @keyframes rootPulse {
   0%, 100% { filter: drop-shadow(0 0 0px transparent); }
-  50%       { filter: drop-shadow(0 0 6px rgba(99,102,241,0.5)); }
+  50%       { filter: drop-shadow(0 0 8px rgba(22,101,52,0.55)); }
 }
 
 .person-node-root {

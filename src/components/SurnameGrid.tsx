@@ -26,13 +26,14 @@ export default function SurnameGrid({ groups, initialLimit = 40 }: SurnameGridPr
           <a
             key={g.surname}
             href={`/?focus=${g.focusId}`}
-            className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:border-primary hover:shadow-md transition-all"
+            className="group dark:bg-slate-900 dark:border-slate-700 rounded-xl p-4 hover:border-primary hover:shadow-md transition-all"
+            style={{ background: '#fffaf5', border: '1px solid #e8dcc8' }}
           >
-            <p className="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-primary transition-colors truncate">
+            <p className="font-semibold dark:text-slate-100 group-hover:text-primary transition-colors truncate" style={{ color: '#3d2e1e' }}>
               {g.surname}
             </p>
             <p className="text-2xl font-bold text-primary mt-1">{g.count}</p>
-            <p className="text-xs text-slate-400 mt-1 truncate">
+            <p className="text-xs mt-1 truncate" style={{ color: '#a89070' }}>
               {g.sampleNames.join(', ')}
               {g.sampleNames.length > 0 && '…'}
             </p>

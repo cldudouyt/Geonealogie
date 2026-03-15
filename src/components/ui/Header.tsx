@@ -9,9 +9,30 @@ interface HeaderProps {
 }
 
 const PRIMARY_LINKS = [
-  { href: '/search', label: 'Recherche' },
-  { href: '/map', label: 'Carte' },
-  { href: '/stats', label: 'Statistiques' },
+  {
+    href: '/search', label: 'Recherche',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8" /><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35" />
+      </svg>
+    ),
+  },
+  {
+    href: '/map', label: 'Carte',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6-10l6-3m0 16l5.447-2.724A1 1 0 0021 17.382V6.618a1 1 0 00-1.447-.894L15 8m0 9V5" />
+      </svg>
+    ),
+  },
+  {
+    href: '/stats', label: 'Statistiques',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    ),
+  },
 ];
 
 const MORE_LINKS = [
@@ -45,12 +66,13 @@ export default function Header({ onPersonSelect }: HeaderProps) {
       </div>
 
       <nav className="flex items-center gap-1 shrink-0">
-        {PRIMARY_LINKS.map(({ href, label }) => (
+        {PRIMARY_LINKS.map(({ href, label, icon }) => (
           <a
             key={href}
             href={href}
-            className="px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors whitespace-nowrap hidden md:block"
+            className="px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors whitespace-nowrap hidden md:flex items-center gap-1.5"
           >
+            {icon}
             {label}
           </a>
         ))}
@@ -73,9 +95,10 @@ export default function Header({ onPersonSelect }: HeaderProps) {
               <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-20 py-1 min-w-48">
                 {/* Mobile: show primary links too */}
                 <div className="md:hidden">
-                  {PRIMARY_LINKS.map(({ href, label }) => (
+                  {PRIMARY_LINKS.map(({ href, label, icon }) => (
                     <a key={href} href={href} onClick={() => setOpen(false)}
-                      className="block px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      {icon}
                       {label}
                     </a>
                   ))}

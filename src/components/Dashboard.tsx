@@ -67,44 +67,44 @@ export default async function Dashboard() {
   const surnameGroups = await buildSurnameGroups();
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen dark:bg-slate-950" style={{ background: 'radial-gradient(ellipse at 50% 30%, #fdf8f2 0%, #f5eddf 55%, #ede2cf 100%)' }}>
       {/* Hero */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-4xl mx-auto px-6 py-16 text-center">
+      <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #14532d 0%, #166534 50%, #15803d 100%)' }}>
+        <div className="relative max-w-4xl mx-auto px-6 py-20 text-center">
           {/* Icon */}
           <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <svg className="w-9 h-9 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <div className="w-16 h-16 rounded-full border border-white/25 bg-white/10 flex items-center justify-center backdrop-blur-sm">
+              <svg className="w-9 h-9 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
                 <path d="M12 3v18M12 3c-3 0-6 3-6 6s3 3 6 3M12 3c3 0 6 3 6 6s-3 3-6 3M12 12c-3 0-6 3-6 6M12 12c3 0 6 3 6 6" />
               </svg>
             </div>
           </div>
 
-          <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">
+          <h1 className="text-5xl font-bold text-white mb-3 tracking-tight" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
             Arbre Généalogique
           </h1>
-          <p className="text-xl text-slate-500 dark:text-slate-400 mb-8">Famille Dudouyt</p>
+          <p className="text-lg text-green-200/75 mb-10 italic" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
+            Famille Dudouyt
+          </p>
 
           {/* Stats */}
-          <div className="flex justify-center gap-8 mb-10 text-sm text-slate-500 dark:text-slate-400">
-            <span>
-              <strong className="text-2xl font-bold text-slate-800 dark:text-slate-200 block">{stats.totalPersons}</strong>
-              personnes
-            </span>
-            <span className="w-px bg-slate-200 dark:bg-slate-700" />
-            <span>
-              <strong className="text-2xl font-bold text-slate-800 dark:text-slate-200 block">{stats.totalFamilies}</strong>
-              familles
-            </span>
+          <div className="flex justify-center gap-6 mb-10">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white">{stats.totalPersons}</div>
+              <div className="text-xs text-green-200/60 uppercase tracking-widest mt-1">personnes</div>
+            </div>
+            <div className="w-px bg-white/20" />
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white">{stats.totalFamilies}</div>
+              <div className="text-xs text-green-200/60 uppercase tracking-widest mt-1">familles</div>
+            </div>
             {stats.minYear && stats.maxYear && (
               <>
-                <span className="w-px bg-slate-200 dark:bg-slate-700" />
-                <span>
-                  <strong className="text-2xl font-bold text-slate-800 dark:text-slate-200 block">
-                    {stats.minYear}–{stats.maxYear}
-                  </strong>
-                  période
-                </span>
+                <div className="w-px bg-white/20" />
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-white">{stats.minYear}–{stats.maxYear}</div>
+                  <div className="text-xs text-green-200/60 uppercase tracking-widest mt-1">période</div>
+                </div>
               </>
             )}
           </div>
@@ -117,34 +117,34 @@ export default async function Dashboard() {
       </div>
 
       {/* Global map */}
-      <div className="max-w-4xl mx-auto px-6 pt-4 pb-0">
-        <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-4">
+      <div className="max-w-4xl mx-auto px-6 pt-8 pb-0">
+        <h2 className="text-xl font-bold mb-4" style={{ fontFamily: 'var(--font-serif, Georgia, serif)', color: '#3d2e1e' }}>
           Carte des origines
         </h2>
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm" style={{ height: '420px' }}>
+        <div className="dark:bg-slate-900 rounded-xl p-4 shadow-sm" style={{ height: '420px', background: '#fffaf5', border: '1px solid #e8dcc8' }}>
           <GlobalMapWrapper />
         </div>
       </div>
 
       {/* Stats — répartition par siècle */}
       {stats.centuries.length > 0 && (
-        <div className="max-w-4xl mx-auto px-6 pt-4 pb-0">
-          <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-4">
+        <div className="max-w-4xl mx-auto px-6 pt-8 pb-0">
+          <h2 className="text-xl font-bold mb-4" style={{ fontFamily: 'var(--font-serif, Georgia, serif)', color: '#3d2e1e' }}>
             Répartition par siècle
           </h2>
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm">
+          <div className="dark:bg-slate-900 rounded-xl p-5 shadow-sm" style={{ background: '#fffaf5', border: '1px solid #e8dcc8' }}>
             {(() => {
               const max = Math.max(...stats.centuries.map(c => c.count));
               return stats.centuries.map(c => (
                 <div key={c.label} className="flex items-center gap-3 mb-2">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 w-20 shrink-0 text-right">{c.label}</span>
-                  <div className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-full h-4 overflow-hidden">
+                  <span className="text-xs w-20 shrink-0 text-right" style={{ color: '#8a7560' }}>{c.label}</span>
+                  <div className="flex-1 rounded-full h-4 overflow-hidden" style={{ background: '#ede2cf' }}>
                     <div
-                      className="bg-primary/70 h-full rounded-full transition-all"
+                      className="bg-primary/80 h-full rounded-full transition-all"
                       style={{ width: `${(c.count / max) * 100}%` }}
                     />
                   </div>
-                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400 w-8 shrink-0">{c.count}</span>
+                  <span className="text-xs font-medium w-8 shrink-0" style={{ color: '#6b5740' }}>{c.count}</span>
                 </div>
               ));
             })()}
@@ -154,8 +154,8 @@ export default async function Dashboard() {
 
       {/* Surname grid */}
       <div className="max-w-4xl mx-auto px-6 py-12">
-        <h2 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-6">
-          Noms de famille <span className="text-slate-400 font-normal">({surnameGroups.length})</span>
+        <h2 className="text-xl font-bold mb-6" style={{ fontFamily: 'var(--font-serif, Georgia, serif)', color: '#3d2e1e' }}>
+          Noms de famille <span className="font-normal text-base" style={{ color: '#a89070' }}>({surnameGroups.length})</span>
         </h2>
         <SurnameGrid groups={surnameGroups} initialLimit={40} />
       </div>
