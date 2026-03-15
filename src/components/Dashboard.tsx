@@ -69,7 +69,7 @@ export default async function Dashboard() {
   return (
     <div className="min-h-screen dark:bg-slate-950" style={{ background: 'radial-gradient(ellipse at 50% 30%, #fdf8f2 0%, #f5eddf 55%, #ede2cf 100%)' }}>
       {/* Hero */}
-      <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #14532d 0%, #166534 50%, #15803d 100%)' }}>
+      <div className="relative" style={{ background: 'linear-gradient(135deg, #14532d 0%, #166534 50%, #15803d 100%)' }}>
         <div className="relative max-w-4xl mx-auto px-6 py-20 text-center">
           {/* Icon */}
           <div className="flex justify-center mb-6">
