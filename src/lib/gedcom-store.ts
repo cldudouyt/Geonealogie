@@ -142,6 +142,17 @@ export function formatPlaceFull(placeFull: string | undefined): string {
   return extras.length > 0 ? `${main} — ${extras.join(', ')}` : main;
 }
 
+/**
+ * Returns the canonical 5-part prefix of a Heredis placeFull (strips street extras).
+ * "Barcelone,,,Cataluña,ESPAGNE,Rue X,24" → "Barcelone,,,Cataluña,ESPAGNE,"
+ * Used as geocache fallback when the full address key is null.
+ */
+function shortenPlace(placeFull: string): string {
+  const parts = placeFull.split(',');
+  if (parts.length <= 5) return placeFull;
+  return parts.slice(0, 5).join(',') + ',';
+}
+
 function parseCoord(str: string | undefined): number | undefined {
   if (!str) return undefined;
   const dir = str.charAt(0);
@@ -445,30 +456,41 @@ async function buildStore(): Promise<GedcomStore> {
   // Apply geocached coordinates for places that lack MAP/LATI/LONG in GEDCOM
   const placeNames: string[] = [];
   for (const p of persons.values()) {
-    if (p.birthPlaceFull && p.birthLat == null) placeNames.push(p.birthPlaceFull);
-    if (p.deathPlaceFull && p.deathLat == null) placeNames.push(p.deathPlaceFull);
+    if (p.birthPlaceFull && p.birthLat == null) {
+      placeNames.push(p.birthPlaceFull);
+      placeNames.push(shortenPlace(p.birthPlaceFull)); // fallback: city+country without street extras
+    }
+    if (p.deathPlaceFull && p.deathLat == null) {
+      placeNames.push(p.deathPlaceFull);
+      placeNames.push(shortenPlace(p.deathPlaceFull));
+    }
     for (const evt of p.events) {
       if (evt.lat == null) {
-        if (evt.placeFull) placeNames.push(evt.placeFull);
+        if (evt.placeFull) { placeNames.push(evt.placeFull); placeNames.push(shortenPlace(evt.placeFull)); }
         else if (evt.place) placeNames.push(evt.place);
       }
     }
   }
   const geoMap = applyGeoCache(placeNames);
+
+  // Helper: look up coords by full key, fall back to shortened key
+  const geoLookup = (placeFull: string) =>
+    geoMap.get(placeFull) ?? geoMap.get(shortenPlace(placeFull)) ?? null;
+
   for (const p of persons.values()) {
     if (p.birthPlaceFull && p.birthLat == null) {
-      const pt = geoMap.get(p.birthPlaceFull);
+      const pt = geoLookup(p.birthPlaceFull);
       if (pt) { p.birthLat = pt.lat; p.birthLon = pt.lon; }
     }
     if (p.deathPlaceFull && p.deathLat == null) {
-      const pt = geoMap.get(p.deathPlaceFull);
+      const pt = geoLookup(p.deathPlaceFull);
       if (pt) { p.deathLat = pt.lat; p.deathLon = pt.lon; }
     }
     for (const evt of p.events) {
       if (evt.lat == null) {
         const key = evt.placeFull || evt.place;
         if (key) {
-          const pt = geoMap.get(key);
+          const pt = evt.placeFull ? geoLookup(evt.placeFull) : geoMap.get(key) ?? null;
           if (pt) { evt.lat = pt.lat; evt.lon = pt.lon; }
         }
       }
