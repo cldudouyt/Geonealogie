@@ -12,8 +12,9 @@ export interface JourneyStop {
 }
 
 interface MigrationSectionProps {
-  stops: JourneyStop[];   // for timeline display (passed via RSC)
-  personId: string;       // for map (fetched client-side to bypass RSC serialization)
+  stops: JourneyStop[];   // for timeline display (passed via RSC, coords may be dropped)
+  personId: string;       // kept for potential future use
+  stopsJson: string;      // JSON string — strings survive RSC serialization intact
 }
 
 const STOP_COLOR: Record<string, string> = {
@@ -57,20 +58,17 @@ interface GeoStop {
   place?: string; lat: number | null; lon: number | null;
 }
 
-function MapContainer({ personId }: { personId: string }) {
+function MapContainer({ stopsJson }: { stopsJson: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [debugInfo, setDebugInfo] = useState('chargement…');
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
+    if (!containerRef.current) return;
     let leafletMap: any = null; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    Promise.all([
-      fetch(`/api/journey/${personId}`).then(r => r.json()),
-      import('leaflet'),
-    ]).then(([allStops, L]: [GeoStop[], any]) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    import('leaflet').then((L: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
       if (!containerRef.current) return;
+      const allStops: GeoStop[] = JSON.parse(stopsJson);
 
       const geoStops = allStops.filter((s: GeoStop) => typeof s.lat === 'number' && typeof s.lon === 'number');
       setDebugInfo(`${geoStops.length}/${allStops.length} géolocalisés`);
@@ -122,7 +120,7 @@ function MapContainer({ personId }: { personId: string }) {
     return () => {
       if (leafletMap) { leafletMap.remove(); leafletMap = null; }
     };
-  }, [personId]);
+  }, [stopsJson]);
 
   return (
     <div style={{ position: 'relative' }}>
@@ -134,7 +132,7 @@ function MapContainer({ personId }: { personId: string }) {
   );
 }
 
-export default function MigrationSection({ stops, personId }: MigrationSectionProps) {
+export default function MigrationSection({ stops, personId: _personId, stopsJson }: MigrationSectionProps) {
   const [showMap, setShowMap] = useState(true);
 
   const stopsWithPlace = stops.filter(s => s.place);
@@ -201,7 +199,7 @@ export default function MigrationSection({ stops, personId }: MigrationSectionPr
 
       {showMap && (
         <div className="mt-4">
-          <MapContainer personId={personId} />
+          <MapContainer stopsJson={stopsJson} />
         </div>
       )}
     </div>

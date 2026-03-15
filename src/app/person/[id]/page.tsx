@@ -356,8 +356,8 @@ export default async function PersonPage({ params }: PersonPageProps) {
           </div>
         )}
 
-        {/* Migration / life journey */}
-        <MigrationSection stops={journeyStops} personId={id} />
+        {/* Migration / life journey — pass coords as JSON string to bypass RSC number serialization bug */}
+        <MigrationSection stops={journeyStops} personId={id} stopsJson={JSON.stringify(journeyStops)} />
 
         {/* Map — relatives context */}
         {mapMarkers.length > 0 && (
