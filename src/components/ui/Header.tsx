@@ -122,6 +122,16 @@ export default function Header({ onPersonSelect }: HeaderProps) {
                 ))}
 
                 <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                <p className="px-4 py-1 text-xs text-slate-400 font-medium uppercase tracking-wide">Admin</p>
+                <a href="/admin/geocode" role="menuitem" onClick={() => setOpen(false)}
+                  className="block px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                  Géocodage automatique
+                </a>
+                <a href="/admin/feedback" role="menuitem" onClick={() => setOpen(false)}
+                  className="block px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                  Suggestions reçues
+                </a>
+                <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
                 <p className="px-4 py-1 text-xs text-slate-400 font-medium uppercase tracking-wide">Exports</p>
                 {EXPORT_LINKS.map(({ href, label }) => (
                   <a key={href} href={href} role="menuitem" onClick={() => setOpen(false)}

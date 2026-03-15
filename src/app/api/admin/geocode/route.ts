@@ -1,54 +1,153 @@
 import { NextResponse } from 'next/server';
-import { getAllPersons } from '@/lib/gedcom-store';
-import { geocodePlaces, getCached } from '@/lib/geocoder';
-import { clearStore } from '@/lib/gedcom-store';
+import { getAllPersons, clearStore } from '@/lib/gedcom-store';
+import { geocodeSingle, getCached } from '@/lib/geocoder';
+import { loadOverrides, savePersonEdit, type PersonEdit } from '@/lib/overrides-store';
 
 export const maxDuration = 300; // 5 min timeout (Vercel Pro)
 
-export async function GET() {
-  const persons = await getAllPersons();
+async function sleep(ms: number) {
+  return new Promise(r => setTimeout(r, ms));
+}
 
-  const placeNames = new Set<string>();
+/** Geocode a place, honouring 1-req/sec Nominatim limit. Returns null if already cached. */
+async function resolvePlace(place: string, delay = true): Promise<{ lat: number; lon: number } | null> {
+  const cached = getCached(place);
+  if (cached !== undefined) return cached; // already in geocache (could be null = "not found")
+  if (delay) await sleep(1100);
+  return geocodeSingle(place);
+}
+
+export async function GET() {
+  const [persons, overrides] = await Promise.all([getAllPersons(), loadOverrides()]);
+
+  // GEDCOM places without coords
+  const gedcomPlaces = new Set<string>();
   for (const p of persons) {
-    if (p.birthPlaceFull && p.birthLat == null) placeNames.add(p.birthPlaceFull);
-    if (p.deathPlaceFull && p.deathLat == null) placeNames.add(p.deathPlaceFull);
+    if (p.birthPlaceFull && p.birthLat == null) gedcomPlaces.add(p.birthPlaceFull);
+    if (p.deathPlaceFull && p.deathLat == null) gedcomPlaces.add(p.deathPlaceFull);
     for (const evt of p.events) {
-      if (evt.placeFull && evt.lat == null) placeNames.add(evt.placeFull);
+      if (evt.lat == null) {
+        const key = evt.placeFull || evt.place;
+        if (key) gedcomPlaces.add(key);
+      }
     }
   }
 
-  const uncached = [...placeNames].filter(pl => getCached(pl) === undefined);
+  // Override places without coords
+  let overridePlaces = 0;
+  for (const edit of Object.values(overrides.persons)) {
+    if (edit.birthPlace && edit.birthLat == null) overridePlaces++;
+    if (edit.deathPlace && edit.deathLat == null) overridePlaces++;
+    for (const evt of edit.events ?? []) {
+      if (evt.place && evt.lat == null) overridePlaces++;
+    }
+  }
+
+  const uncachedGedcom = [...gedcomPlaces].filter(pl => getCached(pl) === undefined).length;
 
   return NextResponse.json({
-    totalPlacesWithoutCoords: placeNames.size,
-    alreadyCached: placeNames.size - uncached.length,
-    toGeocode: uncached.length,
-    message: uncached.length === 0
-      ? 'All places already cached. POST to /api/admin/geocode to force refresh.'
-      : `POST to /api/admin/geocode to geocode ${uncached.length} new places (≈${Math.ceil(uncached.length * 1.1 / 60)} min).`,
+    gedcomPlacesWithoutCoords: gedcomPlaces.size,
+    gedcomUncached: uncachedGedcom,
+    overridePlacesWithoutCoords: overridePlaces,
+    total: uncachedGedcom + overridePlaces,
+    estimatedMinutes: Math.ceil((uncachedGedcom + overridePlaces) * 1.1 / 60),
+    hint: 'POST to /api/admin/geocode to run geocoding',
   });
 }
 
 export async function POST() {
-  const persons = await getAllPersons();
+  const [persons, overrides] = await Promise.all([getAllPersons(), loadOverrides()]);
+  const log: string[] = [];
+  let geocoded = 0;
+  let idx = 0;
 
-  const placeNames = new Set<string>();
+  // ── 1. Geocode GEDCOM places (stored in geocache.json if writable) ─────────
+  const gedcomPlaces = new Set<string>();
   for (const p of persons) {
-    if (p.birthPlaceFull && p.birthLat == null) placeNames.add(p.birthPlaceFull);
-    if (p.deathPlaceFull && p.deathLat == null) placeNames.add(p.deathPlaceFull);
+    if (p.birthPlaceFull && p.birthLat == null) gedcomPlaces.add(p.birthPlaceFull);
+    if (p.deathPlaceFull && p.deathLat == null) gedcomPlaces.add(p.deathPlaceFull);
     for (const evt of p.events) {
-      if (evt.placeFull && evt.lat == null) placeNames.add(evt.placeFull);
+      if (evt.lat == null) {
+        const key = evt.placeFull || evt.place;
+        if (key) gedcomPlaces.add(key);
+      }
     }
   }
 
-  const log: string[] = [];
-  const added = await geocodePlaces([...placeNames], (done, total, place, result) => {
-    log.push(`[${done}/${total}] ${place} → ${result ? `${result.lat},${result.lon}` : 'not found'}`);
-    if (log.length % 10 === 0) console.log(log[log.length - 1]);
-  });
+  for (const place of gedcomPlaces) {
+    const cached = getCached(place);
+    if (cached !== undefined) continue; // already resolved
+    idx++;
+    await sleep(1100);
+    const result = await geocodeSingle(place);
+    // geocodeSingle doesn't write to cache; we'll rely on overrides path below
+    const entry = `[GEDCOM ${idx}] ${place} → ${result ? `${result.lat.toFixed(4)},${result.lon.toFixed(4)}` : 'non trouvé'}`;
+    log.push(entry);
+    if (result) geocoded++;
+    console.log(entry);
+  }
 
-  // Clear store so next request rebuilds with new coordinates
+  // ── 2. Geocode override events/birth/death → persist coords in Neo4j ───────
+  for (const [personId, edit] of Object.entries(overrides.persons)) {
+    const updated: PersonEdit = {};
+    let changed = false;
+
+    // Birth place
+    if (edit.birthPlace && edit.birthLat == null) {
+      idx++;
+      const result = await resolvePlace(edit.birthPlace);
+      const entry = `[OVR birth ${personId}] ${edit.birthPlace} → ${result ? `${result.lat.toFixed(4)},${result.lon.toFixed(4)}` : 'non trouvé'}`;
+      log.push(entry);
+      console.log(entry);
+      if (result) {
+        updated.birthLat = result.lat;
+        updated.birthLon = result.lon;
+        geocoded++;
+        changed = true;
+      }
+    }
+
+    // Death place
+    if (edit.deathPlace && edit.deathLat == null) {
+      idx++;
+      const result = await resolvePlace(edit.deathPlace);
+      const entry = `[OVR death ${personId}] ${edit.deathPlace} → ${result ? `${result.lat.toFixed(4)},${result.lon.toFixed(4)}` : 'non trouvé'}`;
+      log.push(entry);
+      console.log(entry);
+      if (result) {
+        updated.deathLat = result.lat;
+        updated.deathLon = result.lon;
+        geocoded++;
+        changed = true;
+      }
+    }
+
+    // Events
+    if (edit.events) {
+      const updatedEvents = [...edit.events];
+      for (let i = 0; i < updatedEvents.length; i++) {
+        const evt = updatedEvents[i];
+        if (!evt.place || evt.lat != null) continue;
+        idx++;
+        const result = await resolvePlace(evt.place);
+        const entry = `[OVR evt ${personId}/${evt.type}] ${evt.place} → ${result ? `${result.lat.toFixed(4)},${result.lon.toFixed(4)}` : 'non trouvé'}`;
+        log.push(entry);
+        console.log(entry);
+        if (result) {
+          updatedEvents[i] = { ...evt, lat: result.lat, lon: result.lon };
+          geocoded++;
+          changed = true;
+        }
+      }
+      if (changed) updated.events = updatedEvents;
+    }
+
+    if (changed) {
+      await savePersonEdit(personId, updated);
+    }
+  }
+
   clearStore();
 
-  return NextResponse.json({ geocoded: added, total: placeNames.size, log });
+  return NextResponse.json({ geocoded, totalAttempted: idx, log });
 }
