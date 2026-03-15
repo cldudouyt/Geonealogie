@@ -559,12 +559,24 @@ async function applyOverrides(s: GedcomStore): Promise<void> {
     if (edit.notes       !== undefined) person.notes             = edit.notes;
     if (edit.events      !== undefined) {
       const origEvents = person.events;
+      // Track how many times each type has been matched to handle duplicates
+      const typeMatchCount = new Map<string, number>();
       person.events = edit.events.map((e, idx) => {
-        // Preserve geo data from the original event at the same index
-        const orig = origEvents[idx];
+        // Match by type+date first, then by type occurrence count, then by index
+        const key = `${e.type}|${e.dateRaw ?? ''}`;
+        const matchIdx = typeMatchCount.get(key) ?? 0;
+        typeMatchCount.set(key, matchIdx + 1);
+        const orig =
+          origEvents.find((o, oi) => {
+            if (o.type !== e.type) return false;
+            if (e.dateRaw && o.dateRaw && e.dateRaw === o.dateRaw) return true;
+            // Same type, no date match — pick by occurrence index
+            const sameType = origEvents.filter(x => x.type === e.type);
+            return sameType.indexOf(o) === matchIdx && origEvents.indexOf(o) === oi;
+          }) ?? origEvents[idx];
         return {
           type: e.type, dateRaw: e.dateRaw, place: e.place, note: e.note,
-          // Override-stored coords take priority; fall back to original GEDCOM coords
+          // Override-stored coords take priority; fall back to matched GEDCOM coords
           placeFull: e.place !== orig?.place ? undefined : orig?.placeFull,
           lat: e.lat ?? orig?.lat,
           lon: e.lon ?? orig?.lon,

@@ -77,8 +77,13 @@ export async function saveEdit(
         evt.lon = cached.lon;
       } else {
         // Call Nominatim for unknown places (≤1 sec per place)
-        const pt = await geocodeSingle(evt.place);
-        if (pt) { evt.lat = pt.lat; evt.lon = pt.lon; }
+        try {
+          const pt = await geocodeSingle(evt.place);
+          if (pt) { evt.lat = pt.lat; evt.lon = pt.lon; }
+        } catch (err) {
+          console.error(`[saveEdit] geocodeSingle failed for "${evt.place}":`, err);
+          // Continue without coords — save must not fail due to geocoding errors
+        }
       }
     }
   }

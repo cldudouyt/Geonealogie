@@ -9,12 +9,17 @@ async function sleep(ms: number) {
   return new Promise(r => setTimeout(r, ms));
 }
 
-/** Geocode a place, honouring 1-req/sec Nominatim limit. Returns null if already cached. */
-async function resolvePlace(place: string, delay = true): Promise<{ lat: number; lon: number } | null> {
+/** Geocode a place, honouring 1-req/sec Nominatim limit. */
+async function resolvePlace(place: string, isFirst = false): Promise<{ lat: number; lon: number } | null> {
   const cached = getCached(place);
   if (cached !== undefined) return cached; // already in geocache (could be null = "not found")
-  if (delay) await sleep(1100);
-  return geocodeSingle(place);
+  if (!isFirst) await sleep(1100); // Nominatim: max 1 req/sec; no delay before the very first call
+  try {
+    return await geocodeSingle(place);
+  } catch (err) {
+    console.error(`[geocode admin] geocodeSingle failed for "${place}":`, err);
+    return null;
+  }
 }
 
 export async function GET() {
@@ -77,8 +82,9 @@ export async function POST() {
   for (const place of gedcomPlaces) {
     const cached = getCached(place);
     if (cached !== undefined) continue; // already resolved
+    const isFirst = idx === 0;
     idx++;
-    await sleep(1100);
+    if (!isFirst) await sleep(1100);
     const result = await geocodeSingle(place);
     // geocodeSingle doesn't write to cache; we'll rely on overrides path below
     const entry = `[GEDCOM ${idx}] ${place} → ${result ? `${result.lat.toFixed(4)},${result.lon.toFixed(4)}` : 'non trouvé'}`;
@@ -94,8 +100,7 @@ export async function POST() {
 
     // Birth place
     if (edit.birthPlace && edit.birthLat == null) {
-      idx++;
-      const result = await resolvePlace(edit.birthPlace);
+      const result = await resolvePlace(edit.birthPlace, idx++ === 0);
       const entry = `[OVR birth ${personId}] ${edit.birthPlace} → ${result ? `${result.lat.toFixed(4)},${result.lon.toFixed(4)}` : 'non trouvé'}`;
       log.push(entry);
       console.log(entry);
@@ -109,8 +114,7 @@ export async function POST() {
 
     // Death place
     if (edit.deathPlace && edit.deathLat == null) {
-      idx++;
-      const result = await resolvePlace(edit.deathPlace);
+      const result = await resolvePlace(edit.deathPlace, idx++ === 0);
       const entry = `[OVR death ${personId}] ${edit.deathPlace} → ${result ? `${result.lat.toFixed(4)},${result.lon.toFixed(4)}` : 'non trouvé'}`;
       log.push(entry);
       console.log(entry);
@@ -128,8 +132,7 @@ export async function POST() {
       for (let i = 0; i < updatedEvents.length; i++) {
         const evt = updatedEvents[i];
         if (!evt.place || evt.lat != null) continue;
-        idx++;
-        const result = await resolvePlace(evt.place);
+        const result = await resolvePlace(evt.place, idx++ === 0);
         const entry = `[OVR evt ${personId}/${evt.type}] ${evt.place} → ${result ? `${result.lat.toFixed(4)},${result.lon.toFixed(4)}` : 'non trouvé'}`;
         log.push(entry);
         console.log(entry);

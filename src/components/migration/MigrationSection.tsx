@@ -60,7 +60,7 @@ interface GeoStop {
 
 function MapContainer({ stopsJson }: { stopsJson: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [debugInfo, setDebugInfo] = useState('chargement…');
+  const [debugInfo, setDebugInfo] = useState('');
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -71,8 +71,9 @@ function MapContainer({ stopsJson }: { stopsJson: string }) {
       const allStops: GeoStop[] = JSON.parse(stopsJson);
 
       const geoStops = allStops.filter((s: GeoStop) => typeof s.lat === 'number' && typeof s.lon === 'number');
-      const sample = allStops.slice(0, 3).map(s => `${s.label}:${s.lat}`).join(' | ');
-      setDebugInfo(`${geoStops.length}/${allStops.length} — ${sample}`);
+      if (process.env.NODE_ENV === 'development') {
+        setDebugInfo(`${geoStops.length}/${allStops.length} géolocalisés`);
+      }
 
       if (geoStops.length === 0) return;
 
@@ -126,9 +127,11 @@ function MapContainer({ stopsJson }: { stopsJson: string }) {
   return (
     <div style={{ position: 'relative' }}>
       <div ref={containerRef} style={{ height: '320px', width: '100%', borderRadius: '8px', zIndex: 0 }} />
-      <div style={{ position: 'absolute', bottom: 4, left: 8, zIndex: 1000, background: 'rgba(255,255,255,0.85)', fontSize: 11, padding: '2px 6px', borderRadius: 4, pointerEvents: 'none' }}>
-        {debugInfo}
-      </div>
+      {debugInfo && (
+        <div style={{ position: 'absolute', bottom: 4, left: 8, zIndex: 1000, background: 'rgba(255,255,255,0.85)', fontSize: 11, padding: '2px 6px', borderRadius: 4, pointerEvents: 'none' }}>
+          {debugInfo}
+        </div>
+      )}
     </div>
   );
 }
