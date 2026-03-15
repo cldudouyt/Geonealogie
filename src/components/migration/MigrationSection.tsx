@@ -71,7 +71,8 @@ function MapContainer({ stopsJson }: { stopsJson: string }) {
       const allStops: GeoStop[] = JSON.parse(stopsJson);
 
       const geoStops = allStops.filter((s: GeoStop) => typeof s.lat === 'number' && typeof s.lon === 'number');
-      setDebugInfo(`${geoStops.length}/${allStops.length} géolocalisés`);
+      const sample = allStops.slice(0, 3).map(s => `${s.label}:${s.lat}`).join(' | ');
+      setDebugInfo(`${geoStops.length}/${allStops.length} — ${sample}`);
 
       if (geoStops.length === 0) return;
 
