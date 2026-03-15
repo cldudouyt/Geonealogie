@@ -92,7 +92,7 @@ export default function Header({ onPersonSelect }: HeaderProps) {
           {open && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-20 py-1 min-w-48">
+              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-[9999] py-1 min-w-48">
                 {/* Mobile: show primary links too */}
                 <div className="md:hidden">
                   {PRIMARY_LINKS.map(({ href, label, icon }) => (
