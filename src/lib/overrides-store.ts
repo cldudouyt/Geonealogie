@@ -8,6 +8,8 @@ export interface EventOverride {
   dateRaw?: string;
   place?: string;
   note?: string;
+  lat?: number | null;
+  lon?: number | null;
 }
 
 export interface PersonEdit {

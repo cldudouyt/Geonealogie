@@ -54,7 +54,7 @@ async function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function geocodeSingle(place: string): Promise<GeoPoint | null> {
+export async function geocodeSingle(place: string): Promise<GeoPoint | null> {
   try {
     const params = new URLSearchParams({ q: place, format: 'json', limit: '1' });
     const res = await fetch(`${NOMINATIM_URL}?${params}`, {

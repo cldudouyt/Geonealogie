@@ -430,7 +430,10 @@ async function buildStore(): Promise<GedcomStore> {
     if (p.birthPlaceFull && p.birthLat == null) placeNames.push(p.birthPlaceFull);
     if (p.deathPlaceFull && p.deathLat == null) placeNames.push(p.deathPlaceFull);
     for (const evt of p.events) {
-      if (evt.placeFull && evt.lat == null) placeNames.push(evt.placeFull);
+      if (evt.lat == null) {
+        if (evt.placeFull) placeNames.push(evt.placeFull);
+        else if (evt.place) placeNames.push(evt.place);
+      }
     }
   }
   const geoMap = applyGeoCache(placeNames);
@@ -444,9 +447,12 @@ async function buildStore(): Promise<GedcomStore> {
       if (pt) { p.deathLat = pt.lat; p.deathLon = pt.lon; }
     }
     for (const evt of p.events) {
-      if (evt.placeFull && evt.lat == null) {
-        const pt = geoMap.get(evt.placeFull);
-        if (pt) { evt.lat = pt.lat; evt.lon = pt.lon; }
+      if (evt.lat == null) {
+        const key = evt.placeFull || evt.place;
+        if (key) {
+          const pt = geoMap.get(key);
+          if (pt) { evt.lat = pt.lat; evt.lon = pt.lon; }
+        }
       }
     }
   }
@@ -536,9 +542,10 @@ async function applyOverrides(s: GedcomStore): Promise<void> {
         const orig = origEvents[idx];
         return {
           type: e.type, dateRaw: e.dateRaw, place: e.place, note: e.note,
-          placeFull: orig?.placeFull,
-          lat: orig?.lat,
-          lon: orig?.lon,
+          // Override-stored coords take priority; fall back to original GEDCOM coords
+          placeFull: e.place !== orig?.place ? undefined : orig?.placeFull,
+          lat: e.lat ?? orig?.lat,
+          lon: e.lon ?? orig?.lon,
         };
       });
     }

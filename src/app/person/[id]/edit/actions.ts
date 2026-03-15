@@ -2,6 +2,7 @@
 
 import { savePersonEdit, type PersonEdit, type EventOverride } from '@/lib/overrides-store';
 import { clearStore } from '@/lib/gedcom-store';
+import { getCached, geocodeSingle } from '@/lib/geocoder';
 import { redirect } from 'next/navigation';
 
 export interface EditState {
@@ -52,6 +53,24 @@ export async function saveEdit(
   // Remove undefined keys
   for (const key of Object.keys(edit) as (keyof PersonEdit)[]) {
     if (edit[key] === undefined) delete edit[key];
+  }
+
+  // Geocode event places so they appear on the migration map
+  if (edit.events) {
+    for (const evt of edit.events) {
+      if (!evt.place) continue;
+      // Skip if coords already stored in this override
+      if (evt.lat != null) continue;
+      const cached = getCached(evt.place);
+      if (cached) {
+        evt.lat = cached.lat;
+        evt.lon = cached.lon;
+      } else {
+        // Call Nominatim for unknown places (≤1 sec per place)
+        const pt = await geocodeSingle(evt.place);
+        if (pt) { evt.lat = pt.lat; evt.lon = pt.lon; }
+      }
+    }
   }
 
   await savePersonEdit(id, edit);
