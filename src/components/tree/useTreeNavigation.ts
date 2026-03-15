@@ -99,5 +99,13 @@ export function useTreeNavigation(
       );
   }, [svgRef, nodes, dimensions]);
 
-  return { transform, centerOnPerson, centerOnRoot, zoomIn, zoomOut, fitAll };
+  const panBy = useCallback((dx: number, dy: number) => {
+    if (!svgRef.current || !zoomBehaviorRef.current) return;
+    d3.select(svgRef.current)
+      .transition()
+      .duration(120)
+      .call(zoomBehaviorRef.current.translateBy, dx, dy);
+  }, [svgRef]);
+
+  return { transform, centerOnPerson, centerOnRoot, zoomIn, zoomOut, fitAll, panBy };
 }

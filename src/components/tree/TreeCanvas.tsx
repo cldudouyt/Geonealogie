@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useMemo, useEffect } from 'react';
+import { useRef, useMemo, useEffect, useCallback } from 'react';
 import type { LayoutNode, LayoutLink } from '@/lib/types';
 import { useTreeNavigation } from './useTreeNavigation';
 import PersonNode from './PersonNode';
@@ -31,7 +31,7 @@ export default function TreeCanvas({
   dimensions,
 }: TreeCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const { transform, centerOnRoot, zoomIn, zoomOut, fitAll } = useTreeNavigation(
+  const { transform, centerOnRoot, zoomIn, zoomOut, fitAll, panBy } = useTreeNavigation(
     svgRef,
     nodes,
     dimensions
@@ -61,12 +61,34 @@ export default function TreeCanvas({
     );
   }, [nodes, transform, dimensions]);
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<SVGSVGElement>) => {
+    const PAN = 120;
+    switch (e.key) {
+      case 'ArrowLeft':  e.preventDefault(); panBy(PAN, 0);  break;
+      case 'ArrowRight': e.preventDefault(); panBy(-PAN, 0); break;
+      case 'ArrowUp':    e.preventDefault(); panBy(0, PAN);  break;
+      case 'ArrowDown':  e.preventDefault(); panBy(0, -PAN); break;
+      case '+': case '=': e.preventDefault(); zoomIn();  break;
+      case '-': case '_': e.preventDefault(); zoomOut(); break;
+      case 'Home':        e.preventDefault(); centerOnRoot(rootId); break;
+      case 'f': case 'F': e.preventDefault(); fitAll(); break;
+      case 'Enter': case ' ':
+        if (selectedId) { e.preventDefault(); onNodeDoubleClick(selectedId); }
+        break;
+    }
+  }, [panBy, zoomIn, zoomOut, centerOnRoot, fitAll, rootId, selectedId, onNodeDoubleClick]);
+
   return (
     <div className="relative w-full h-full">
       <svg
         ref={svgRef}
+        id="main-content"
+        tabIndex={0}
+        role="application"
+        aria-label="Arbre généalogique. Utilisez les flèches pour naviguer, + / - pour zoomer, Entrée pour ouvrir une fiche, Origine pour recentrer."
         width={dimensions.width}
         height={dimensions.height}
+        onKeyDown={handleKeyDown}
         style={{ cursor: 'grab', background: 'radial-gradient(ellipse at 50% 45%, #fdf8f2 0%, #f5eddf 60%, #ede2cf 100%)' }}
       >
 
@@ -98,8 +120,13 @@ export default function TreeCanvas({
         onCenterRoot={() => centerOnRoot(rootId)}
       />
 
-      <div className="absolute bottom-6 left-6 px-3 py-1.5 bg-white/80 dark:bg-slate-800/80 rounded-lg text-xs text-slate-500 backdrop-blur-sm shadow-sm border border-stone-200/50">
-        {nodes.length} personnes · {visibleNodes.length} affichées
+      <div className="absolute bottom-6 left-6 flex items-center gap-3">
+        <div className="px-3 py-1.5 bg-white/80 dark:bg-slate-800/80 rounded-lg text-xs text-slate-500 backdrop-blur-sm shadow-sm border border-stone-200/50">
+          {nodes.length} personnes · {visibleNodes.length} affichées
+        </div>
+        <div className="px-3 py-1.5 bg-white/80 dark:bg-slate-800/80 rounded-lg text-xs text-slate-400 backdrop-blur-sm shadow-sm border border-stone-200/50 hidden lg:block">
+          <span className="font-mono">↑↓←→</span> naviguer &nbsp;·&nbsp; <span className="font-mono">+/-</span> zoom &nbsp;·&nbsp; <span className="font-mono">Origine</span> recentrer &nbsp;·&nbsp; <span className="font-mono">F</span> tout voir &nbsp;·&nbsp; <span className="font-mono">Entrée</span> ouvrir fiche
+        </div>
       </div>
     </div>
   );
