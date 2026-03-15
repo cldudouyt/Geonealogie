@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { saveEdit, type EditState } from './actions';
 import type { PersonRecord } from '@/lib/gedcom-store';
 import { Monogram } from '@/components/ui/Monogram';
+import PlaceAutocomplete from '@/components/ui/PlaceAutocomplete';
 import Link from 'next/link';
 
 interface EventRow {
@@ -12,6 +13,8 @@ interface EventRow {
   dateRaw: string;
   place: string;
   note: string;
+  lat?: number | null;
+  lon?: number | null;
 }
 
 function Field({ label, name, defaultValue, placeholder, hint }: {
@@ -75,17 +78,29 @@ export default function EditForm({ person }: { person: PersonRecord }) {
     }
   };
 
+  // Place fields with geocoords
+  const [birthPlace, setBirthPlace] = useState(person.birthPlaceFull || person.birthPlace || '');
+  const [birthCoords, setBirthCoords] = useState<{ lat: number | null; lon: number | null }>({ lat: null, lon: null });
+  const [deathPlace, setDeathPlace] = useState(person.deathPlaceFull || person.deathPlace || '');
+  const [deathCoords, setDeathCoords] = useState<{ lat: number | null; lon: number | null }>({ lat: null, lon: null });
+  const [burialPlace, setBurialPlace] = useState(person.burialPlace || '');
+
   const [events, setEvents] = useState<EventRow[]>(
     person.events.map(e => ({
       type: e.type,
       dateRaw: e.dateRaw || '',
       place: e.place || '',
       note: e.note || '',
+      lat: e.lat ?? null,
+      lon: e.lon ?? null,
     }))
   );
 
-  const updateEvent = (i: number, field: keyof EventRow, value: string) =>
+  const updateEvent = (i: number, field: keyof EventRow, value: string | number | null) =>
     setEvents(ev => ev.map((e, idx) => idx === i ? { ...e, [field]: value } : e));
+
+  const updateEventPlace = (i: number, place: string, lat: number | null, lon: number | null) =>
+    setEvents(ev => ev.map((e, idx) => idx === i ? { ...e, place, lat, lon } : e));
 
   const removeEvent = (i: number) =>
     setEvents(ev => ev.filter((_, idx) => idx !== i));
@@ -98,6 +113,13 @@ export default function EditForm({ person }: { person: PersonRecord }) {
       {/* Hidden fields */}
       <input type="hidden" name="events" value={JSON.stringify(events)} />
       <input type="hidden" name="photoUrl" value={photoUrl} />
+      <input type="hidden" name="birthPlace" value={birthPlace} />
+      {birthCoords.lat != null && <input type="hidden" name="birthLat" value={birthCoords.lat} />}
+      {birthCoords.lon != null && <input type="hidden" name="birthLon" value={birthCoords.lon} />}
+      <input type="hidden" name="deathPlace" value={deathPlace} />
+      {deathCoords.lat != null && <input type="hidden" name="deathLat" value={deathCoords.lat} />}
+      {deathCoords.lon != null && <input type="hidden" name="deathLon" value={deathCoords.lon} />}
+      <input type="hidden" name="burialPlace" value={burialPlace} />
 
       {/* Photo de profil */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6">
@@ -183,16 +205,40 @@ export default function EditForm({ person }: { person: PersonRecord }) {
 
       <Section title="Naissance">
         <Field label="Date" name="birthDateRaw" defaultValue={person.birthDateRaw} placeholder="ex: 15 JAN 1850" hint="Format GEDCOM: JJ MOI AAAA" />
-        <Field label="Lieu" name="birthPlace" defaultValue={person.birthPlaceFull || person.birthPlace} placeholder="ex: Paris, 75, Île-de-France, FRA" />
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Lieu</label>
+          <PlaceAutocomplete
+            value={birthPlace}
+            onChange={(place, lat, lon) => { setBirthPlace(place); setBirthCoords({ lat, lon }); }}
+            placeholder="ex: Paris, Lyon…"
+            className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+          />
+        </div>
         <Field label="Date de baptême" name="chrDateRaw" defaultValue={person.chrDateRaw} placeholder="ex: 20 JAN 1850" />
         <Field label="Lieu de baptême" name="chrPlace" defaultValue={person.chrPlace} />
       </Section>
 
       <Section title="Décès & Inhumation">
         <Field label="Date de décès" name="deathDateRaw" defaultValue={person.deathDateRaw} placeholder="ex: 3 MAR 1920" />
-        <Field label="Lieu de décès" name="deathPlace" defaultValue={person.deathPlaceFull || person.deathPlace} />
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Lieu de décès</label>
+          <PlaceAutocomplete
+            value={deathPlace}
+            onChange={(place, lat, lon) => { setDeathPlace(place); setDeathCoords({ lat, lon }); }}
+            placeholder="ex: Paris, Lyon…"
+            className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+          />
+        </div>
         <Field label="Date d'inhumation" name="burialDateRaw" defaultValue={person.burialDateRaw} />
-        <Field label="Lieu d'inhumation" name="burialPlace" defaultValue={person.burialPlace} />
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Lieu d&apos;inhumation</label>
+          <PlaceAutocomplete
+            value={burialPlace}
+            onChange={(place) => setBurialPlace(place)}
+            placeholder="ex: Cimetière du Père-Lachaise…"
+            className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+          />
+        </div>
       </Section>
 
       <Section title="Profession">
@@ -244,12 +290,20 @@ export default function EditForm({ person }: { person: PersonRecord }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Lieu</label>
-                  <input
-                    type="text"
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                    Lieu
+                    {evt.lat != null && (
+                      <span className="ml-1.5 text-green-600" title="Coordonnées géolocalisées">
+                        <svg className="inline w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                        </svg>
+                      </span>
+                    )}
+                  </label>
+                  <PlaceAutocomplete
                     value={evt.place}
-                    onChange={e => updateEvent(i, 'place', e.target.value)}
-                    placeholder="ex: Paris"
+                    onChange={(place, lat, lon) => updateEventPlace(i, place, lat, lon)}
+                    placeholder="ex: Paris, Lyon…"
                     className="w-full px-2.5 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-primary transition-all"
                   />
                 </div>

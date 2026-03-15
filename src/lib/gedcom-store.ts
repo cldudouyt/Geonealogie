@@ -524,9 +524,13 @@ async function applyOverrides(s: GedcomStore): Promise<void> {
     if (edit.birthDateRaw  !== undefined) { person.birthDateRaw  = edit.birthDateRaw; person.birthDate  = normalizeDate(edit.birthDateRaw); person.birthYear  = extractYear(edit.birthDateRaw); }
     if (edit.birthPlace  !== undefined) person.birthPlace  = edit.birthPlace;
     if (edit.birthPlaceFull !== undefined) person.birthPlaceFull = edit.birthPlaceFull;
+    if (edit.birthLat !== undefined) person.birthLat = edit.birthLat ?? undefined;
+    if (edit.birthLon !== undefined) person.birthLon = edit.birthLon ?? undefined;
     if (edit.deathDateRaw  !== undefined) { person.deathDateRaw  = edit.deathDateRaw; person.deathDate  = normalizeDate(edit.deathDateRaw); person.deathYear  = extractYear(edit.deathDateRaw); }
     if (edit.deathPlace  !== undefined) person.deathPlace  = edit.deathPlace;
     if (edit.deathPlaceFull !== undefined) person.deathPlaceFull = edit.deathPlaceFull;
+    if (edit.deathLat !== undefined) person.deathLat = edit.deathLat ?? undefined;
+    if (edit.deathLon !== undefined) person.deathLon = edit.deathLon ?? undefined;
     if (edit.burialDateRaw !== undefined) person.burialDateRaw   = edit.burialDateRaw;
     if (edit.burialPlace !== undefined) person.burialPlace       = edit.burialPlace;
     if (edit.chrDateRaw  !== undefined) person.chrDateRaw        = edit.chrDateRaw;

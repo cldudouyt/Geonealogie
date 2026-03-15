@@ -28,6 +28,12 @@ export async function saveEdit(
     } catch { /* ignore malformed JSON */ }
   }
 
+  const getFloat = (k: string) => {
+    const v = formData.get(k)?.toString().trim();
+    const n = v ? parseFloat(v) : NaN;
+    return isNaN(n) ? undefined : n;
+  };
+
   const edit: PersonEdit = {
     givenNames:     get('givenNames'),
     surname:        get('surname'),
@@ -35,8 +41,12 @@ export async function saveEdit(
     sex:            (get('sex') as 'M' | 'F' | 'U') || undefined,
     birthDateRaw:   get('birthDateRaw'),
     birthPlace:     get('birthPlace'),
+    birthLat:       getFloat('birthLat'),
+    birthLon:       getFloat('birthLon'),
     deathDateRaw:   get('deathDateRaw'),
     deathPlace:     get('deathPlace'),
+    deathLat:       getFloat('deathLat'),
+    deathLon:       getFloat('deathLon'),
     burialDateRaw:  get('burialDateRaw'),
     burialPlace:    get('burialPlace'),
     chrDateRaw:     get('chrDateRaw'),

@@ -20,9 +20,13 @@ export interface PersonEdit {
   birthDateRaw?: string;
   birthPlace?: string;
   birthPlaceFull?: string;
+  birthLat?: number | null;
+  birthLon?: number | null;
   deathDateRaw?: string;
   deathPlace?: string;
   deathPlaceFull?: string;
+  deathLat?: number | null;
+  deathLon?: number | null;
   burialDateRaw?: string;
   burialPlace?: string;
   chrDateRaw?: string;
