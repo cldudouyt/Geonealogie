@@ -9,7 +9,19 @@ export async function GET(request: Request) {
   return NextResponse.json({
     id: person.id,
     displayName: person.displayName,
-    notes: person.notes,
+    birthDateRaw: person.birthDateRaw,
+    birthPlace: person.birthPlace,
+    birthPlaceFull: person.birthPlaceFull,
+    birthLat: person.birthLat,
+    birthLon: person.birthLon,
+    deathDateRaw: person.deathDateRaw,
+    deathPlace: person.deathPlace,
+    deathPlaceFull: person.deathPlaceFull,
+    deathLat: person.deathLat,
+    deathLon: person.deathLon,
     burialPlace: person.burialPlace,
+    burialDateRaw: person.burialDateRaw,
+    events: person.events,
+    notes: person.notes,
   });
 }

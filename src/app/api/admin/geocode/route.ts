@@ -12,6 +12,9 @@ export async function GET() {
   for (const p of persons) {
     if (p.birthPlaceFull && p.birthLat == null) placeNames.add(p.birthPlaceFull);
     if (p.deathPlaceFull && p.deathLat == null) placeNames.add(p.deathPlaceFull);
+    for (const evt of p.events) {
+      if (evt.placeFull && evt.lat == null) placeNames.add(evt.placeFull);
+    }
   }
 
   const uncached = [...placeNames].filter(pl => getCached(pl) === undefined);
@@ -33,6 +36,9 @@ export async function POST() {
   for (const p of persons) {
     if (p.birthPlaceFull && p.birthLat == null) placeNames.add(p.birthPlaceFull);
     if (p.deathPlaceFull && p.deathLat == null) placeNames.add(p.deathPlaceFull);
+    for (const evt of p.events) {
+      if (evt.placeFull && evt.lat == null) placeNames.add(evt.placeFull);
+    }
   }
 
   const log: string[] = [];

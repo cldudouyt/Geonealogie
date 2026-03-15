@@ -9,6 +9,8 @@ export async function middleware(request: NextRequest) {
   if (pathname === '/login') return NextResponse.next();
   if (pathname === '/api/admin/clear-cache') return NextResponse.next();
   if (pathname === '/api/admin/debug-person') return NextResponse.next();
+  if (pathname === '/api/admin/debug-journey') return NextResponse.next();
+  if (pathname.startsWith('/api/journey/')) return NextResponse.next();
 
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   const valid = token ? await verifySessionToken(token) : false;

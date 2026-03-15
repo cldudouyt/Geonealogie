@@ -357,7 +357,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
         )}
 
         {/* Migration / life journey */}
-        <MigrationSection stops={journeyStops} />
+        <MigrationSection stops={journeyStops} personId={id} />
 
         {/* Map — relatives context */}
         {mapMarkers.length > 0 && (

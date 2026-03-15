@@ -269,5 +269,17 @@
   "Casablanca  Maroc,,,,,": {
     "lat": 33.5945144,
     "lon": -7.6200284
+  },
+  "Guelma,,,,ALGÉRIE,": {
+    "lat": 36.4622,
+    "lon": 7.4248
+  },
+  "Maisons-Alfort,94700,Val-de-Marne,Ile-de-France,FRANCE,": {
+    "lat": 48.8117,
+    "lon": 2.4371
+  },
+  "Lyon,69000,Rhone,Rhone-Alpes,FRANCE,": {
+    "lat": 45.7485,
+    "lon": 4.8467
   }
 }

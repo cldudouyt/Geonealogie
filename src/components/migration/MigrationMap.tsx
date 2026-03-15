@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import type { JourneyStop } from './MigrationSection';
 
-interface MigrationMapProps {
+export interface MigrationMapProps {
   stops: JourneyStop[];
 }
 
@@ -45,6 +45,8 @@ export default function MigrationMap({ stops }: MigrationMapProps) {
       mapInstanceRef.current.remove();
       mapInstanceRef.current = null;
     }
+
+    console.log('[MigrationMap] stops received:', JSON.stringify(stops.map(s => ({ label: s.label, lat: s.lat, lon: s.lon }))));
 
     import('leaflet').then(L => {
       if (cancelled || !mapRef.current) return;

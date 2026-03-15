@@ -429,6 +429,9 @@ async function buildStore(): Promise<GedcomStore> {
   for (const p of persons.values()) {
     if (p.birthPlaceFull && p.birthLat == null) placeNames.push(p.birthPlaceFull);
     if (p.deathPlaceFull && p.deathLat == null) placeNames.push(p.deathPlaceFull);
+    for (const evt of p.events) {
+      if (evt.placeFull && evt.lat == null) placeNames.push(evt.placeFull);
+    }
   }
   const geoMap = applyGeoCache(placeNames);
   for (const p of persons.values()) {
@@ -439,6 +442,12 @@ async function buildStore(): Promise<GedcomStore> {
     if (p.deathPlaceFull && p.deathLat == null) {
       const pt = geoMap.get(p.deathPlaceFull);
       if (pt) { p.deathLat = pt.lat; p.deathLon = pt.lon; }
+    }
+    for (const evt of p.events) {
+      if (evt.placeFull && evt.lat == null) {
+        const pt = geoMap.get(evt.placeFull);
+        if (pt) { evt.lat = pt.lat; evt.lon = pt.lon; }
+      }
     }
   }
 
