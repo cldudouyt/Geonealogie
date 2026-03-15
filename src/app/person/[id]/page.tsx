@@ -57,6 +57,8 @@ function generateBio(
 }
 import type { MapMarker } from '@/components/map/PersonMap';
 import PersonMapWrapper from '@/components/map/PersonMapWrapper';
+import MigrationSection from '@/components/migration/MigrationSection';
+import type { JourneyStop } from '@/components/migration/MigrationSection';
 import DocumentsSection from '@/components/DocumentsSection';
 import { getDocumentsForPerson } from '@/lib/documents-store';
 import ResearchPanel from '@/components/ResearchPanel';
@@ -138,6 +140,43 @@ export default async function PersonPage({ params }: PersonPageProps) {
         personId: person.id,
       });
     }
+  }
+
+  // Build life journey stops for migration section
+  const journeyStops: JourneyStop[] = [];
+  if (person.birthDateRaw || person.birthPlaceFull || person.birthPlace) {
+    journeyStops.push({
+      type: 'birth', label: 'Naissance',
+      dateRaw: person.birthDateRaw,
+      place: person.birthPlaceFull || person.birthPlace,
+      lat: person.birthLat, lon: person.birthLon,
+    });
+  }
+  for (const evt of person.events) {
+    if (evt.dateRaw || evt.place || evt.placeFull) {
+      journeyStops.push({
+        type: 'event', label: evt.type,
+        dateRaw: evt.dateRaw,
+        place: evt.placeFull || evt.place,
+        lat: evt.lat, lon: evt.lon,
+      });
+    }
+  }
+  if (person.deathDateRaw || person.deathPlaceFull || person.deathPlace) {
+    journeyStops.push({
+      type: 'death', label: 'Décès',
+      dateRaw: person.deathDateRaw,
+      place: person.deathPlaceFull || person.deathPlace,
+      lat: person.deathLat, lon: person.deathLon,
+    });
+  }
+  if (person.burialDateRaw || person.burialPlace) {
+    journeyStops.push({
+      type: 'burial', label: 'Inhumation',
+      dateRaw: person.burialDateRaw,
+      place: person.burialPlace,
+      lat: null, lon: null,
+    });
   }
 
   // Build chronological timeline
@@ -302,10 +341,13 @@ export default async function PersonPage({ params }: PersonPageProps) {
           </div>
         )}
 
-        {/* Map */}
+        {/* Migration / life journey */}
+        <MigrationSection stops={journeyStops} />
+
+        {/* Map — relatives context */}
         {mapMarkers.length > 0 && (
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm mb-6">
-            <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">Parcours de vie</h2>
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm mb-6 mt-6">
+            <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">Carte — famille proche</h2>
             <PersonMapWrapper markers={mapMarkers} centerId={id} />
           </div>
         )}
