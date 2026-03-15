@@ -529,9 +529,19 @@ async function applyOverrides(s: GedcomStore): Promise<void> {
     if (edit.nationality !== undefined) person.nationality       = edit.nationality;
     if (edit.isAdopted   !== undefined) person.isAdopted         = edit.isAdopted;
     if (edit.notes       !== undefined) person.notes             = edit.notes;
-    if (edit.events      !== undefined) person.events = edit.events.map(e => ({
-      type: e.type, dateRaw: e.dateRaw, place: e.place, note: e.note,
-    }));
+    if (edit.events      !== undefined) {
+      const origEvents = person.events;
+      person.events = edit.events.map((e, idx) => {
+        // Preserve geo data from the original event at the same index
+        const orig = origEvents[idx];
+        return {
+          type: e.type, dateRaw: e.dateRaw, place: e.place, note: e.note,
+          placeFull: orig?.placeFull,
+          lat: orig?.lat,
+          lon: orig?.lon,
+        };
+      });
+    }
     if (edit.photoUrl    !== undefined) person.photoUrl    = edit.photoUrl;
     // Recompute displayName
     person.displayName = `${person.givenNames.split(',')[0].trim()} ${person.surname}`.trim();

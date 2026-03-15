@@ -42,5 +42,9 @@ export async function GET(request: Request) {
     stops: journeyStops.map(s => ({
       label: s.label, lat: s.lat, lon: s.lon, latType: typeof s.lat, lonType: typeof s.lon,
     })),
+    rawEvents: person.events.map(e => ({
+      type: e.type, place: e.place, placeFull: e.placeFull,
+      lat: e.lat, lon: e.lon, latType: typeof e.lat,
+    })),
   });
 }
