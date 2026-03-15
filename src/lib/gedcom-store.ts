@@ -124,6 +124,24 @@ function parsePlace(placeStr: string | undefined) {
   };
 }
 
+/**
+ * Formats a raw Heredis GEDCOM place string into a human-readable label.
+ * Format: city, postal, department, region, country[, street details…]
+ * e.g. "Barcelone,,,Cataluña,ESPAGNE,Calle de Illas y Vidal,24, barriada de San Gervasio"
+ *   → "Barcelone, Cataluña, ESPAGNE — Calle de Illas y Vidal, 24, barriada de San Gervasio"
+ */
+export function formatPlaceFull(placeFull: string | undefined): string {
+  if (!placeFull) return '';
+  const parts = placeFull.split(',').map(s => s.trim());
+  const city    = parts[0] || '';
+  const region  = parts[3] || '';
+  const country = parts[4] || '';
+  const extras  = parts.slice(5).filter(Boolean);
+
+  const main = [city, region, country].filter(Boolean).join(', ');
+  return extras.length > 0 ? `${main} — ${extras.join(', ')}` : main;
+}
+
 function parseCoord(str: string | undefined): number | undefined {
   if (!str) return undefined;
   const dir = str.charAt(0);

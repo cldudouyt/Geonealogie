@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import ShareButton from '@/components/ui/ShareButton';
-import { getPerson, getParents, getChildren, getSpouses, getSiblings } from '@/lib/gedcom-store';
+import { getPerson, getParents, getChildren, getSpouses, getSiblings, formatPlaceFull } from '@/lib/gedcom-store';
 import type { PersonRecord } from '@/lib/gedcom-store';
 
 function generateBio(
@@ -20,7 +20,7 @@ function generateBio(
   let intro = `${person.givenNames.split(',')[0].trim()} ${birthName}`.trim();
   intro += ` est né${f ? 'e' : ''}`;
   if (person.birthDateRaw) intro += ` le ${person.birthDateRaw}`;
-  if (person.birthPlaceFull || person.birthPlace) intro += ` à ${person.birthPlaceFull || person.birthPlace}`;
+  if (person.birthPlaceFull || person.birthPlace) intro += ` à ${formatPlaceFull(person.birthPlaceFull) || person.birthPlace}`;
   if (parents.length > 0) intro += `, ${f ? 'fille' : 'fils'} de ${parents.map(p => p.displayName).join(' et ')}`;
   lines.push(intro);
 
@@ -45,7 +45,7 @@ function generateBio(
   if (person.deathDateRaw || person.deathYear || person.deathPlaceFull) {
     let d = `${f ? 'Elle est décédée' : 'Il est décédé'}`;
     if (person.deathDateRaw) d += ` le ${person.deathDateRaw}`;
-    if (person.deathPlaceFull || person.deathPlace) d += ` à ${person.deathPlaceFull || person.deathPlace}`;
+    if (person.deathPlaceFull || person.deathPlace) d += ` à ${formatPlaceFull(person.deathPlaceFull) || person.deathPlace}`;
     if (person.birthYear && person.deathYear) {
       const age = parseInt(person.deathYear) - parseInt(person.birthYear);
       if (age > 0 && age < 120) d += `, à l'âge de ${age} ans`;
@@ -110,7 +110,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
       mapMarkers.push({
         lat: p.birthLat, lon: p.birthLon,
         label: p.displayName, surname: p.surname,
-        eventType: 'birth', dateRaw: p.birthDateRaw, place: p.birthPlaceFull,
+        eventType: 'birth', dateRaw: p.birthDateRaw, place: formatPlaceFull(p.birthPlaceFull) || p.birthPlace,
         personId: p.id,
       });
     }
@@ -118,7 +118,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
       mapMarkers.push({
         lat: p.deathLat, lon: p.deathLon,
         label: p.displayName, surname: p.surname,
-        eventType: 'death', dateRaw: p.deathDateRaw, place: p.deathPlaceFull,
+        eventType: 'death', dateRaw: p.deathDateRaw, place: formatPlaceFull(p.deathPlaceFull) || p.deathPlace,
         personId: p.id,
       });
     }
@@ -136,7 +136,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
         lat: evt.lat, lon: evt.lon,
         label: person.displayName, surname: '',
         eventType: 'event', eventLabel: evt.type,
-        dateRaw: evt.dateRaw, place: evt.placeFull || evt.place,
+        dateRaw: evt.dateRaw, place: formatPlaceFull(evt.placeFull) || evt.place,
         personId: person.id,
       });
     }
@@ -155,7 +155,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
     journeyStops.push({
       type: 'birth', label: 'Naissance',
       dateRaw: person.birthDateRaw,
-      place: person.birthPlaceFull || person.birthPlace,
+      place: formatPlaceFull(person.birthPlaceFull) || person.birthPlace,
       lat: person.birthLat != null ? Number(person.birthLat) : null,
       lon: person.birthLon != null ? Number(person.birthLon) : null,
     });
@@ -165,7 +165,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
       journeyStops.push({
         type: 'event', label: evt.type,
         dateRaw: evt.dateRaw,
-        place: evt.placeFull || evt.place,
+        place: formatPlaceFull(evt.placeFull) || evt.place,
         lat: evt.lat != null ? Number(evt.lat) : null,
         lon: evt.lon != null ? Number(evt.lon) : null,
       });
@@ -175,7 +175,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
     journeyStops.push({
       type: 'death', label: 'Décès',
       dateRaw: person.deathDateRaw,
-      place: person.deathPlaceFull || person.deathPlace,
+      place: formatPlaceFull(person.deathPlaceFull) || person.deathPlace,
       lat: person.deathLat != null ? Number(person.deathLat) : null,
       lon: person.deathLon != null ? Number(person.deathLon) : null,
     });
@@ -201,13 +201,13 @@ export default async function PersonPage({ params }: PersonPageProps) {
     timeline.push({ label: 'Baptême', dateRaw: person.chrDateRaw, place: person.chrPlace, icon: '✦' });
   }
   if (person.birthDateRaw || person.birthPlaceFull) {
-    timeline.push({ label: 'Naissance', dateRaw: person.birthDateRaw, place: person.birthPlaceFull, icon: '★' });
+    timeline.push({ label: 'Naissance', dateRaw: person.birthDateRaw, place: formatPlaceFull(person.birthPlaceFull) || person.birthPlace, icon: '★' });
   }
   for (const evt of person.events) {
-    timeline.push({ label: evt.type, dateRaw: evt.dateRaw, place: evt.placeFull || evt.place, icon: '◆', note: evt.note });
+    timeline.push({ label: evt.type, dateRaw: evt.dateRaw, place: formatPlaceFull(evt.placeFull) || evt.place, icon: '◆', note: evt.note });
   }
   if (person.deathDateRaw || person.deathPlaceFull) {
-    timeline.push({ label: 'Décès', dateRaw: person.deathDateRaw, place: person.deathPlaceFull, icon: '†' });
+    timeline.push({ label: 'Décès', dateRaw: person.deathDateRaw, place: formatPlaceFull(person.deathPlaceFull) || person.deathPlace, icon: '†' });
   }
   if (person.burialDateRaw || person.burialPlace) {
     timeline.push({ label: 'Inhumation', dateRaw: person.burialDateRaw, place: person.burialPlace, icon: '⚰' });
