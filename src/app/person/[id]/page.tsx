@@ -156,7 +156,8 @@ export default async function PersonPage({ params }: PersonPageProps) {
       type: 'birth', label: 'Naissance',
       dateRaw: person.birthDateRaw,
       place: person.birthPlaceFull || person.birthPlace,
-      lat: person.birthLat ?? null, lon: person.birthLon ?? null,
+      lat: person.birthLat != null ? Number(person.birthLat) : null,
+      lon: person.birthLon != null ? Number(person.birthLon) : null,
     });
   }
   for (const evt of person.events) {
@@ -165,7 +166,8 @@ export default async function PersonPage({ params }: PersonPageProps) {
         type: 'event', label: evt.type,
         dateRaw: evt.dateRaw,
         place: evt.placeFull || evt.place,
-        lat: evt.lat ?? null, lon: evt.lon ?? null,
+        lat: evt.lat != null ? Number(evt.lat) : null,
+        lon: evt.lon != null ? Number(evt.lon) : null,
       });
     }
   }
@@ -174,7 +176,8 @@ export default async function PersonPage({ params }: PersonPageProps) {
       type: 'death', label: 'Décès',
       dateRaw: person.deathDateRaw,
       place: person.deathPlaceFull || person.deathPlace,
-      lat: person.deathLat ?? null, lon: person.deathLon ?? null,
+      lat: person.deathLat != null ? Number(person.deathLat) : null,
+      lon: person.deathLon != null ? Number(person.deathLon) : null,
     });
   }
   if (person.burialDateRaw || person.burialPlace) {

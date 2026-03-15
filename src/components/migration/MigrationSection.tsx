@@ -107,9 +107,9 @@ export default function MigrationSection({ stops }: MigrationSectionProps) {
       </div>
 
       {/* Map (togglable) */}
-      {showMap && (
+      {showMap && stopsWithCoords.length >= 1 && (
         <div className="mt-4">
-          <MigrationMap stops={stopsWithCoords.length >= 1 ? stops : []} />
+          <MigrationMap stops={stopsWithCoords} />
         </div>
       )}
 

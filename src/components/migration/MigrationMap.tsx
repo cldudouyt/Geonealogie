@@ -61,8 +61,9 @@ export default function MigrationMap({ stops }: MigrationMapProps) {
 
       for (let i = 0; i < stops.length; i++) {
         const stop = stops[i];
+        // stops already filtered to have coords by MigrationSection
         if (stop.lat == null || stop.lon == null) continue;
-        const ll: [number, number] = [stop.lat, stop.lon];
+        const ll: [number, number] = [Number(stop.lat), Number(stop.lon)];
         latlngs.push(ll);
 
         const popup = `<div style="font-family:system-ui,sans-serif;font-size:13px;line-height:1.6;min-width:160px">
