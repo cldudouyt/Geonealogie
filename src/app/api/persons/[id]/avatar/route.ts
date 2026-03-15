@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadToStorage } from '@/lib/documents-store';
+import { savePersonEdit } from '@/lib/overrides-store';
+import { clearStore } from '@/lib/gedcom-store';
 
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 const MAX_SIZE = 4 * 1024 * 1024; // 4 Mo (sous la limite Vercel de 4.5 Mo)
@@ -34,6 +36,11 @@ export async function POST(
 
   // uploadToStorage uses Vercel Blob in production, local public/documents/ in dev
   const photoUrl = await uploadToStorage(id, filename, buffer, file.type);
+
+  // Persist immediately so the tree and person page reflect the new photo without
+  // requiring the user to also click "Enregistrer les modifications"
+  await savePersonEdit(id, { photoUrl });
+  clearStore();
 
   return NextResponse.json({ photoUrl });
 }

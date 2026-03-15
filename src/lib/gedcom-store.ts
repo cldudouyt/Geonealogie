@@ -89,6 +89,8 @@ interface GedcomStore {
 }
 
 let storePromise: Promise<GedcomStore> | null = null;
+let storeBuiltAt = 0;
+const STORE_TTL_MS = 60_000; // 60s — ensures cross-instance cache invalidation on Vercel
 
 function stripXref(pointer: string | undefined): string {
   if (!pointer) return '';
@@ -509,7 +511,12 @@ async function buildStore(): Promise<GedcomStore> {
 }
 
 export function getStore(): Promise<GedcomStore> {
+  if (storePromise && Date.now() - storeBuiltAt > STORE_TTL_MS) {
+    storePromise = null;
+    clearOverridesCache();
+  }
   if (!storePromise) {
+    storeBuiltAt = Date.now();
     storePromise = buildStore();
   }
   return storePromise;
