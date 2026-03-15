@@ -305,7 +305,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
         {/* Map */}
         {mapMarkers.length > 0 && (
           <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm mb-6">
-            <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">Carte des naissances et décès</h2>
+            <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">Parcours de vie</h2>
             <PersonMapWrapper markers={mapMarkers} centerId={id} />
           </div>
         )}

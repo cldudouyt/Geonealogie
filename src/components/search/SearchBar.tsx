@@ -33,7 +33,7 @@ export default function SearchBar({ onSelect, placeholder = 'Rechercher une pers
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/persons?autocomplete=true&q=${encodeURIComponent(q)}&limit=10`);
+      const res = await fetch(`/api/persons?autocomplete=true&q=${encodeURIComponent(q)}&limit=20`);
       const data = await res.json();
       setResults(data.persons || []);
       setIsOpen(true);

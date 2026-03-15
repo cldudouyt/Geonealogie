@@ -40,12 +40,9 @@ export default function GlobalMap() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapInstanceRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const migrationLayerRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markerLayerRef = useRef<any>(null);
   const markersDataRef = useRef<GlobalMarker[]>([]);
   const [total, setTotal] = useState<number | null>(null);
-  const [showMigrations, setShowMigrations] = useState(false);
   const [yearRange, setYearRange] = useState<[number, number] | null>(null);
   const [activeRange, setActiveRange] = useState<[number, number] | null>(null);
 
@@ -139,64 +136,12 @@ export default function GlobalMap() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRange]);
 
-  // Toggle migration lines
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-
-    import('leaflet').then(L => {
-      if (migrationLayerRef.current) {
-        migrationLayerRef.current.remove();
-        migrationLayerRef.current = null;
-      }
-      if (!showMigrations) return;
-
-      const markers = markersDataRef.current;
-      const births = new Map<string, GlobalMarker>();
-      const deaths = new Map<string, GlobalMarker>();
-      for (const m of markers) {
-        if (m.eventType === 'birth') births.set(m.personId, m);
-        if (m.eventType === 'death') deaths.set(m.personId, m);
-      }
-
-      const group = L.layerGroup();
-      for (const [personId, birth] of births) {
-        const death = deaths.get(personId);
-        if (!death) continue;
-        const dist = Math.sqrt((birth.lat - death.lat) ** 2 + (birth.lon - death.lon) ** 2);
-        if (dist < 0.05) continue;
-
-        const color = markerColor(birth.surname, 'birth');
-        L.polyline([[birth.lat, birth.lon], [death.lat, death.lon]], {
-          color, weight: 1.5, opacity: 0.55, dashArray: '5 5',
-        }).bindPopup(`<div style="font-size:12px"><strong>${birth.label}</strong><br/>Naissance → Décès</div>`)
-          .addTo(group);
-      }
-      group.addTo(map);
-      migrationLayerRef.current = group;
-    });
-  }, [showMigrations]);
 
   const isFiltered = yearRange && activeRange && (activeRange[0] !== yearRange[0] || activeRange[1] !== yearRange[1]);
 
   return (
     <div style={{ position: 'relative', height: '100%' }}>
       <div ref={mapRef} style={{ height: '100%', width: '100%', zIndex: 0 }} />
-
-      {/* Top-right controls */}
-      <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
-        <button
-          onClick={() => setShowMigrations(v => !v)}
-          style={{
-            padding: '6px 12px', borderRadius: 6, fontSize: 12, fontFamily: 'sans-serif',
-            border: '1px solid rgba(255,255,255,0.25)',
-            background: showMigrations ? '#3b82f6' : 'rgba(15,23,42,0.82)',
-            color: 'white', cursor: 'pointer', backdropFilter: 'blur(4px)',
-          }}
-        >
-          ↔ Migrations {showMigrations ? 'ON' : 'OFF'}
-        </button>
-      </div>
 
       {/* Year filter */}
       {yearRange && activeRange && (

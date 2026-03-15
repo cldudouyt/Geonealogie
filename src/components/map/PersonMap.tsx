@@ -52,6 +52,14 @@ function makeSvg(eventType: 'birth' | 'death' | 'event', color: string): string 
   </svg>`;
 }
 
+function extractYear(dateRaw?: string): number {
+  if (!dateRaw) return 9999;
+  const m = dateRaw.match(/\b(\d{4})\b/);
+  return m ? parseInt(m[1]) : 9999;
+}
+
+const EVENT_ORDER: Record<string, number> = { birth: 0, event: 1, death: 2 };
+
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -114,6 +122,44 @@ export default function PersonMap({ markers, centerId }: PersonMapProps) {
 
       if (bounds.length > 0) {
         map.fitBounds(bounds as any, { padding: [40, 40], maxZoom: 10 });
+      }
+
+      // Life journey path for the main person (centerId)
+      if (centerId) {
+        const ownMarkers = markers
+          .filter(m => m.personId === centerId && m.lat != null && m.lon != null)
+          .sort((a, b) => {
+            const yearDiff = extractYear(a.dateRaw) - extractYear(b.dateRaw);
+            if (yearDiff !== 0) return yearDiff;
+            return (EVENT_ORDER[a.eventType] ?? 1) - (EVENT_ORDER[b.eventType] ?? 1);
+          });
+
+        if (ownMarkers.length >= 2) {
+          const pathColor = markerColor(ownMarkers[0].surname || '?');
+          const latlngs = ownMarkers.map(m => [m.lat, m.lon] as [number, number]);
+
+          // Main path line
+          L.polyline(latlngs, {
+            color: pathColor,
+            weight: 2.5,
+            opacity: 0.65,
+            dashArray: '8 5',
+          }).addTo(map);
+
+          // Direction arrows between each pair of points
+          for (let i = 0; i < latlngs.length - 1; i++) {
+            const [lat1, lon1] = latlngs[i];
+            const [lat2, lon2] = latlngs[i + 1];
+            const midLat = (lat1 + lat2) / 2;
+            const midLon = (lon1 + lon2) / 2;
+            const angle = Math.atan2(lat2 - lat1, lon2 - lon1) * (180 / Math.PI);
+            const arrowSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" style="transform:rotate(${angle - 90}deg)"><polygon points="8,1 14,14 8,10 2,14" fill="${pathColor}" opacity="0.8"/></svg>`;
+            L.marker([midLat, midLon], {
+              icon: L.divIcon({ html: arrowSvg, className: '', iconSize: [16, 16], iconAnchor: [8, 8] }),
+              interactive: false,
+            }).addTo(map);
+          }
+        }
       }
     });
 
