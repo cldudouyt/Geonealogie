@@ -67,6 +67,7 @@ export async function POST(
           maximumSizeInBytes: MAX_SIZE,
           tokenPayload: JSON.stringify({ personId: id }),
           addRandomSuffix: false,
+          allowOverwrite: true,
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
