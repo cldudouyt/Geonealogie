@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useRef } from 'react';
 import Image from 'next/image';
+import { upload } from '@vercel/blob/client';
 import { saveEdit, type EditState } from './actions';
 import type { PersonRecord } from '@/lib/gedcom-store';
 import { Monogram } from '@/components/ui/Monogram';
@@ -65,12 +66,30 @@ export default function EditForm({ person }: { person: PersonRecord }) {
     setAvatarUploading(true);
     setAvatarError('');
     try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const res = await fetch(`/api/persons/${person.id}/avatar`, { method: 'POST', body: fd });
-      const data = await res.json();
-      if (!res.ok) { setAvatarError(data.error || 'Erreur upload'); return; }
-      setPhotoUrl(data.photoUrl);
+      const MAX_SIZE = 10 * 1024 * 1024;
+      if (file.size > MAX_SIZE) {
+        setAvatarError('Fichier trop volumineux (max 10 Mo)');
+        return;
+      }
+      const ext = file.type.split('/')[1]?.replace('jpeg', 'jpg') ?? 'jpg';
+      const filename = `avatar-${person.id}.${ext}`;
+
+      // In production: direct browser→Blob upload (bypasses the 4.5 MB serverless limit)
+      // In local dev (no BLOB_READ_WRITE_TOKEN): fall back to FormData POST
+      if (process.env.NEXT_PUBLIC_VERCEL_ENV) {
+        const blob = await upload(filename, file, {
+          access: 'public',
+          handleUploadUrl: `/api/persons/${person.id}/avatar`,
+        });
+        setPhotoUrl(blob.url);
+      } else {
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await fetch(`/api/persons/${person.id}/avatar`, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) { setAvatarError(data.error || 'Erreur upload'); return; }
+        setPhotoUrl(data.photoUrl);
+      }
     } catch {
       setAvatarError('Erreur lors du téléversement');
     } finally {
@@ -160,7 +179,7 @@ export default function EditForm({ person }: { person: PersonRecord }) {
                 Supprimer la photo
               </button>
             )}
-            <p className="text-xs text-slate-400">JPG, PNG, WebP · Max 4 Mo</p>
+            <p className="text-xs text-slate-400">JPG, PNG, WebP · Max 10 Mo</p>
             {avatarError && <p className="text-xs text-red-500">{avatarError}</p>}
           </div>
           <input
