@@ -7,7 +7,7 @@ import { clearStore } from '@/lib/gedcom-store';
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif']);
 const MAX_SIZE = 10 * 1024 * 1024; // 10 Mo
 
 // ── Vercel Blob client-side upload (production) ──────────────────────────────
@@ -37,7 +37,7 @@ export async function POST(
       return NextResponse.json({ error: 'Fichier trop volumineux (max 10 Mo)' }, { status: 400 });
     }
     if (!ALLOWED_TYPES.has(file.type)) {
-      return NextResponse.json({ error: 'Format non autorisé (JPG, PNG, GIF, WebP uniquement)' }, { status: 400 });
+      return NextResponse.json({ error: `Format non autorisé (reçu: ${file.type || 'inconnu'})` }, { status: 400 });
     }
 
     const ext = file.type.split('/')[1].replace('jpeg', 'jpg');

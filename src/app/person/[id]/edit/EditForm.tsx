@@ -72,7 +72,8 @@ export default function EditForm({ person }: { person: PersonRecord }) {
         setAvatarError('Fichier trop volumineux (max 10 Mo)');
         return;
       }
-      const ext = file.type.split('/')[1]?.replace('jpeg', 'jpg') ?? 'jpg';
+      const rawExt = file.type.split('/')[1] ?? 'jpg';
+      const ext = rawExt.replace('jpeg', 'jpg').replace('heif', 'heic');
       // Full path so the blob is stored at documents/{id}/avatar-{id}.ext
       const pathname = `documents/${person.id}/avatar-${person.id}.${ext}`;
 
@@ -95,8 +96,9 @@ export default function EditForm({ person }: { person: PersonRecord }) {
         setPhotoUrl(data.photoUrl);
         setDisplayPhotoUrl(data.photoUrl + '?t=' + Date.now());
       }
-    } catch {
-      setAvatarError('Erreur lors du téléversement');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setAvatarError('Erreur : ' + msg);
     } finally {
       setAvatarUploading(false);
     }
@@ -184,13 +186,13 @@ export default function EditForm({ person }: { person: PersonRecord }) {
                 Supprimer la photo
               </button>
             )}
-            <p className="text-xs text-slate-400">JPG, PNG, WebP · Max 10 Mo</p>
+            <p className="text-xs text-slate-400">JPG, PNG, WebP, HEIC · Max 10 Mo</p>
             {avatarError && <p className="text-xs text-red-500">{avatarError}</p>}
           </div>
           <input
             ref={avatarInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
+            accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif"
             className="hidden"
             onChange={handleAvatarChange}
           />
