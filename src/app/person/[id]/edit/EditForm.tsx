@@ -72,12 +72,13 @@ export default function EditForm({ person }: { person: PersonRecord }) {
         return;
       }
       const ext = file.type.split('/')[1]?.replace('jpeg', 'jpg') ?? 'jpg';
-      const filename = `avatar-${person.id}.${ext}`;
+      // Full path so the blob is stored at documents/{id}/avatar-{id}.ext
+      const pathname = `documents/${person.id}/avatar-${person.id}.${ext}`;
 
       // In production: direct browser→Blob upload (bypasses the 4.5 MB serverless limit)
       // In local dev (no BLOB_READ_WRITE_TOKEN): fall back to FormData POST
       if (process.env.NEXT_PUBLIC_VERCEL_ENV) {
-        const blob = await upload(filename, file, {
+        const blob = await upload(pathname, file, {
           access: 'public',
           handleUploadUrl: `/api/persons/${person.id}/avatar`,
         });

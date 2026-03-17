@@ -61,13 +61,12 @@ export async function POST(
     const jsonResponse = await handleUpload({
       body,
       request: req,
-      onBeforeGenerateToken: async (pathname) => {
+      onBeforeGenerateToken: async () => {
         return {
           allowedContentTypes: [...ALLOWED_TYPES],
           maximumSizeInBytes: MAX_SIZE,
           tokenPayload: JSON.stringify({ personId: id }),
           addRandomSuffix: false,
-          pathname: `documents/${id}/${pathname}`,
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
