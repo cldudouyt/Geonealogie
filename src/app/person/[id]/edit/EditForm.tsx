@@ -54,8 +54,9 @@ export default function EditForm({ person }: { person: PersonRecord }) {
   const boundSave = saveEdit.bind(null, person.id);
   const [state, action, pending] = useActionState<EditState | null, FormData>(boundSave, null);
 
-  // Avatar state
+  // Avatar state: photoUrl is the clean URL (saved to DB), displayPhotoUrl adds ?t= for cache-busting
   const [photoUrl, setPhotoUrl] = useState<string>(person.photoUrl || '');
+  const [displayPhotoUrl, setDisplayPhotoUrl] = useState<string>(person.photoUrl || '');
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState('');
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -83,6 +84,8 @@ export default function EditForm({ person }: { person: PersonRecord }) {
           handleUploadUrl: `/api/persons/${person.id}/avatar`,
         });
         setPhotoUrl(blob.url);
+        // Cache-busting so the browser doesn't show the old cached image (same URL)
+        setDisplayPhotoUrl(blob.url + '?t=' + Date.now());
       } else {
         const fd = new FormData();
         fd.append('file', file);
@@ -90,6 +93,7 @@ export default function EditForm({ person }: { person: PersonRecord }) {
         const data = await res.json();
         if (!res.ok) { setAvatarError(data.error || 'Erreur upload'); return; }
         setPhotoUrl(data.photoUrl);
+        setDisplayPhotoUrl(data.photoUrl + '?t=' + Date.now());
       }
     } catch {
       setAvatarError('Erreur lors du téléversement');
@@ -146,8 +150,8 @@ export default function EditForm({ person }: { person: PersonRecord }) {
         <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-4">Photo de profil</h3>
         <div className="flex items-center gap-5">
           <span className="relative shrink-0 w-20 h-20 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-            {photoUrl ? (
-              <Image src={photoUrl} alt={person.displayName} fill className="object-cover" unoptimized />
+            {displayPhotoUrl ? (
+              <Image key={displayPhotoUrl} src={displayPhotoUrl} alt={person.displayName} fill className="object-cover" unoptimized />
             ) : (
               <span className="flex items-center justify-center w-full h-full">
                 <Monogram name={person.displayName} sex={person.sex} size="lg" />
