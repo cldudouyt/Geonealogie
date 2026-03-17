@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState, useRef } from 'react';
+import { useActionState, useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { upload } from '@vercel/blob/client';
 import { saveEdit, type EditState } from './actions';
@@ -54,27 +54,37 @@ export default function EditForm({ person }: { person: PersonRecord }) {
   const boundSave = saveEdit.bind(null, person.id);
   const [state, action, pending] = useActionState<EditState | null, FormData>(boundSave, null);
 
-  // Avatar state: photoUrl is the clean URL (saved to DB), displayPhotoUrl adds ?t= for cache-busting
+  // Avatar state: photoUrl is the clean URL (saved to DB), displayPhotoUrl may be a local blob URL
   const [photoUrl, setPhotoUrl] = useState<string>(person.photoUrl || '');
   const [displayPhotoUrl, setDisplayPhotoUrl] = useState<string>(person.photoUrl || '');
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState('');
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  // Track local preview URL so we can revoke it when a new one replaces it
+  const previewUrlRef = useRef<string | null>(null);
+  useEffect(() => () => { if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current); }, []);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAvatarUploading(true);
     setAvatarError('');
+
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      setAvatarError('Fichier trop volumineux (max 10 Mo)');
+      return;
+    }
+
+    // Show the new photo immediately from local memory — no CDN delay
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    const localPreviewUrl = URL.createObjectURL(file);
+    previewUrlRef.current = localPreviewUrl;
+    setDisplayPhotoUrl(localPreviewUrl);
+    setAvatarUploading(true);
+
     try {
-      const MAX_SIZE = 10 * 1024 * 1024;
-      if (file.size > MAX_SIZE) {
-        setAvatarError('Fichier trop volumineux (max 10 Mo)');
-        return;
-      }
       const rawExt = file.type.split('/')[1] ?? 'jpg';
       const ext = rawExt.replace('jpeg', 'jpg').replace('heif', 'heic');
-      // Full path so the blob is stored at documents/{id}/avatar-{id}.ext
       const pathname = `documents/${person.id}/avatar-${person.id}.${ext}`;
 
       // In production: direct browser→Blob upload (bypasses the 4.5 MB serverless limit)
@@ -85,8 +95,6 @@ export default function EditForm({ person }: { person: PersonRecord }) {
           handleUploadUrl: `/api/persons/${person.id}/avatar`,
         });
         setPhotoUrl(blob.url);
-        // Cache-busting so the browser doesn't show the old cached image (same URL)
-        setDisplayPhotoUrl(blob.url + '?t=' + Date.now());
       } else {
         const fd = new FormData();
         fd.append('file', file);
@@ -94,11 +102,12 @@ export default function EditForm({ person }: { person: PersonRecord }) {
         const data = await res.json();
         if (!res.ok) { setAvatarError(data.error || 'Erreur upload'); return; }
         setPhotoUrl(data.photoUrl);
-        setDisplayPhotoUrl(data.photoUrl + '?t=' + Date.now());
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setAvatarError('Erreur : ' + msg);
+      // Revert preview on failure
+      setDisplayPhotoUrl(photoUrl);
     } finally {
       setAvatarUploading(false);
     }
