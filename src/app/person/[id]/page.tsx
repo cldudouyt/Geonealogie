@@ -288,7 +288,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
               Éditer
             </Link>
             <Link
-              href={`/?focus=${id}`}
+              href={`/tree?focus=${id}`}
               className="px-3 py-1.5 bg-white text-slate-800 rounded-lg text-sm font-semibold hover:bg-white/90 transition-colors"
             >
               Voir dans l&apos;arbre
