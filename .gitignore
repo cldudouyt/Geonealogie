@@ -43,6 +43,9 @@ next-env.d.ts
 # Claude Code internal files
 .claude/
 
+# Playwright MCP session files
+.playwright-mcp/
+
 # Uploaded documents (stored locally, not committed)
 /public/documents/*
 !/public/documents/.gitkeep
@@ -51,3 +54,11 @@ next-env.d.ts
 
 # Uploaded avatars (stored locally, not committed)
 /public/avatars/*
+
+# Design files and mockup screenshots
+*.jpeg
+Géonéalogie.dc.html
+inspect-*.png
+verify-*.png
+01-accueil.png
+.design-system/
