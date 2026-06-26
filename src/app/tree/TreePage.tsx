@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, Fragment } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { TreeData } from '@/lib/types';
@@ -15,7 +15,7 @@ interface PersonSuggestion {
   birthPlace?: string;
 }
 
-function PersonSearch({ onSelect }: { onSelect: (id: string) => void }) {
+function PersonSearch({ onSelect }: { onSelect: (id: string, name: string) => void }) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<PersonSuggestion[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -54,7 +54,7 @@ function PersonSearch({ onSelect }: { onSelect: (id: string) => void }) {
     setQuery('');
     setSuggestions([]);
     setShowDropdown(false);
-    onSelect(person.id);
+    onSelect(person.id, person.displayName);
   }
 
   return (
@@ -198,6 +198,8 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
   const [treeData, setTreeData] = useState<TreeData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState<string | null>(null);
+  const [trail, setTrail] = useState<{id: string; name: string}[]>([{ id: focusId, name: '' }]);
+  const [defaultName, setDefaultName] = useState('');
 
   const loadTree = useCallback(async (id: string) => {
     if (!id) return;
@@ -219,17 +221,38 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
     loadTree(focusId);
   }, [focusId, loadTree]);
 
+  // Fill empty trail names and capture defaultFocusId name
+  useEffect(() => {
+    if (!treeData) return;
+    if (!defaultName) {
+      const node = treeData.nodes.find(n => n.id === defaultFocusId);
+      if (node) setDefaultName(node.displayName.trim().split(/\s+/)[0]);
+    }
+    setTrail(prev => prev.map(t => {
+      if (t.name) return t;
+      const node = treeData.nodes.find(n => n.id === t.id);
+      return node ? { ...t, name: node.displayName } : t;
+    }));
+  }, [treeData, defaultFocusId, defaultName]);
+
   const switchView = (v: ViewMode) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('view', v);
     router.push(`/tree?${params.toString()}`, { scroll: false });
   };
 
-  const onFocus = useCallback((id: string) => {
+  const onFocus = useCallback((id: string, name?: string) => {
     const params = new URLSearchParams();
     params.set('focus', id);
     params.set('view', view);
     router.push(`/tree?${params.toString()}`, { scroll: false });
+
+    const resolvedName = name ?? '';
+    setTrail(prev => {
+      const idx = prev.findIndex(t => t.id === id);
+      if (idx >= 0) return prev.slice(0, idx + 1);
+      return [...prev, { id, name: resolvedName }];
+    });
   }, [router, view]);
 
   const focusName = treeData
@@ -347,7 +370,10 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
               {/* Buttons */}
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                 <button
-                  onClick={() => onFocus(focusId)}
+                  onClick={() => {
+                    onFocus(defaultFocusId, defaultName);
+                    setTrail([{ id: defaultFocusId, name: defaultName }]);
+                  }}
                   style={{
                     height: 36, padding: '0 14px', borderRadius: 10, border: '1px solid #e0d8c6',
                     background: '#fffdf9', color: '#3a4038', fontSize: 13, fontWeight: 600,
@@ -355,7 +381,7 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
                   }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
-                  Recentrer sur {firstName}
+                  Recentrer sur {defaultName || firstName}
                 </button>
                 <Link
                   href={`/person/${focusId}`}
@@ -371,14 +397,37 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
                 </Link>
               </div>
             </div>
-            {/* Navigation breadcrumb */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.1em', color: '#9a9080', textTransform: 'uppercase' }}>
+            {/* Navigation breadcrumb trail */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.1em', color: '#9a9080', textTransform: 'uppercase', flexShrink: 0 }}>
                 Navigation
               </span>
-              <span style={{ background: '#1e3a2f', color: '#f4efe3', borderRadius: 999, padding: '3px 12px', fontSize: 12, fontWeight: 600 }}>
-                {firstName}
-              </span>
+              {trail.map((t, i) => {
+                const isLast = i === trail.length - 1;
+                const label = t.name.trim().split(/\s+/)[0] || '…';
+                return (
+                  <Fragment key={t.id + '-' + i}>
+                    {i > 0 && <span style={{ color: '#c3b89a', fontSize: 13, lineHeight: 1 }}>›</span>}
+                    <button
+                      type="button"
+                      onClick={() => onFocus(t.id, t.name)}
+                      style={{
+                        background: isLast ? '#1e3a2f' : 'transparent',
+                        color: isLast ? '#f4efe3' : '#6c7064',
+                        border: isLast ? 'none' : '1px solid #e0d8c6',
+                        borderRadius: 999,
+                        padding: '3px 12px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: isLast ? 'default' : 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  </Fragment>
+                );
+              })}
             </div>
           </div>
         );

@@ -11,8 +11,8 @@ export default async function Page({
 }: {
   searchParams: Promise<{ focus?: string; view?: string }>;
 }) {
-  const { focus } = await searchParams;
-  const defaultFocusId = focus ?? await getDefaultPersonId();
+  await searchParams; // consume to avoid warning
+  const defaultFocusId = await getDefaultPersonId(); // always the genealogical root (Léa)
 
   return (
     <Suspense fallback={

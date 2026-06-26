@@ -864,6 +864,13 @@ export async function getTreeCentered(rootId: string): Promise<{ rootId: string;
     }
   }
 
+  // Add siblings of root person (other children of root's parents)
+  for (const parentId of (s.childToParents.get(rootId) || [])) {
+    for (const siblingId of (s.parentToChildren.get(parentId) || [])) {
+      if (siblingId !== rootId) nodeIds.add(siblingId);
+    }
+  }
+
   for (const id of descendantIds) {
     if (id === rootId) continue;
     for (const rel of (s.spouseRelations.get(id) || [])) nodeIds.add(rel.spouseId);
