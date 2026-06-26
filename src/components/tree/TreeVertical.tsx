@@ -119,6 +119,23 @@ function PersonCard({
           Focus
         </span>
       )}
+      {person.isAdopted && !isCenter && (
+        <span style={{
+          position: 'absolute',
+          top: 6,
+          right: 6,
+          fontSize: 8.5,
+          fontWeight: 600,
+          letterSpacing: '.06em',
+          background: '#f0ece4',
+          color: '#9a8c74',
+          borderRadius: 999,
+          padding: '1px 5px',
+          border: '1px solid #ddd5c2',
+        }}>
+          adopté
+        </span>
+      )}
 
       <p style={{
         fontSize: isSibling ? 12.5 : 13.5,
@@ -222,7 +239,7 @@ export default function TreeVertical({ treeData, focusId, onFocus }: TreeVertica
   const spouseMap = new Map<string, string[]>();
 
   for (const link of links) {
-    if (link.type === 'parent') {
+    if (link.type === 'parent' || link.type === 'adoption') {
       const p = childToParents.get(link.target) ?? [];
       p.push(link.source);
       childToParents.set(link.target, p);
