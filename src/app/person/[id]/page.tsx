@@ -2,6 +2,29 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import ShareButton from '@/components/ui/ShareButton';
+
+const EVENT_TYPE_FR: Record<string, string> = {
+  'Military service': 'Service militaire',
+  'Honors': 'Distinctions',
+  'Religious marriage': 'Mariage religieux',
+  'Residence': 'Résidence',
+  'Title': 'Titre',
+  'Travel': 'Voyage',
+  'Post mortem': 'Post mortem',
+};
+
+function translateEventType(type: string): string {
+  return EVENT_TYPE_FR[type] ?? type;
+}
+
+function toTitleCase(s: string): string {
+  return s.toLowerCase().replace(/(?:^|\s)\S/g, c => c.toUpperCase());
+}
+
+function formatGivenNames(givenNames: string): string {
+  const names = givenNames.replace(/,/g, '').trim().split(/\s+/).filter(Boolean);
+  return names.join(', ');
+}
 import { getPerson, getParents, getChildren, getSpouses, getSiblings, formatPlaceFull } from '@/lib/gedcom-store';
 import type { PersonRecord } from '@/lib/gedcom-store';
 
@@ -96,11 +119,9 @@ export default async function PersonPage({ params }: PersonPageProps) {
     ? (await Promise.all(person.adoptedChildIds.map(cid => getPerson(cid)))).filter(Boolean) as PersonRecord[]
     : [];
 
-  const heroGradient = person.sex === 'M'
-    ? 'linear-gradient(135deg, #1e3a5f 0%, #1e40af 60%, #2563eb 100%)'
-    : person.sex === 'F'
-      ? 'linear-gradient(135deg, #831843 0%, #be185d 60%, #ec4899 100%)'
-      : 'linear-gradient(135deg, #1e293b 0%, #334155 60%, #475569 100%)';
+  const heroGradient = person.sex === 'F'
+    ? 'linear-gradient(135deg, #15271f 0%, #1e3a2f 60%, #3d5c4a 100%)'
+    : 'linear-gradient(135deg, #15271f 0%, #1e3a2f 60%, #2f5142 100%)';
   const bio = generateBio(person, parents, spouses, children);
 
   // Build map markers for person + close relatives
@@ -163,7 +184,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
   for (const evt of person.events) {
     if (evt.dateRaw || evt.place || evt.placeFull) {
       journeyStops.push({
-        type: 'event', label: evt.type,
+        type: 'event', label: translateEventType(evt.type),
         dateRaw: evt.dateRaw,
         place: formatPlaceFull(evt.placeFull) || evt.place,
         lat: evt.lat != null ? Number(evt.lat) : null,
@@ -204,7 +225,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
     timeline.push({ label: 'Naissance', dateRaw: person.birthDateRaw, place: formatPlaceFull(person.birthPlaceFull) || person.birthPlace, icon: '★' });
   }
   for (const evt of person.events) {
-    timeline.push({ label: evt.type, dateRaw: evt.dateRaw, place: formatPlaceFull(evt.placeFull) || evt.place, icon: '◆', note: evt.note });
+    timeline.push({ label: translateEventType(evt.type), dateRaw: evt.dateRaw, place: formatPlaceFull(evt.placeFull) || evt.place, icon: '◆', note: evt.note });
   }
   if (person.deathDateRaw || person.deathPlaceFull) {
     timeline.push({ label: 'Décès', dateRaw: person.deathDateRaw, place: formatPlaceFull(person.deathPlaceFull) || person.deathPlace, icon: '†' });
@@ -289,16 +310,58 @@ export default async function PersonPage({ params }: PersonPageProps) {
             </div>
           )}
 
-          {/* Name + dates */}
+          {/* Name + meta */}
           <div style={{ paddingBottom: 4 }}>
+            {/* Eyebrow — lignée */}
+            {person.surname && (
+              <p style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', color: '#9fb0a1', marginBottom: 7, margin: '0 0 7px' }}>
+                Lignée {person.surname}
+              </p>
+            )}
             <h1 style={{ fontFamily: 'var(--font-serif, Georgia, serif)', fontSize: '2rem', fontWeight: 700, color: 'white', margin: 0, lineHeight: 1.2, textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>
-              {person.displayName}
+              {formatGivenNames(person.givenNames)} {person.surname}
             </h1>
-            <p style={{ color: 'rgba(255,255,255,0.75)', margin: '6px 0 0', fontSize: '0.9rem' }}>
-              {person.birthYear || '?'}{person.deathYear ? ` – ${person.deathYear}` : ''}
-              {person.occupations.length > 0 && <span> · {person.occupations[0]}</span>}
-              {person.nationality && <span> · {person.nationality}</span>}
-            </p>
+            {/* Meta line: birth place (dept) · occupation · age */}
+            {(person.birthPlace || person.occupations.length > 0 || person.birthYear) && (() => {
+              const placeParts = person.birthPlaceFull?.split(',').map((s: string) => s.trim()) ?? [];
+              const dept = placeParts[2] || undefined;
+              const country = placeParts[4] || undefined;
+              const isFrance = !country || country.toLowerCase().includes('france');
+              const placeLabel = person.birthPlace
+                ? (dept && isFrance ? `${person.birthPlace} (${dept})` : person.birthPlace)
+                : null;
+              const occupation = person.occupations.length > 0 ? toTitleCase(person.occupations[0]) : null;
+              const age = (() => {
+                if (!person.birthYear) return null;
+                const endYear = person.deathYear ? parseInt(person.deathYear) : new Date().getFullYear();
+                const a = endYear - parseInt(person.birthYear);
+                return a > 0 && a < 150 ? a : null;
+              })();
+              return (
+                <p style={{ color: '#aebaae', margin: '6px 0 0', fontSize: '0.85rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0 6px' }}>
+                  {placeLabel && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                      {placeLabel}
+                    </span>
+                  )}
+                  {occupation && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      {placeLabel && <span aria-hidden="true" style={{ opacity: 0.5 }}>·</span>}
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                      {occupation}
+                    </span>
+                  )}
+                  {age !== null && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      {(placeLabel || occupation) && <span aria-hidden="true" style={{ opacity: 0.5 }}>·</span>}
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      {age} ans
+                    </span>
+                  )}
+                </p>
+              );
+            })()}
             {person.nickname && (
               <p style={{ color: 'rgba(255,255,255,0.6)', margin: '3px 0 0', fontSize: '0.85rem', fontStyle: 'italic' }}>
                 &ldquo;{person.nickname}&rdquo;

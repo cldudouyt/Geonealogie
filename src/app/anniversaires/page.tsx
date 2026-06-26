@@ -1,5 +1,8 @@
 import Link from 'next/link';
-import { getAllPersons, getSpouses } from '@/lib/gedcom-store';
+import { getAllPersons, getStore } from '@/lib/gedcom-store';
+import { Badge } from '@/components/ui/Badge';
+
+export const metadata = { title: 'Anniversaires — Géonéalogie' };
 
 const MONTHS_FR = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 const MONTHS_GEDCOM: Record<string, number> = {
@@ -8,7 +11,6 @@ const MONTHS_GEDCOM: Record<string, number> = {
 
 function parseDayMonth(raw?: string): { day: number; month: number } | null {
   if (!raw) return null;
-  // "15 JAN 1850" or "15 JAN" or "JAN 1850" — need day AND month
   const m = raw.match(/\b(\d{1,2})\s+([A-Z]{3})\b/);
   if (!m) return null;
   const day = parseInt(m[1]);
@@ -24,20 +26,42 @@ function daysUntil(day: number, month: number, today: Date): number {
   return Math.round((target.getTime() - today.getTime()) / 86400000);
 }
 
+function extractYear(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  const m = raw.match(/\b(\d{4})\b/);
+  return m?.[1];
+}
+
 export default async function AnniversairesPage() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const persons = await getAllPersons();
 
-  type Entry = { label: string; personId: string; name: string; day: number; month: number; year?: string; daysUntil: number; type: 'naissance' | 'mariage' };
+  const persons = await getAllPersons();
+  const s = await getStore();
+
+  type Entry = {
+    personId: string;
+    name: string;
+    sex?: string;
+    day: number;
+    month: number;
+    year?: string;
+    daysUntil: number;
+    type: 'naissance' | 'mariage';
+    spouseName?: string;
+  };
+
   const entries: Entry[] = [];
 
   for (const p of persons) {
     const birth = parseDayMonth(p.birthDateRaw);
     if (birth) {
       entries.push({
-        label: 'Naissance', personId: p.id, name: p.displayName,
-        day: birth.day, month: birth.month,
+        personId: p.id,
+        name: p.displayName,
+        sex: p.sex,
+        day: birth.day,
+        month: birth.month,
         year: p.birthYear,
         daysUntil: daysUntil(birth.day, birth.month, today),
         type: 'naissance',
@@ -45,26 +69,31 @@ export default async function AnniversairesPage() {
     }
   }
 
-  // Marriage anniversaries — fetch via spouseRelations
-  const seen = new Set<string>();
-  for (const p of persons) {
-    const spouses = await getSpouses(p.id);
-    for (const s of spouses) {
-      const key = [p.id, s.familyId].sort().join('-');
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const marr = parseDayMonth(s.marriageDateRaw);
-      if (marr) {
-        entries.push({
-          label: `Mariage avec ${s.person?.displayName ?? '?'}`,
-          personId: p.id, name: p.displayName,
-          day: marr.day, month: marr.month,
-          year: s.marriageDateRaw ? s.marriageDateRaw.match(/\d{4}/)?.[0] : undefined,
-          daysUntil: daysUntil(marr.day, marr.month, today),
-          type: 'mariage',
-        });
-      }
-    }
+  // Marriage anniversaries — iterate families directly to avoid N+1 calls
+  const seenFams = new Set<string>();
+  for (const [, fam] of s.families) {
+    const marr = parseDayMonth(fam.marriageDateRaw);
+    if (!marr) continue;
+    if (seenFams.has(fam.id)) continue;
+    seenFams.add(fam.id);
+
+    const husb = fam.husbandId ? s.persons.get(fam.husbandId) : undefined;
+    const wife = fam.wifeId ? s.persons.get(fam.wifeId) : undefined;
+    if (!husb && !wife) continue;
+
+    const primary = husb ?? wife!;
+    const spouse = husb ? wife : undefined;
+
+    entries.push({
+      personId: primary.id,
+      name: primary.displayName,
+      spouseName: spouse?.displayName,
+      day: marr.day,
+      month: marr.month,
+      year: extractYear(fam.marriageDateRaw),
+      daysUntil: daysUntil(marr.day, marr.month, today),
+      type: 'mariage',
+    });
   }
 
   entries.sort((a, b) => a.daysUntil - b.daysUntil);
@@ -75,66 +104,149 @@ export default async function AnniversairesPage() {
   for (const e of upcoming) {
     (byMonth[e.month] ??= []).push(e);
   }
+
+  // Order months by first event's daysUntil (entries are already globally sorted)
   const months = Object.keys(byMonth).map(Number).sort((a, b) => {
-    const da = byMonth[a][0].daysUntil;
-    const db = byMonth[b][0].daysUntil;
-    return da - db;
+    return byMonth[a][0].daysUntil - byMonth[b][0].daysUntil;
   });
 
   return (
-    <div className="h-screen overflow-y-auto bg-slate-50 dark:bg-slate-950">
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center gap-4">
-          <Link href="/" className="text-sm text-primary hover:underline flex items-center gap-1">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            Arbre
-          </Link>
-          <h1 className="text-lg font-bold text-slate-800 dark:text-slate-200">Anniversaires</h1>
-        </div>
-      </header>
+    <div className="h-screen overflow-y-auto" style={{ background: '#f4f1ea' }}>
+      <main className="mx-auto px-6 py-10 space-y-6" style={{ maxWidth: '760px' }}>
 
-      <main className="max-w-3xl mx-auto p-6 space-y-6">
+        {/* En-tête */}
+        <div className="mb-8">
+          <h1
+            style={{
+              fontFamily: 'var(--font-serif, Newsreader, serif)',
+              fontSize: '30px',
+              fontWeight: 500,
+              color: '#1c1f1c',
+              letterSpacing: '-0.02em',
+              marginBottom: '6px',
+            }}
+          >
+            Anniversaires
+          </h1>
+          <p style={{ fontSize: '13.5px', color: '#8a8474' }}>
+            Naissances et mariages à venir dans les 12 prochains mois.
+          </p>
+        </div>
+
         {upcoming.length === 0 ? (
-          <p className="text-slate-400 text-center py-12">Aucun anniversaire avec date complète (jour + mois) trouvé.</p>
-        ) : months.map(month => (
-          <div key={month} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm overflow-hidden">
-            <div className="px-6 py-3 bg-primary/5 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="font-semibold text-slate-700 dark:text-slate-300 capitalize">
-                {MONTHS_FR[month - 1]}
-              </h2>
-            </div>
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {byMonth[month].sort((a, b) => a.day - b.day).map((e, i) => {
-                const isToday = e.daysUntil === 0;
-                const isSoon = e.daysUntil <= 7;
-                return (
-                  <div key={i} className={`flex items-center px-6 py-3 gap-4 ${isToday ? 'bg-yellow-50 dark:bg-yellow-900/10' : ''}`}>
-                    <div className="w-10 text-center shrink-0">
-                      <span className={`text-lg font-bold ${isToday ? 'text-yellow-600' : 'text-slate-400'}`}>{e.day}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/person/${e.personId}`} className="text-sm font-medium hover:text-primary transition-colors">
-                        {e.name}
-                      </Link>
-                      <p className="text-xs text-slate-400">
-                        {e.label}{e.year ? ` · né(e) en ${e.year}` : ''}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      {isToday ? (
-                        <span className="text-xs font-semibold text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 rounded-full">Aujourd&apos;hui</span>
-                      ) : (
-                        <span className={`text-xs ${isSoon ? 'text-orange-500 font-medium' : 'text-slate-400'}`}>
-                          dans {e.daysUntil} jour{e.daysUntil > 1 ? 's' : ''}
+          <p style={{ color: '#8a8474', textAlign: 'center', padding: '48px 0' }}>
+            Aucun anniversaire prévu dans les 12 prochains mois.
+          </p>
+        ) : (
+          months.map(month => {
+            const sortedEvents = byMonth[month].slice().sort((a, b) => a.daysUntil - b.daysUntil);
+            return (
+              <div
+                key={month}
+                style={{
+                  borderRadius: '16px',
+                  border: '1px solid #e9e2d2',
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Header mois */}
+                <div
+                  style={{
+                    background: '#f1f4ef',
+                    borderBottom: '1px solid #e7e6dd',
+                    padding: '10px 20px',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-serif, Newsreader, serif)',
+                      fontSize: '16px',
+                      fontWeight: 500,
+                      color: '#2f5142',
+                    }}
+                  >
+                    {MONTHS_FR[month - 1]}
+                  </span>
+                </div>
+
+                {/* Événements du mois */}
+                {sortedEvents.map((e, i) => {
+                  const isToday = e.daysUntil === 0;
+                  const isSoon = e.daysUntil <= 7 && !isToday;
+                  const isLast = i === sortedEvents.length - 1;
+
+                  const badgeTone = isToday ? 'today' : isSoon ? 'warn' : 'neutral';
+                  const badgeLabel = isToday ? "Aujourd'hui" : `dans ${e.daysUntil} j`;
+                  const dayColor = isToday ? '#b8860b' : '#2f5142';
+
+                  const sublabel =
+                    e.type === 'naissance'
+                      ? `Naissance${e.year ? ` · ${e.sex === 'M' ? 'né' : 'née'} en ${e.year}` : ''}`
+                      : `Mariage${e.year ? ` · ${e.year}` : ''}`;
+
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px',
+                        padding: '12px 20px',
+                        borderBottom: isLast ? 'none' : '1px solid #f3eee2',
+                        background: isToday ? '#fdf6e3' : 'transparent',
+                      }}
+                    >
+                      {/* Jour */}
+                      <div style={{ width: '36px', flexShrink: 0, textAlign: 'center' }}>
+                        <span
+                          style={{
+                            fontFamily: 'var(--font-serif, Newsreader, serif)',
+                            fontSize: '20px',
+                            fontWeight: 700,
+                            color: dayColor,
+                            lineHeight: 1,
+                          }}
+                        >
+                          {e.day}
                         </span>
-                      )}
+                      </div>
+
+                      {/* Contenu */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Link
+                          href={`/person/${e.personId}`}
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: 700,
+                            color: '#1c1f1c',
+                            textDecoration: 'none',
+                            display: 'block',
+                          }}
+                        >
+                          {e.name}
+                          {e.type === 'mariage' && e.spouseName ? ` & ${e.spouseName}` : ''}
+                        </Link>
+                        <span
+                          style={{
+                            fontSize: '12px',
+                            color: '#8a8474',
+                            display: 'block',
+                            marginTop: '1px',
+                          }}
+                        >
+                          {sublabel}
+                        </span>
+                      </div>
+
+                      {/* Badge */}
+                      <Badge tone={badgeTone}>{badgeLabel}</Badge>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+                  );
+                })}
+              </div>
+            );
+          })
+        )}
       </main>
     </div>
   );

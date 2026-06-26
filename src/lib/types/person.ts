@@ -27,6 +27,8 @@ export interface Person {
 export interface PersonSummary {
   id: string;
   displayName: string;
+  givenNames?: string;
+  surname?: string;
   sex: 'M' | 'F' | 'U';
   birthDate?: string;
   birthPlace?: string;

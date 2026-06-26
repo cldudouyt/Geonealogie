@@ -1,0 +1,295 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import type { TreeData, TreeNode } from '@/lib/types';
+
+interface TreeVerticalProps {
+  treeData: TreeData;
+  focusId: string;
+  onFocus?: (id: string) => void;
+}
+
+/* ── card dimensions (spec) ─────────────────────────────────── */
+const CARD_W_NORMAL  = 172;
+const CARD_W_CENTRAL = 188;
+const CONNECTOR_H    = 30;
+
+function cardBorder(s: 'M' | 'F' | 'U', isCenter: boolean): React.CSSProperties {
+  if (isCenter) {
+    return { border: '1px solid #2f5142' };
+  }
+  if (s === 'M') return { border: '1px solid #d6e0ea', borderTop: '3px solid #5b7da3' };
+  if (s === 'F') return { border: '1px solid #ecd9d6', borderTop: '3px solid #b5736b' };
+  return { border: '1px solid #e7e0d0', borderTop: '3px solid #8a9a8a' };
+}
+
+function cardBg(isCenter: boolean): React.CSSProperties {
+  if (isCenter) return { background: 'linear-gradient(160deg,#1e3a2f,#15271f)' };
+  return { background: '#fff' };
+}
+
+/* ── PersonCard ─────────────────────────────────────────────── */
+function PersonCard({
+  person,
+  isCenter,
+  onClick,
+}: {
+  person: TreeNode;
+  isCenter: boolean;
+  onClick: () => void;
+}) {
+  const w = isCenter ? CARD_W_CENTRAL : CARD_W_NORMAL;
+  const s = person.sex ?? 'U';
+  const nameColor = isCenter ? '#f4efe3' : '#1c1f1c';
+  const metaColor = isCenter ? '#9fb0a1' : '#8a8474';
+
+  const meta = [
+    person.birthYear && person.deathYear
+      ? `${person.birthYear} – ${person.deathYear}`
+      : person.birthYear
+      ? `${person.birthYear}`
+      : person.deathYear
+      ? `† ${person.deathYear}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <div
+      onClick={onClick}
+      title={isCenter ? `Voir la fiche de ${person.displayName}` : `Centrer sur ${person.displayName}`}
+      style={{
+        width: w,
+        borderRadius: 13,
+        padding: 13,
+        boxShadow: '0 4px 14px -10px rgba(0,0,0,.4)',
+        cursor: 'pointer',
+        flexShrink: 0,
+        position: 'relative',
+        transition: 'box-shadow .15s, transform .15s',
+        ...cardBg(isCenter),
+        ...cardBorder(s, isCenter),
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow = '0 6px 20px -8px rgba(0,0,0,.35)';
+        (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-1px)';
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 14px -10px rgba(0,0,0,.4)';
+        (e.currentTarget as HTMLDivElement).style.transform = '';
+      }}
+    >
+      {isCenter && (
+        <span style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: '.08em',
+          textTransform: 'uppercase',
+          background: 'rgba(201,168,106,.18)',
+          color: '#c9a86a',
+          borderRadius: 999,
+          padding: '2px 7px',
+          border: '1px solid rgba(201,168,106,.35)',
+        }}>
+          Focus
+        </span>
+      )}
+
+      <p style={{
+        fontSize: 13.5,
+        fontWeight: 700,
+        color: nameColor,
+        margin: 0,
+        lineHeight: 1.3,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        paddingRight: isCenter ? 44 : 0,
+      }}>
+        {person.displayName}
+      </p>
+
+      {meta && (
+        <p style={{
+          fontSize: 11.5,
+          color: metaColor,
+          margin: '4px 0 0',
+          lineHeight: 1.3,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}>
+          {meta}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* ── Connector (vertical line between generations) ───────────── */
+function Connector() {
+  return (
+    <div style={{
+      width: 2,
+      height: CONNECTOR_H,
+      background: '#d8cfb8',
+      margin: '0 auto',
+    }} />
+  );
+}
+
+/* ── Generation row ─────────────────────────────────────────── */
+function GenRow({
+  persons,
+  centerIds,
+  onNav,
+  label,
+}: {
+  persons: TreeNode[];
+  centerIds: Set<string>;
+  onNav: (id: string) => void;
+  label?: string;
+}) {
+  if (persons.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      {label && (
+        <div style={{
+          fontSize: 10.5,
+          letterSpacing: '.14em',
+          textTransform: 'uppercase',
+          color: '#8a8474',
+          textAlign: 'center',
+          marginBottom: 8,
+        }}>
+          {label}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'nowrap' }}>
+        {persons.map(p => (
+          <PersonCard
+            key={p.id}
+            person={p}
+            isCenter={centerIds.has(p.id)}
+            onClick={() => onNav(p.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Main component ─────────────────────────────────────────── */
+export default function TreeVertical({ treeData, focusId, onFocus }: TreeVerticalProps) {
+  const router = useRouter();
+  const { nodes, links, rootId } = treeData;
+
+  const nodeMap = new Map<string, TreeNode>(nodes.map(n => [n.id, n]));
+  const effectiveId = rootId || focusId;
+  const focusNode = nodeMap.get(effectiveId);
+
+  /* Build parent / child / spouse maps */
+  const childToParents = new Map<string, string[]>();
+  const parentToChildren = new Map<string, string[]>();
+  const spouseMap = new Map<string, string[]>();
+
+  for (const link of links) {
+    if (link.type === 'parent') {
+      const p = childToParents.get(link.target) ?? [];
+      p.push(link.source);
+      childToParents.set(link.target, p);
+
+      const c = parentToChildren.get(link.source) ?? [];
+      c.push(link.target);
+      parentToChildren.set(link.source, c);
+    } else if (link.type === 'spouse') {
+      const a = spouseMap.get(link.source) ?? [];
+      a.push(link.target);
+      spouseMap.set(link.source, a);
+      const b = spouseMap.get(link.target) ?? [];
+      b.push(link.source);
+      spouseMap.set(link.target, b);
+    }
+  }
+
+  if (!focusNode) {
+    return (
+      <div style={{ padding: 40, color: '#8a8474', textAlign: 'center' }}>
+        Personne introuvable
+      </div>
+    );
+  }
+
+  const centerIds = new Set([focusNode.id]);
+
+  const parentIds = [...new Set(childToParents.get(focusNode.id) ?? [])];
+  const parents = parentIds.map(id => nodeMap.get(id)).filter(Boolean) as TreeNode[];
+
+  const grandParentIds = parentIds.flatMap(pid => childToParents.get(pid) ?? []);
+  const grandParents = [...new Set(grandParentIds)]
+    .map(id => nodeMap.get(id))
+    .filter(Boolean) as TreeNode[];
+
+  const childIds = [...new Set(parentToChildren.get(focusNode.id) ?? [])];
+  const children = childIds.map(id => nodeMap.get(id)).filter(Boolean) as TreeNode[];
+
+  const spouseIds = spouseMap.get(focusNode.id) ?? [];
+  const spouses = spouseIds.map(id => nodeMap.get(id)).filter(Boolean) as TreeNode[];
+  const focusRow: TreeNode[] = spouses.length > 0 ? [focusNode, ...spouses] : [focusNode];
+
+  const nav = (id: string) => {
+    if (id === focusNode.id) {
+      router.push(`/person/${id}`);
+    } else if (onFocus) {
+      onFocus(id);
+    } else {
+      router.push(`/person/${id}`);
+    }
+  };
+
+  return (
+    <div style={{ overflowX: 'auto', padding: '32px 0 24px' }}>
+      <div
+        style={{
+          minWidth: 920,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 0,
+        }}
+      >
+        {grandParents.length > 0 && (
+          <>
+            <GenRow persons={grandParents} centerIds={centerIds} onNav={nav} label="Grands-parents" />
+            <Connector />
+          </>
+        )}
+
+        {parents.length > 0 && (
+          <>
+            <GenRow persons={parents} centerIds={centerIds} onNav={nav} label="Parents" />
+            <Connector />
+          </>
+        )}
+
+        <GenRow
+          persons={focusRow}
+          centerIds={centerIds}
+          onNav={nav}
+          label={parents.length === 0 ? 'Personne de référence' : undefined}
+        />
+
+        {children.length > 0 && (
+          <>
+            <Connector />
+            <GenRow persons={children} centerIds={centerIds} onNav={nav} label="Enfants" />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

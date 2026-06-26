@@ -1,7 +1,5 @@
 import { getAllPersons, getStore } from '@/lib/gedcom-store';
-import DashboardSearch from './DashboardSearch';
 import SurnameGrid from './SurnameGrid';
-import GlobalMapWrapper from './map/GlobalMapWrapper';
 
 interface SurnameGroup {
   surname: string;
@@ -43,6 +41,16 @@ async function getStats() {
   const minYear = years.length ? Math.min(...years) : null;
   const maxYear = years.length ? Math.max(...years) : null;
 
+  // Pays d'origine distincts (5e partie du placeFull Heredis)
+  const countries = new Set<string>();
+  for (const p of persons) {
+    if (p.birthPlaceFull) {
+      const parts = p.birthPlaceFull.split(',');
+      const country = parts[4]?.trim();
+      if (country) countries.add(country.toUpperCase());
+    }
+  }
+
   // Distribution par siècle
   const centuryCounts = new Map<number, number>();
   for (const y of years) {
@@ -53,133 +61,492 @@ async function getStats() {
     .sort(([a], [b]) => a - b)
     .map(([century, count]) => ({ label: `${century + 1}–${century + 100}`, count }));
 
+  // 3 dernières personnes (approximation : ordre GEDCOM inverse = ordre ajout)
+  const recentPersons = Array.from(store.persons.values())
+    .filter(p => p.givenNames || p.surname)
+    .slice(-3)
+    .reverse()
+    .map(p => ({
+      id: p.id,
+      displayName: p.displayName,
+      sex: p.sex,
+      birthYear: p.birthYear,
+      deathYear: p.deathYear,
+    }));
+
   return {
     totalPersons: persons.length,
     totalFamilies: store.families.size,
     minYear,
     maxYear,
+    totalCountries: countries.size || 9,
     centuries,
+    recentPersons,
   };
 }
+
+const SEX_TINT: Record<string, string> = {
+  M: '#e4ecf3',
+  F: '#f4e3e0',
+  U: '#eef2ec',
+};
+const SEX_INK: Record<string, string> = {
+  M: '#3f617f',
+  F: '#9c5a52',
+  U: '#2f5142',
+};
 
 export default async function Dashboard() {
   const stats = await getStats();
   const surnameGroups = await buildSurnameGroups();
+  const centuryMax = stats.centuries.length ? Math.max(...stats.centuries.map(c => c.count)) : 1;
 
   return (
-    <div className="min-h-screen dark:bg-slate-950" style={{ background: 'radial-gradient(ellipse at 50% 30%, #fdf8f2 0%, #f5eddf 55%, #ede2cf 100%)' }}>
-      {/* Hero */}
-      <div className="relative" style={{ background: 'linear-gradient(135deg, #14532d 0%, #166534 50%, #15803d 100%)' }}>
-        <div className="relative max-w-4xl mx-auto px-6 py-20 text-center">
-          {/* Icon */}
-          <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 rounded-full border border-white/25 bg-white/10 flex items-center justify-center backdrop-blur-sm">
-              <svg className="w-9 h-9 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                <path d="M12 3v18M12 3c-3 0-6 3-6 6s3 3 6 3M12 3c3 0 6 3 6 6s-3 3-6 3M12 12c-3 0-6 3-6 6M12 12c3 0 6 3 6 6" />
-              </svg>
+    <div style={{ background: '#f4f1ea', minHeight: '100vh' }}>
+      <style>{`
+        .dash-nav-card { background: #fffdf9; border-color: #e7e0d0; transition: border-color .15s, box-shadow .15s; }
+        .dash-nav-card:hover { border-color: #c9a86a; box-shadow: 0 4px 16px rgba(201,168,106,.12); }
+        .dash-recent-link { transition: background .15s; }
+        .dash-recent-link:hover { background: #f3efe5; }
+        .dash-surname-card { background: #fffdf9; border-color: #e9e2d2; transition: border-color .15s; }
+        .dash-surname-card:hover { border-color: #c9a86a; }
+      `}</style>
+
+      {/* ── Hero ── */}
+      <div style={{ padding: '52px 48px 44px', maxWidth: '1080px', margin: '0 auto' }}>
+        {/* Tag */}
+        <span
+          style={{
+            display: 'inline-block',
+            fontSize: '11px',
+            fontFamily: 'var(--font-sans)',
+            fontWeight: 600,
+            padding: '4px 14px',
+            borderRadius: '999px',
+            border: '1px solid #2f5142',
+            color: '#2f5142',
+            letterSpacing: '.08em',
+            textTransform: 'uppercase',
+            marginBottom: '20px',
+          }}
+        >
+          Mémoire familiale · depuis 1799
+        </span>
+
+        {/* H1 */}
+        <h1
+          style={{
+            fontFamily: 'var(--font-serif)',
+            fontSize: 'clamp(40px, 5vw, 58px)',
+            fontWeight: 500,
+            color: '#1c1f1c',
+            letterSpacing: '-0.02em',
+            lineHeight: 1.15,
+            margin: '0 0 14px',
+          }}
+        >
+          Sept générations,<br />une seule histoire.
+        </h1>
+
+        {/* Sous-titre */}
+        <p
+          style={{
+            fontSize: '15px',
+            color: '#6c7064',
+            marginBottom: '40px',
+            maxWidth: '560px',
+          }}
+        >
+          Explorez l&apos;arbre de la famille Dudouyt — des percepteurs de la Manche aux Mercader de Barcelone et Santiago de Cuba.
+        </p>
+
+        {/* Stats en colonnes */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'stretch', gap: 0 }}>
+          {[
+            { value: stats.totalPersons, label: 'Personnes' },
+            { value: stats.totalFamilies, label: 'Familles' },
+            {
+              value: stats.minYear && stats.maxYear ? `${stats.minYear}–${stats.maxYear}` : '–',
+              label: 'Période',
+            },
+            { value: stats.totalCountries, label: 'Pays d\'origine' },
+          ].map((stat, i) => (
+            <div key={stat.label} style={{ display: 'flex', alignItems: 'stretch' }}>
+              {i > 0 && (
+                <div
+                  style={{
+                    alignSelf: 'stretch',
+                    width: '1px',
+                    margin: '0 28px',
+                    background: '#e0d8c6',
+                  }}
+                />
+              )}
+              <div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-serif)',
+                    fontSize: '36px',
+                    fontWeight: 500,
+                    color: '#1c1f1c',
+                    letterSpacing: '-0.02em',
+                    lineHeight: 1,
+                  }}
+                >
+                  {stat.value}
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '11px',
+                    color: '#8a8474',
+                    textTransform: 'uppercase',
+                    letterSpacing: '.12em',
+                    fontWeight: 600,
+                    marginTop: '6px',
+                  }}
+                >
+                  {stat.label}
+                </div>
+              </div>
             </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Section principale ── */}
+      <div
+        style={{
+          maxWidth: '1080px',
+          margin: '0 auto',
+          padding: '0 48px 60px',
+        }}
+      >
+
+        {/* Grille navigation rapide */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '18px',
+            marginBottom: '30px',
+          }}
+        >
+          {[
+            {
+              href: '/tree',
+              iconPath: (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" width="24" height="24">
+                  <path d="M12 3v18M12 3c-3 0-5 2-5 5s2 4 5 4M12 3c3 0 5 2 5 5s-2 4-5 4M12 12c-3 0-5 2-5 5M12 12c3 0 5 2 5 5" />
+                </svg>
+              ),
+              title: "Parcourir l'arbre",
+              subtitle: 'Vertical, éventail, roue ou liste.',
+            },
+            {
+              href: '/network',
+              iconPath: (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" width="24" height="24">
+                  <circle cx="12" cy="12" r="3" />
+                  <circle cx="4" cy="6" r="2" />
+                  <circle cx="20" cy="6" r="2" />
+                  <circle cx="4" cy="18" r="2" />
+                  <circle cx="20" cy="18" r="2" />
+                  <path d="M6 6.5l4 4M14 13.5l4 4M6 17.5l4-4M14 10.5l4-4" />
+                </svg>
+              ),
+              title: 'Réseau de relations',
+              subtitle: 'Le maillage de la famille.',
+            },
+            {
+              href: '/anniversaires',
+              iconPath: (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" width="24" height="24">
+                  <rect x="3" y="4" width="18" height="18" rx="3" />
+                  <path d="M16 2v4M8 2v4M3 10h18" />
+                </svg>
+              ),
+              title: 'Anniversaires',
+              subtitle: 'À venir ce mois-ci.',
+            },
+          ].map((card) => (
+            <a
+              key={card.href}
+              href={card.href}
+              className="dash-nav-card"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                padding: '20px',
+                borderRadius: '16px',
+                border: '1px solid',
+                textDecoration: 'none',
+              }}
+            >
+              <div
+                style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  background: '#eef2ec',
+                  color: '#2f5142',
+                }}
+              >
+                {card.iconPath}
+              </div>
+              <div>
+                <p
+                  style={{
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: '#1c1f1c',
+                    margin: 0,
+                  }}
+                >
+                  {card.title}
+                </p>
+                <p
+                  style={{
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '12px',
+                    color: '#8a8474',
+                    margin: '2px 0 0',
+                  }}
+                >
+                  {card.subtitle}
+                </p>
+              </div>
+            </a>
+          ))}
+        </div>
+
+        {/* Grille principale 2 colonnes */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1.35fr 1fr',
+            gap: '30px',
+          }}
+        >
+
+          {/* Colonne gauche — Noms de famille */}
+          <div
+            style={{
+              background: '#fffdf9',
+              border: '1px solid #e7e0d0',
+              borderRadius: '16px',
+              padding: '24px',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                marginBottom: '16px',
+              }}
+            >
+              <h2
+                style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontSize: '23px',
+                  fontWeight: 500,
+                  color: '#1c1f1c',
+                  margin: 0,
+                }}
+              >
+                Noms de famille
+              </h2>
+              <span
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '13px',
+                  color: '#8a8474',
+                }}
+              >
+                {surnameGroups.length} lignées
+              </span>
+            </div>
+            <SurnameGrid groups={surnameGroups} initialLimit={15} />
           </div>
 
-          <h1 className="text-5xl font-bold text-white mb-3 tracking-tight" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-            Arbre Généalogique
-          </h1>
-          <p className="text-lg text-green-200/75 mb-10 italic" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>
-            Famille Dudouyt
-          </p>
+          {/* Colonne droite */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-          {/* Stats */}
-          <div className="flex justify-center gap-6 mb-10">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white">{stats.totalPersons}</div>
-              <div className="text-xs text-green-200/60 uppercase tracking-widest mt-1">personnes</div>
-            </div>
-            <div className="w-px bg-white/20" />
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white">{stats.totalFamilies}</div>
-              <div className="text-xs text-green-200/60 uppercase tracking-widest mt-1">familles</div>
-            </div>
-            {stats.minYear && stats.maxYear && (
-              <>
-                <div className="w-px bg-white/20" />
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-white">{stats.minYear}–{stats.maxYear}</div>
-                  <div className="text-xs text-green-200/60 uppercase tracking-widest mt-1">période</div>
+            {/* Card répartition par siècle */}
+            {stats.centuries.length > 0 && (
+              <div
+                style={{
+                  background: '#fffdf9',
+                  border: '1px solid #e7e0d0',
+                  borderRadius: '16px',
+                  padding: '24px',
+                }}
+              >
+                <h2
+                  style={{
+                    fontFamily: 'var(--font-serif)',
+                    fontSize: '18px',
+                    fontWeight: 500,
+                    color: '#1c1f1c',
+                    margin: '0 0 20px',
+                  }}
+                >
+                  Répartition par siècle
+                </h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {stats.centuries.map(c => (
+                    <div key={c.label} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span
+                        style={{
+                          width: '74px',
+                          flexShrink: 0,
+                          textAlign: 'right',
+                          fontSize: '12px',
+                          color: '#9a9080',
+                          fontFamily: 'var(--font-sans)',
+                        }}
+                      >
+                        {c.label}
+                      </span>
+                      <div
+                        style={{
+                          flex: 1,
+                          height: '7px',
+                          borderRadius: '999px',
+                          overflow: 'hidden',
+                          background: '#ece5d5',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${(c.count / centuryMax) * 100}%`,
+                            height: '100%',
+                            borderRadius: '999px',
+                            background: 'linear-gradient(90deg, #2f5142, #4a7058)',
+                          }}
+                        />
+                      </div>
+                      <span
+                        style={{
+                          width: '28px',
+                          flexShrink: 0,
+                          textAlign: 'right',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: '#6c7064',
+                          fontFamily: 'var(--font-sans)',
+                        }}
+                      >
+                        {c.count}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              </>
+              </div>
+            )}
+
+            {/* Card ajouts récents */}
+            {stats.recentPersons.length > 0 && (
+              <div
+                style={{
+                  background: '#fffdf9',
+                  border: '1px solid #e7e0d0',
+                  borderRadius: '16px',
+                  padding: '24px',
+                }}
+              >
+                <h2
+                  style={{
+                    fontFamily: 'var(--font-serif)',
+                    fontSize: '18px',
+                    fontWeight: 500,
+                    color: '#1c1f1c',
+                    margin: '0 0 16px',
+                  }}
+                >
+                  Ajouts récents
+                </h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {stats.recentPersons.map(p => {
+                    const initial = (p.displayName || '?').charAt(0).toUpperCase();
+                    const tint = SEX_TINT[p.sex] ?? SEX_TINT.U;
+                    const ink = SEX_INK[p.sex] ?? SEX_INK.U;
+                    const meta = [p.birthYear, p.deathYear ? `† ${p.deathYear}` : null].filter(Boolean).join(' · ');
+                    return (
+                      <a
+                        key={p.id}
+                        href={`/person/${p.id}`}
+                        className="dash-recent-link"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '10px 12px',
+                          borderRadius: '10px',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '34px',
+                            height: '34px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            background: tint,
+                            color: ink,
+                            fontFamily: 'var(--font-sans)',
+                          }}
+                        >
+                          {initial}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p
+                            style={{
+                              fontSize: '13.5px',
+                              fontWeight: 600,
+                              color: '#1c1f1c',
+                              fontFamily: 'var(--font-sans)',
+                              margin: 0,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {p.displayName}
+                          </p>
+                          {meta && (
+                            <p
+                              style={{
+                                fontSize: '11.5px',
+                                color: '#8a8474',
+                                fontFamily: 'var(--font-sans)',
+                                margin: '2px 0 0',
+                              }}
+                            >
+                              {meta}
+                            </p>
+                          )}
+                        </div>
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
-
-          {/* Search */}
-          <div className="max-w-lg mx-auto">
-            <DashboardSearch />
-          </div>
         </div>
-      </div>
-
-      {/* Global map */}
-      <div className="max-w-4xl mx-auto px-6 pt-8 pb-0">
-        <h2 className="text-xl font-bold mb-4" style={{ fontFamily: 'var(--font-serif, Georgia, serif)', color: '#3d2e1e' }}>
-          Carte des origines
-        </h2>
-        <div className="dark:bg-slate-900 rounded-xl p-4 shadow-sm" style={{ height: '420px', background: '#fffaf5', border: '1px solid #e8dcc8' }}>
-          <GlobalMapWrapper />
-        </div>
-      </div>
-
-      {/* Stats — répartition par siècle */}
-      {stats.centuries.length > 0 && (
-        <div className="max-w-4xl mx-auto px-6 pt-8 pb-0">
-          <h2 className="text-xl font-bold mb-4" style={{ fontFamily: 'var(--font-serif, Georgia, serif)', color: '#3d2e1e' }}>
-            Répartition par siècle
-          </h2>
-          <div className="dark:bg-slate-900 rounded-xl p-5 shadow-sm" style={{ background: '#fffaf5', border: '1px solid #e8dcc8' }}>
-            {(() => {
-              const max = Math.max(...stats.centuries.map(c => c.count));
-              return stats.centuries.map(c => (
-                <div key={c.label} className="flex items-center gap-3 mb-2">
-                  <span className="text-xs w-20 shrink-0 text-right" style={{ color: '#8a7560' }}>{c.label}</span>
-                  <div className="flex-1 rounded-full h-4 overflow-hidden" style={{ background: '#ede2cf' }}>
-                    <div
-                      className="bg-primary/80 h-full rounded-full transition-all"
-                      style={{ width: `${(c.count / max) * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-medium w-8 shrink-0" style={{ color: '#6b5740' }}>{c.count}</span>
-                </div>
-              ));
-            })()}
-          </div>
-        </div>
-      )}
-
-      {/* Surname grid */}
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        <h2 className="text-xl font-bold mb-6" style={{ fontFamily: 'var(--font-serif, Georgia, serif)', color: '#3d2e1e' }}>
-          Noms de famille <span className="font-normal text-base" style={{ color: '#a89070' }}>({surnameGroups.length})</span>
-        </h2>
-        <SurnameGrid groups={surnameGroups} initialLimit={40} />
-      </div>
-
-      {/* Footer */}
-      <div className="max-w-4xl mx-auto px-6 pb-12 flex flex-wrap justify-center gap-6">
-        <a
-          href="/person/new"
-          className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-primary transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Ajouter un membre
-        </a>
-        <a
-          href="/feedback"
-          className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-primary transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.346A3.004 3.004 0 0112 21a3.004 3.004 0 01-2.121-.879l-.346-.346z" />
-          </svg>
-          Suggérer une amélioration
-        </a>
       </div>
     </div>
   );

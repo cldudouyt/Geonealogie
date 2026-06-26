@@ -7,19 +7,114 @@ export default function LoginPage() {
   const [state, action, pending] = useActionState(login, null);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-md p-10 w-full max-w-sm">
-        <div className="text-center mb-8">
-          <svg className="w-10 h-10 text-blue-600 mx-auto mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 3v18M12 3c-3 0-6 3-6 6s3 3 6 3M12 3c3 0 6 3 6 6s-3 3-6 3M12 12c-3 0-6 3-6 6M12 12c3 0 6 3 6 6" />
-          </svg>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Geonealogie</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Accès privé — famille uniquement</p>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 100,
+        background: 'linear-gradient(155deg, #1e3a2f 0%, #15271f 60%, #0f1d16 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {/* Décoration dorée en haut à droite */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'radial-gradient(ellipse 600px 500px at 80% -10%, rgba(201,168,106,.45) 0%, transparent 70%)',
+          opacity: 0.6,
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Card centrale */}
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          maxWidth: 380,
+          background: '#fffdf9',
+          borderRadius: 22,
+          padding: '38px 34px',
+          boxShadow: '0 30px 80px -30px rgba(0,0,0,.6)',
+        }}
+      >
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 52,
+              height: 52,
+              borderRadius: 15,
+              background: 'linear-gradient(145deg, #2f5142 0%, #1e3a2f 100%)',
+              marginBottom: 14,
+            }}
+          >
+            <svg
+              width="30"
+              height="30"
+              viewBox="0 0 30 30"
+              fill="none"
+              stroke="#c9a86a"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="15" cy="8" r="3" />
+              <circle cx="7" cy="21" r="3" />
+              <circle cx="23" cy="21" r="3" />
+              <line x1="15" y1="11" x2="11" y2="18" />
+              <line x1="15" y1="11" x2="19" y2="18" />
+              <line x1="11" y1="18" x2="7" y2="18" />
+              <line x1="19" y1="18" x2="23" y2="18" />
+            </svg>
+          </div>
+
+          <h1
+            style={{
+              fontFamily: 'var(--font-serif, Newsreader, Georgia, serif)',
+              fontSize: 26,
+              fontWeight: 500,
+              color: '#1c1f1c',
+              letterSpacing: '-0.02em',
+              margin: 0,
+              lineHeight: 1.2,
+            }}
+          >
+            Géonéalogie
+          </h1>
+
+          <p
+            style={{
+              fontSize: 13,
+              color: '#8a8474',
+              margin: '6px 0 0',
+            }}
+          >
+            Accès privé — famille uniquement
+          </p>
         </div>
 
-        <form action={action} className="space-y-4">
+        {/* Formulaire */}
+        <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label
+              htmlFor="password"
+              style={{
+                display: 'block',
+                fontSize: 13,
+                fontWeight: 700,
+                color: '#3a4038',
+                marginBottom: 6,
+              }}
+            >
               Mot de passe
             </label>
             <input
@@ -29,19 +124,57 @@ export default function LoginPage() {
               required
               autoFocus
               autoComplete="current-password"
-              className="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="••••••••"
+              style={{
+                width: '100%',
+                height: 44,
+                borderRadius: 11,
+                border: '1.5px solid #e0d8c6',
+                background: '#fff',
+                padding: '0 14px',
+                fontSize: 15,
+                color: '#1c1f1c',
+                outline: 'none',
+                boxSizing: 'border-box',
+                transition: 'border-color .15s, box-shadow .15s',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#2f5142';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(47,81,66,.12)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#e0d8c6';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             />
           </div>
 
           {state?.error && (
-            <p className="text-sm text-red-500 dark:text-red-400">{state.error}</p>
+            <p style={{ fontSize: 13, color: '#b03a2e', margin: 0 }}>{state.error}</p>
           )}
 
           <button
             type="submit"
             disabled={pending}
-            className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-60"
+            style={{
+              width: '100%',
+              height: 46,
+              borderRadius: 12,
+              background: '#1e3a2f',
+              color: '#f1ede2',
+              fontSize: 15,
+              fontWeight: 600,
+              border: 'none',
+              cursor: pending ? 'not-allowed' : 'pointer',
+              opacity: pending ? 0.65 : 1,
+              transition: 'background .15s',
+            }}
+            onMouseEnter={(e) => {
+              if (!pending) e.currentTarget.style.background = '#15271f';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#1e3a2f';
+            }}
           >
             {pending ? 'Connexion…' : 'Se connecter'}
           </button>

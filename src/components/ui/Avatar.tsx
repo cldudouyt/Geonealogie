@@ -1,40 +1,57 @@
-import Image from 'next/image';
-import { Monogram } from './Monogram';
+import React from 'react';
 
-const SIZES = {
-  sm:  { px: 32,  cls: 'w-8 h-8' },
-  md:  { px: 40,  cls: 'w-10 h-10' },
-  lg:  { px: 56,  cls: 'w-14 h-14' },
-  xl:  { px: 80,  cls: 'w-20 h-20' },
+export type AvatarSize = 'sm' | 'md' | 'lg';
+export type AvatarTint = 'slate' | 'green' | 'gold';
+
+const SIZES: Record<AvatarSize, { box: number; font: number }> = {
+  sm: { box: 32, font: 12 },
+  md: { box: 46, font: 17 },
+  lg: { box: 82, font: 28 },
 };
 
-export function Avatar({
-  name,
-  sex,
-  photoUrl,
-  size = 'md',
-}: {
-  name: string;
-  sex: 'M' | 'F' | 'U';
-  photoUrl?: string;
-  size?: keyof typeof SIZES;
-}) {
-  if (!photoUrl) {
-    return <Monogram name={name} sex={sex} size={size === 'xl' ? 'lg' : size === 'sm' ? 'sm' : size === 'lg' ? 'lg' : 'md'} />;
-  }
+const TINTS: Record<AvatarTint, React.CSSProperties> = {
+  slate: { background: 'var(--slate-100)', color: 'var(--slate-700)' },
+  green: { background: 'var(--ok-bg)',     color: 'var(--green-600)' },
+  gold:  { background: 'var(--green-600)', color: 'var(--gold-500)' },
+};
 
-  const { px, cls } = SIZES[size];
+function initialsOf(name = '') {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
+interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
+  name?: string;
+  initials?: string;
+  size?: AvatarSize;
+  tint?: AvatarTint;
+}
+
+export function Avatar({ name, initials, size = 'md', tint = 'slate', style, ...rest }: AvatarProps) {
+  const s = SIZES[size];
+  const t = TINTS[tint];
+  const label = initials ?? initialsOf(name);
   return (
-    <span className={`relative inline-block shrink-0 ${cls} rounded-full overflow-hidden`}>
-      <Image
-        src={photoUrl}
-        alt={name}
-        width={px}
-        height={px}
-        className="object-cover w-full h-full"
-        unoptimized={photoUrl.startsWith('blob:') || photoUrl.startsWith('http')}
-      />
-    </span>
+    <div
+      style={{
+        width: s.box,
+        height: s.box,
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        fontFamily: 'var(--font-serif)',
+        fontWeight: 600,
+        fontSize: s.font,
+        ...t,
+        ...style,
+      }}
+      {...rest}
+    >
+      {label}
+    </div>
   );
 }

@@ -1,7 +1,8 @@
-import Link from 'next/link';
 import { getAllPersons } from '@/lib/gedcom-store';
 import { loadOverrides } from '@/lib/overrides-store';
 import PairCard from './PairCard';
+
+export const metadata = { title: 'Détection de doublons — Géonéalogie' };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -130,40 +131,47 @@ export default async function DoublonsPage() {
   const possible = pairs.filter(p => p.confidence === 'possible').length;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 py-4 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto flex items-center gap-3">
-          <Link href="/" className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Retour
-          </Link>
-          <span className="text-slate-300 dark:text-slate-600">/</span>
-          <h1 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Détection de doublons</h1>
+    <div className="h-screen overflow-y-auto" style={{ background: '#f4f1ea' }}>
+      <main className="mx-auto px-6 py-8 space-y-6" style={{ maxWidth: 880 }}>
+
+        {/* En-tête */}
+        <div>
+          <h1 style={{ fontFamily: 'var(--font-serif, Georgia, serif)', fontSize: 30, fontWeight: 500, color: '#1c1f1c', letterSpacing: '-.02em', marginBottom: 6 }}>
+            Détection de doublons
+          </h1>
+          <p style={{ fontSize: 13.5, color: '#8a8474' }}>
+            Fusionnez ou écartez les paires de personnes potentiellement identiques.
+          </p>
         </div>
-      </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-
-        {/* Stats */}
+        {/* Grille stats 4 colonnes */}
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: 'Certains',  count: certain,  cls: 'text-red-600 dark:text-red-400' },
-            { label: 'Probables', count: probable, cls: 'text-amber-600 dark:text-amber-400' },
-            { label: 'Possibles', count: possible, cls: 'text-blue-600 dark:text-blue-400' },
-            { label: 'Ignorés',   count: ignoredCount, cls: 'text-slate-400' },
-          ].map(({ label, count, cls }) => (
-            <div key={label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-center">
-              <p className={`text-2xl font-bold ${cls}`}>{count}</p>
-              <p className="text-xs text-slate-500 mt-1">{label}</p>
+            { label: 'Certains',  count: certain,      color: '#c0392b' },
+            { label: 'Probables', count: probable,     color: '#b8860b' },
+            { label: 'Possibles', count: possible,     color: '#5b7da3' },
+            { label: 'Ignorés',   count: ignoredCount, color: '#9a9080' },
+          ].map(({ label, count, color }) => (
+            <div
+              key={label}
+              style={{
+                background: '#fffdf9',
+                border: '1px solid #e7e0d0',
+                borderRadius: 16,
+                padding: '16px 12px',
+                textAlign: 'center',
+              }}
+            >
+              <p style={{ fontSize: 28, fontWeight: 700, color, lineHeight: 1 }}>{count}</p>
+              <p style={{ fontSize: 12, color: '#8a8474', marginTop: 6 }}>{label}</p>
             </div>
           ))}
         </div>
 
+        {/* Aucun doublon */}
         {pairs.length === 0 && (
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-xl p-8 text-center">
-            <p className="text-green-800 dark:text-green-300 font-medium">
+          <div style={{ background: '#fffdf9', border: '1px solid #e7e0d0', borderRadius: 16, padding: 32, textAlign: 'center' }}>
+            <p style={{ color: '#2f5142', fontWeight: 500 }}>
               {ignoredCount > 0
                 ? `Aucun doublon actif (${ignoredCount} ignoré${ignoredCount > 1 ? 's' : ''}).`
                 : 'Aucun doublon détecté !'}
@@ -171,14 +179,7 @@ export default async function DoublonsPage() {
           </div>
         )}
 
-        {/* Legend */}
-        {pairs.length > 0 && (
-          <p className="text-xs text-slate-400">
-            Pour chaque paire, vous pouvez fusionner (les liens familiaux sont automatiquement transférés) ou supprimer l&apos;un des deux.
-          </p>
-        )}
-
-        {/* Pair cards */}
+        {/* Cards de paires */}
         {pairs.map((pair, i) => (
           <PairCard
             key={`${pair.a.id}:${pair.b.id}:${i}`}

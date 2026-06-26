@@ -14,11 +14,15 @@
       "deathPlace": "Paris,75000,Ville-de-Paris,Ile-de-France,FRANCE,",
       "burialDateRaw": "14 DEC 1904",
       "burialPlace": "Bagneux",
-      "occupation": "Commissaire priseur , Receveur de rentes"
+      "occupation": "Commissaire priseur , Receveur de rentes",
+      "deathLat": 48.8447157,
+      "deathLon": 2.4378747
     }
   },
   "newPersons": [],
   "mergedPersons": {
+    "578": "1005",
+    "725": "726",
     "@684@": "@61@",
     "@711@": "@62@",
     "@708@": "@63@",
@@ -254,7 +258,9 @@
     "@811@",
     "@812@",
     "@897@",
-    "@410@"
+    "@410@",
+    "725",
+    "578"
   ],
   "ignoredDoublons": []
 }

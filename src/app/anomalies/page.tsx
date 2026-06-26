@@ -1,170 +1,320 @@
 import Link from 'next/link';
-import { getAllPersons, getParents } from '@/lib/gedcom-store';
+import { getAllPersons, getStore } from '@/lib/gedcom-store';
 import type { PersonRecord } from '@/lib/gedcom-store';
+import { Badge, type BadgeTone } from '@/components/ui/Badge';
+
+export const metadata = { title: 'Rapport d\'anomalies — Géonéalogie' };
 
 interface Anomaly {
+  id: string;
   personId: string;
   name: string;
-  severity: 'error' | 'warning' | 'info';
+  severity: 'err' | 'warn' | 'info';
   message: string;
 }
 
+const SEVERITY_ORDER: Record<Anomaly['severity'], number> = { err: 0, warn: 1, info: 2 };
+
+const ACCENT: Record<Anomaly['severity'], string> = {
+  err:  '#d98b82',
+  warn: '#e3c685',
+  info: '#d8d0bd',
+};
+
+const SEVERITY_TONE: Record<Anomaly['severity'], BadgeTone> = {
+  err:  'danger',
+  warn: 'warn',
+  info: 'neutral',
+};
+
+const BADGE_LABEL: Record<Anomaly['severity'], string> = {
+  err:  'Erreur',
+  warn: 'Attention',
+  info: 'Info',
+};
+
 export default async function AnomaliesPage() {
   const persons = await getAllPersons();
+  const store = await getStore();
   const anomalies: Anomaly[] = [];
+  const currentYear = new Date().getFullYear();
 
+  let uid = 0;
+  const push = (personId: string, name: string, severity: Anomaly['severity'], message: string) => {
+    anomalies.push({ id: String(uid++), personId, name, severity, message });
+  };
+
+  // ── Index nom → personnes (homonymes) ──────────────────────────────────────
+  const norm = (s: string) =>
+    s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+
+  const nameGroups = new Map<string, PersonRecord[]>();
+  for (const p of persons) {
+    const first = p.givenNames.split(/[,\s]+/)[0];
+    if (!first || !p.surname) continue;
+    const key = `${norm(first)}_${norm(p.surname)}`;
+    if (!nameGroups.has(key)) nameGroups.set(key, []);
+    nameGroups.get(key)!.push(p);
+  }
+  const homonymGroups = [...nameGroups.values()].filter(g => g.length > 1);
+
+  // Homonymes → erreurs
+  for (const group of homonymGroups) {
+    for (const p of group) {
+      const others = group
+        .filter(o => o.id !== p.id)
+        .map(o => o.displayName + (o.birthYear ? ` (${o.birthYear})` : ''))
+        .join(', ');
+      push(p.id, p.displayName, 'warn', `Homonyme de : ${others}`);
+    }
+  }
+
+  // ── Boucle principale par personne ────────────────────────────────────────
   for (const p of persons) {
     const birthY = p.birthYear ? parseInt(p.birthYear) : null;
     const deathY = p.deathYear ? parseInt(p.deathYear) : null;
 
-    // Death before birth
+    // Erreur : décès avant naissance
     if (birthY && deathY && deathY < birthY) {
-      anomalies.push({ personId: p.id, name: p.displayName, severity: 'error', message: `Décès (${deathY}) avant la naissance (${birthY})` });
+      push(p.id, p.displayName, 'err', `Décès (${deathY}) avant la naissance (${birthY})`);
     }
 
-    // Age > 120
-    if (birthY && deathY && (deathY - birthY) > 120) {
-      anomalies.push({ personId: p.id, name: p.displayName, severity: 'warning', message: `Âge au décès anormalement élevé : ${deathY - birthY} ans` });
-    }
-
-    // Birth in the future
-    const currentYear = new Date().getFullYear();
+    // Erreur : naissance dans le futur
     if (birthY && birthY > currentYear) {
-      anomalies.push({ personId: p.id, name: p.displayName, severity: 'error', message: `Naissance dans le futur : ${birthY}` });
+      push(p.id, p.displayName, 'err', `Naissance dans le futur : ${birthY}`);
     }
 
-    // No birth date at all (info only — not an error)
-    if (!p.birthDateRaw && !p.birthYear) {
-      anomalies.push({ personId: p.id, name: p.displayName, severity: 'info', message: 'Aucune date de naissance' });
+    // Erreur : âge au décès > 120 ans
+    if (birthY && deathY && deathY - birthY > 120) {
+      push(p.id, p.displayName, 'err', `Âge au décès anormalement élevé : ${deathY - birthY} ans`);
     }
 
-    // Parents younger than child (or too close)
+    // Erreur : enfant né avant ou trop proche d'un parent (< 10 ans)
     if (birthY) {
-      const parents = await getParents(p.id);
-      for (const parent of parents) {
+      const parentIds = store.childToParents.get(p.id) ?? [];
+      for (const parentId of parentIds) {
+        const parent = store.persons.get(parentId);
+        if (!parent) continue;
         const parentBirthY = parent.birthYear ? parseInt(parent.birthYear) : null;
-        if (parentBirthY) {
-          const gap = birthY - parentBirthY;
-          if (gap < 0) {
-            anomalies.push({ personId: p.id, name: p.displayName, severity: 'error', message: `Né(e) avant son parent ${parent.displayName} (${parentBirthY})` });
-          } else if (gap < 12) {
-            anomalies.push({ personId: p.id, name: p.displayName, severity: 'warning', message: `Seulement ${gap} an${gap > 1 ? 's' : ''} de différence avec le parent ${parent.displayName}` });
-          } else if (gap > 80) {
-            anomalies.push({ personId: p.id, name: p.displayName, severity: 'warning', message: `Parent ${parent.displayName} avait ${gap} ans à la naissance (peu probable)` });
-          }
+        if (!parentBirthY) continue;
+        const gap = birthY - parentBirthY;
+        if (gap < 0) {
+          push(p.id, p.displayName, 'err', `Né(e) avant son parent ${parent.displayName} (${parentBirthY})`);
+        } else if (gap < 10) {
+          push(p.id, p.displayName, 'err', `Seulement ${gap} an${gap !== 1 ? 's' : ''} de différence avec le parent ${parent.displayName}`);
+        } else if (gap > 80) {
+          push(p.id, p.displayName, 'warn', `Parent ${parent.displayName} avait ${gap} ans à la naissance (peu probable)`);
         }
       }
     }
+
+    // Avertissement : date de naissance estimée (ABT / EST / CAL / BEF / AFT)
+    if (p.birthDateRaw && /^(ABT|EST|CAL|BEF|AFT)\b/i.test(p.birthDateRaw.trim())) {
+      push(p.id, p.displayName, 'warn', `Date de naissance estimée : ${p.birthDateRaw}`);
+    }
+
+    // Avertissement : personne vivante de plus de 110 ans
+    if (birthY && !deathY && currentYear - birthY > 110) {
+      push(p.id, p.displayName, 'warn', `Potentiellement vivante mais née il y a ${currentYear - birthY} ans`);
+    }
+
+    // Avertissement : mariage avec plus de 50 ans d'écart entre conjoints
+    if (birthY) {
+      const spouseRels = store.spouseRelations.get(p.id) ?? [];
+      for (const rel of spouseRels) {
+        const spouse = store.persons.get(rel.spouseId);
+        if (!spouse?.birthYear) continue;
+        const spouseBirthY = parseInt(spouse.birthYear);
+        const gap = Math.abs(birthY - spouseBirthY);
+        if (gap > 50 && p.id < rel.spouseId) {
+          push(p.id, p.displayName, 'warn', `Écart de ${gap} ans avec le conjoint ${spouse.displayName} (${spouseBirthY})`);
+        }
+      }
+    }
+
+    // Info : pas de date de naissance
+    if (!p.birthDateRaw && !p.birthYear) {
+      push(p.id, p.displayName, 'info', 'Aucune date de naissance renseignée');
+    }
+
+    // Info : pas de lieu de naissance
+    if (!p.birthPlace && !p.birthPlaceFull) {
+      push(p.id, p.displayName, 'info', 'Lieu de naissance inconnu');
+    }
+
+    // Info : pas de date de décès et statut inconnu (personne adulte)
+    if (!p.deathYear && !p.deathDateRaw && birthY && currentYear - birthY > 30) {
+      push(p.id, p.displayName, 'info', 'Aucune date de décès — statut inconnu');
+    }
+
+    // Info : sans parents connus dans l'arbre
+    const hasParents = (store.childToParents.get(p.id) ?? []).length > 0;
+    if (!hasParents) {
+      push(p.id, p.displayName, 'info', "Aucun parent connu dans l'arbre");
+    }
   }
 
-  // ── Homonymes ──────────────────────────────────────────────────────────────
-  const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-  const nameGroups = new Map<string, PersonRecord[]>();
-  for (const p of persons) {
-    const firstName = p.givenNames.split(/[,\s]+/)[0];
-    if (!firstName || !p.surname) continue;
-    const key = `${norm(firstName)}_${norm(p.surname)}`;
-    if (!nameGroups.has(key)) nameGroups.set(key, []);
-    nameGroups.get(key)!.push(p);
-  }
-  const duplicateGroups = [...nameGroups.values()].filter(g => g.length > 1);
+  // ── Tri : erreurs → avertissements → infos, puis nom ──────────────────────
+  anomalies.sort(
+    (a, b) =>
+      SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] ||
+      a.name.localeCompare(b.name, 'fr')
+  );
 
-  // Sort: errors first, then warnings, then info
-  const order = { error: 0, warning: 1, info: 2 };
-  anomalies.sort((a, b) => order[a.severity] - order[b.severity] || a.name.localeCompare(b.name));
-
-  const errors = anomalies.filter(a => a.severity === 'error');
-  const warnings = anomalies.filter(a => a.severity === 'warning');
+  const errors = anomalies.filter(a => a.severity === 'err');
+  const warnings = anomalies.filter(a => a.severity === 'warn');
   const infos = anomalies.filter(a => a.severity === 'info');
 
-  const colors = {
-    error: 'bg-red-50 dark:bg-red-900/10 border-l-4 border-red-400',
-    warning: 'bg-yellow-50 dark:bg-yellow-900/10 border-l-4 border-yellow-400',
-    info: 'bg-slate-50 dark:bg-slate-800 border-l-4 border-slate-300',
-  };
-  const badges = {
-    error: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-    warning: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-    info: 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400',
-  };
+  const statsCards = [
+    { label: 'Erreurs',        count: errors.length,        color: '#c0392b' },
+    { label: 'Avertissements', count: warnings.length,      color: '#b8860b' },
+    { label: 'Informations',   count: infos.length,         color: '#8a8474' },
+    { label: 'Homonymes',      count: homonymGroups.length, color: '#b07d57' },
+  ];
 
   return (
-    <div className="h-screen overflow-y-auto bg-slate-50 dark:bg-slate-950">
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center gap-4">
-          <Link href="/" className="text-sm text-primary hover:underline flex items-center gap-1">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            Arbre
-          </Link>
-          <h1 className="text-lg font-bold text-slate-800 dark:text-slate-200">Rapport d&apos;anomalies</h1>
-        </div>
-      </header>
+    <div className="min-h-screen overflow-y-auto" style={{ background: '#f4f1ea' }}>
+      <main className="mx-auto px-6 py-10" style={{ maxWidth: 820 }}>
 
-      <main className="max-w-3xl mx-auto p-6 space-y-6">
-        {/* Summary */}
-        <div className="grid grid-cols-4 gap-4">
-          {[
-            { label: 'Erreurs', count: errors.length, cls: 'text-red-600' },
-            { label: 'Avertissements', count: warnings.length, cls: 'text-yellow-600' },
-            { label: 'Informations', count: infos.length, cls: 'text-slate-500' },
-            { label: 'Homonymes', count: duplicateGroups.length, cls: 'text-amber-600' },
-          ].map(({ label, count, cls }) => (
-            <div key={label} className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm text-center">
-              <p className={`text-3xl font-bold ${cls}`}>{count}</p>
-              <p className="text-sm text-slate-500 mt-1">{label}</p>
+        {/* En-tête */}
+        <div className="mb-7">
+          <h1
+            style={{
+              fontFamily: 'var(--font-serif)',
+              fontSize: 30,
+              fontWeight: 500,
+              letterSpacing: '-0.02em',
+              color: '#1c1f1c',
+              margin: 0,
+              lineHeight: 1.2,
+            }}
+          >
+            Rapport d&apos;anomalies
+          </h1>
+          <p style={{ fontSize: 13.5, color: '#8a8474', marginTop: 6, marginBottom: 0 }}>
+            Incohérences détectées automatiquement dans les données.
+          </p>
+        </div>
+
+        {/* Grille de stats — 4 colonnes */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: 14,
+            marginBottom: 26,
+          }}
+        >
+          {statsCards.map(({ label, count, color }) => (
+            <div
+              key={label}
+              style={{
+                background: '#fffdf9',
+                border: '1px solid #e9e2d2',
+                borderRadius: 14,
+                padding: 18,
+                textAlign: 'center',
+              }}
+            >
+              <p
+                style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontSize: 30,
+                  fontWeight: 500,
+                  color,
+                  margin: 0,
+                  lineHeight: 1,
+                }}
+              >
+                {count}
+              </p>
+              <p
+                style={{
+                  fontSize: 12,
+                  color: '#8a8474',
+                  marginTop: 6,
+                  marginBottom: 0,
+                }}
+              >
+                {label}
+              </p>
             </div>
           ))}
         </div>
 
+        {/* Liste des anomalies */}
         {anomalies.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-12 shadow-sm text-center text-slate-400">
+          <div
+            style={{
+              background: '#fffdf9',
+              border: '1px solid #e9e2d2',
+              borderRadius: 16,
+              padding: '48px 24px',
+              textAlign: 'center',
+              color: '#8a8474',
+              fontSize: 14,
+            }}
+          >
             Aucune anomalie détectée.
           </div>
         ) : (
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm overflow-hidden">
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {anomalies.map((a, i) => (
-                <div key={i} className={`flex items-start gap-3 px-4 py-3 ${colors[a.severity]}`}>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${badges[a.severity]}`}>
-                    {a.severity === 'error' ? 'Erreur' : a.severity === 'warning' ? 'Attention' : 'Info'}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <Link href={`/person/${a.personId}`} className="text-sm font-medium hover:text-primary transition-colors">
-                      {a.name}
-                    </Link>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{a.message}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {/* Homonymes */}
-        {duplicateGroups.length > 0 && (
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Homonymes potentiels</span>
-              <span className="text-xs text-slate-400">{duplicateGroups.length} groupe{duplicateGroups.length > 1 ? 's' : ''} détecté{duplicateGroups.length > 1 ? 's' : ''}</span>
-            </div>
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {duplicateGroups.map((group, i) => (
-                <div key={i} className="px-4 py-3 bg-amber-50 dark:bg-amber-900/5 border-l-4 border-amber-300">
-                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">
-                    {group[0].givenNames.split(/[,\s]+/)[0]} {group[0].surname} — {group.length} personnes
+          <div
+            style={{
+              background: '#fffdf9',
+              border: '1px solid #e9e2d2',
+              borderRadius: 16,
+              overflow: 'hidden',
+            }}
+          >
+            {anomalies.map((a, i) => (
+              <div
+                key={a.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 13,
+                  padding: '13px 18px',
+                  borderBottom: i < anomalies.length - 1 ? '1px solid #f1ebdd' : 'none',
+                  borderLeft: `4px solid ${ACCENT[a.severity]}`,
+                }}
+              >
+                {/* Badge sévérité */}
+                <Badge tone={SEVERITY_TONE[a.severity]} style={{ flexShrink: 0, marginTop: 1 }}>
+                  {BADGE_LABEL[a.severity]}
+                </Badge>
+
+                {/* Contenu */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Link
+                    href={`/person/${a.personId}?highlight=anomaly`}
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: '#1c1f1c',
+                      textDecoration: 'none',
+                      transition: 'color 0.15s',
+                    }}
+                    className="anomaly-name"
+                  >
+                    {a.name}
+                  </Link>
+                  <p
+                    style={{
+                      fontSize: 12.5,
+                      color: '#7c7666',
+                      margin: '2px 0 0',
+                    }}
+                  >
+                    {a.message}
                   </p>
-                  <div className="flex flex-wrap gap-3">
-                    {group.map(p => (
-                      <Link key={p.id} href={`/person/${p.id}`} className="text-xs text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">
-                        {p.displayName}{p.birthYear ? ` (${p.birthYear})` : ''}
-                      </Link>
-                    ))}
-                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         )}
       </main>
+
+      <style>{`.anomaly-name:hover { color: #2f5142 !important; }`}</style>
     </div>
   );
 }

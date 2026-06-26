@@ -137,8 +137,12 @@ export function formatPlaceFull(placeFull: string | undefined): string {
   const parts = placeFull.split(',').map(s => s.trim());
   const city    = parts[0] || '';
   const region  = parts[3] || '';
-  const country = parts[4] || '';
+  const rawCountry = parts[4] || '';
   const extras  = parts.slice(5).filter(Boolean);
+
+  const country = rawCountry
+    ? rawCountry.charAt(0).toUpperCase() + rawCountry.slice(1).toLowerCase()
+    : '';
 
   const main = [city, region, country].filter(Boolean).join(', ');
   return extras.length > 0 ? `${main} — ${extras.join(', ')}` : main;
@@ -749,10 +753,21 @@ export function clearStore(): void {
 
 export async function getDefaultPersonId(): Promise<string> {
   const s = await getStore();
+  const norm = (v: string) => v.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+  // Prefer Léa DUDOUYT MAUDET by name match
+  for (const p of s.persons.values()) {
+    const firstGiven = norm(p.givenNames ?? '').split(/[\s,]+/)[0];
+    const sur = norm(p.surname ?? '');
+    if (firstGiven === 'lea' && sur.includes('dudouyt')) {
+      return p.id;
+    }
+  }
+  // Fallback: earliest-born DUDOUYT
   let earliest: { id: string; year: number } | null = null;
   for (const p of s.persons.values()) {
     const year = p.birthYear ? parseInt(p.birthYear) : null;
-    if (year && (!earliest || year < earliest.year)) {
+    if (!year) continue;
+    if (p.surname?.toUpperCase().includes('DUDOUYT') && (!earliest || year < earliest.year)) {
       earliest = { id: p.id, year };
     }
   }
@@ -993,13 +1008,19 @@ export async function searchPersons(query: string, limit = 20): Promise<PersonRe
     else if (p.birthPlaceFull && normalize(p.birthPlaceFull).includes(q)) score = 3;
     else if (p.occupation && normalize(p.occupation).includes(q)) score = 3;
     else {
-      // Fuzzy: try Levenshtein on surname and given name tokens
-      const surnameDist = levenshtein(q, surname.substring(0, q.length + 2));
-      const givenDist = levenshtein(q, given.substring(0, q.length + 2));
-      const minDist = Math.min(surnameDist, givenDist);
-      const tolerance = q.length <= 3 ? 0 : q.length <= 5 ? 1 : 2;
-      if (minDist <= tolerance) score = Math.max(1, 3 - minDist);
-      else continue;
+      // Multi-word query: all tokens must appear somewhere in the full name
+      const tokens = q.split(/\s+/).filter(Boolean);
+      if (tokens.length > 1 && tokens.every(t => name.includes(t))) {
+        score = 7;
+      } else {
+        // Fuzzy: try Levenshtein on surname and given name tokens
+        const surnameDist = levenshtein(q, surname.substring(0, q.length + 2));
+        const givenDist = levenshtein(q, given.substring(0, q.length + 2));
+        const minDist = Math.min(surnameDist, givenDist);
+        const tolerance = q.length <= 3 ? 0 : q.length <= 5 ? 1 : 2;
+        if (minDist <= tolerance) score = Math.max(1, 3 - minDist);
+        else continue;
+      }
     }
 
     results.push({ person: p, score });

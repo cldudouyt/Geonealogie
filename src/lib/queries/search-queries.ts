@@ -16,3 +16,17 @@ export const AUTOCOMPLETE_PERSONS = `
     p.surname, p.givenNames
   LIMIT $limit
 `;
+
+export const CREATE_FULLTEXT_INDEX = `
+  CREATE FULLTEXT INDEX personIndex IF NOT EXISTS
+  FOR (p:Person) ON EACH [p.fullName, p.givenNames, p.surname, p.occupation, p.birthPlace]
+`;
+
+export const FULLTEXT_SEARCH_PERSONS = `
+  CALL db.index.fulltext.queryNodes("personIndex", $q + "*")
+  YIELD node, score
+  RETURN node.id AS id, node.fullName AS name,
+         node.birthYear AS birthYear, node.birthPlace AS birthPlace,
+         node.occupation AS occupation, node.sex AS sex, score
+  ORDER BY score DESC LIMIT 20
+`;
