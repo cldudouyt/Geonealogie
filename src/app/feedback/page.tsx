@@ -1,6 +1,7 @@
 import { runQuery } from '@/lib/neo4j';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Suggestions reçues — Géonéalogie' };
 
 interface Suggestion {

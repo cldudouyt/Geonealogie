@@ -1,6 +1,8 @@
 import { runQuery } from '@/lib/neo4j';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 interface FeedbackRow {
   id: string;
   name: string;
