@@ -223,9 +223,9 @@ export default function OriginsMapSection() {
         <div style={{
           position: 'relative',
           height: 560,
-          borderRadius: 20,
+          borderRadius: 16,
           overflow: 'hidden',
-          border: '1px solid #d9e0d4',
+          border: '1px solid #e7e0d0',
         }}>
           {loading ? (
             <div style={{

@@ -176,8 +176,8 @@ function JourneyMap({ stops }: { stops: JourneyStop[] }) {
       style={{
         height: 340,
         width: '100%',
-        borderRadius: 18,
-        border: '1px solid #d9e0d4',
+        borderRadius: 16,
+        border: '1px solid #e7e0d0',
         zIndex: 0,
       }}
     />
@@ -241,7 +241,7 @@ export default function TimelineClient({
           >
             Parcours migratoire
           </h1>
-          <p style={{ fontSize: 13.5, color: '#5a4a38', marginBottom: 20 }}>
+          <p style={{ fontSize: 13.5, color: '#8a8474', marginBottom: 20 }}>
             Les étapes de vie de <strong>{personName}</strong>, dans l&apos;ordre chronologique.
           </p>
 
@@ -254,7 +254,15 @@ export default function TimelineClient({
               type="text"
               value={ac.query}
               onChange={e => ac.search(e.target.value)}
-              onBlur={() => setTimeout(() => ac.setOpen(false), 150)}
+              onBlur={e => {
+                e.currentTarget.style.borderColor = '#e0d8c6';
+                e.currentTarget.style.boxShadow = 'none';
+                setTimeout(() => ac.setOpen(false), 150);
+              }}
+              onFocus={e => {
+                e.currentTarget.style.borderColor = '#2f5142';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(47,81,66,.12)';
+              }}
               placeholder="Tapez un nom…"
               style={{
                 width: '100%',
@@ -266,6 +274,7 @@ export default function TimelineClient({
                 fontSize: 14,
                 color: '#1c1f1c',
                 outline: 'none',
+                transition: 'border-color .15s, box-shadow .15s',
               }}
             />
             {ac.open && ac.suggestions.length > 0 && (
@@ -327,8 +336,8 @@ export default function TimelineClient({
           <div
             style={{
               background: '#fffdf9',
-              border: '1px solid #e9e2d2',
-              borderRadius: 18,
+              border: '1px solid #e7e0d0',
+              borderRadius: 16,
               padding: '40px 24px',
               textAlign: 'center',
               color: '#9a9080',
@@ -345,8 +354,8 @@ export default function TimelineClient({
             <div
               style={{
                 background: '#fffdf9',
-                border: '1px solid #e9e2d2',
-                borderRadius: 18,
+                border: '1px solid #e7e0d0',
+                borderRadius: 16,
                 padding: '30px 24px',
                 overflowX: 'auto',
                 marginBottom: 24,
@@ -450,8 +459,8 @@ export default function TimelineClient({
               <div
                 style={{
                   height: 340,
-                  borderRadius: 18,
-                  border: '1px solid #d9e0d4',
+                  borderRadius: 16,
+                  border: '1px solid #e7e0d0',
                   background: '#fffdf9',
                   display: 'flex',
                   alignItems: 'center',

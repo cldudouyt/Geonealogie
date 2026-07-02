@@ -210,8 +210,8 @@ export default async function AnomaliesPage() {
               key={label}
               style={{
                 background: '#fffdf9',
-                border: '1px solid #e9e2d2',
-                borderRadius: 14,
+                border: '1px solid #e7e0d0',
+                borderRadius: 16,
                 padding: 18,
                 textAlign: 'center',
               }}

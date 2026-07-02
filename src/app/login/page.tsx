@@ -130,7 +130,7 @@ export default function LoginPage() {
                 height: 44,
                 borderRadius: 11,
                 border: '1.5px solid #e0d8c6',
-                background: '#fff',
+                background: '#fffdf9',
                 padding: '0 14px',
                 fontSize: 15,
                 color: '#1c1f1c',
@@ -150,7 +150,7 @@ export default function LoginPage() {
           </div>
 
           {state?.error && (
-            <p style={{ fontSize: 13, color: '#b03a2e', margin: 0 }}>{state.error}</p>
+            <p style={{ fontSize: 13, color: '#b91c1c', margin: 0 }}>{state.error}</p>
           )}
 
           <button
@@ -159,7 +159,7 @@ export default function LoginPage() {
             style={{
               width: '100%',
               height: 46,
-              borderRadius: 12,
+              borderRadius: 10,
               background: '#1e3a2f',
               color: '#f1ede2',
               fontSize: 15,

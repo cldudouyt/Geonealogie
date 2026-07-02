@@ -233,9 +233,9 @@ export default function NetworkGraph({ defaultFocusId }: { defaultFocusId: strin
         justifyContent: 'center',
         backgroundImage: 'radial-gradient(#e4dcc8 1px, transparent 1px)',
         backgroundSize: '22px 22px',
-        backgroundColor: '#fbf9f3',
-        borderRadius: '20px',
-        border: '1px solid #e9e2d2',
+        backgroundColor: '#fffdf9',
+        borderRadius: '16px',
+        border: '1px solid #e7e0d0',
         padding: '16px',
         minHeight: '540px',
       }}

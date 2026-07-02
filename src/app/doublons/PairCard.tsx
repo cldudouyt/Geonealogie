@@ -54,7 +54,7 @@ export default function PairCard({ a, b, confidence, reasons }: PairCardProps) {
   return (
     <div
       style={{
-        border: '1px solid #e9e2d2',
+        border: '1px solid #e7e0d0',
         borderRadius: 16,
         overflow: 'hidden',
         opacity: isPending ? 0.5 : 1,

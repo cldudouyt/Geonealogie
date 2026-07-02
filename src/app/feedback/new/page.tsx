@@ -43,8 +43,8 @@ export default function FeedbackNewPage() {
             maxWidth: 520,
             width: '100%',
             background: '#fffdf9',
-            border: '1px solid #e9e2d2',
-            borderRadius: 18,
+            border: '1px solid #e7e0d0',
+            borderRadius: 16,
             padding: '40px 32px',
             textAlign: 'center',
           }}
@@ -128,8 +128,8 @@ export default function FeedbackNewPage() {
           maxWidth: 520,
           width: '100%',
           background: '#fffdf9',
-          border: '1px solid #e9e2d2',
-          borderRadius: 18,
+          border: '1px solid #e7e0d0',
+          borderRadius: 16,
           padding: 32,
           margin: '0 auto',
         }}
