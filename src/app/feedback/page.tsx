@@ -1,19 +1,8 @@
-import { runQuery } from '@/lib/neo4j';
+import { hasDb, listSuggestions, type SuggestionRow } from '@/lib/db';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Suggestions reçues — Géonéalogie' };
-
-interface Suggestion {
-  s: {
-    id: string;
-    title: string;
-    body: string;
-    author: string;
-    status: string;
-    createdAt: { toString(): string };
-  };
-}
 
 type StatusKey = 'open' | 'in_progress' | 'resolved';
 
@@ -45,13 +34,11 @@ function formatDate(raw: string): string {
 }
 
 export default async function FeedbackPage() {
-  let suggestions: Suggestion[] = [];
+  let suggestions: SuggestionRow[] = [];
   try {
-    suggestions = await runQuery<Suggestion>(
-      'MATCH (s:Suggestion) RETURN s ORDER BY s.createdAt DESC',
-    );
+    if (hasDb()) suggestions = await listSuggestions();
   } catch {
-    // Neo4j might be unavailable in some envs — show empty list
+    // DB might be unavailable in some envs — show empty list
   }
 
   const statusKey = (s: string): StatusKey =>
@@ -117,10 +104,10 @@ export default async function FeedbackPage() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {suggestions.map(({ s }) => {
+          {suggestions.map(s => {
             const sk = statusKey(s.status);
             const st = STATUS_STYLES[sk];
-            const createdStr = s.createdAt?.toString ? s.createdAt.toString() : String(s.createdAt);
+            const createdStr = s.createdAt;
             return (
               <div
                 key={s.id}

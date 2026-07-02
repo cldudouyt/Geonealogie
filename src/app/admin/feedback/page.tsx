@@ -1,29 +1,16 @@
-import { runQuery } from '@/lib/neo4j';
+import { hasDb, listSuggestions, type SuggestionRow } from '@/lib/db';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Suggestions reçues (admin) — Géonéalogie' };
 
-interface FeedbackRow {
-  id: string;
-  name: string;
-  title: string;
-  description: string;
-  createdAt: string;
-  status: string;
-}
-
-async function getFeedbacks(): Promise<FeedbackRow[]> {
-  return runQuery<FeedbackRow>(
-    `MATCH (f:Feedback)
-     RETURN f.id AS id, f.name AS name, f.title AS title,
-            f.description AS description, toString(f.createdAt) AS createdAt, f.status AS status
-     ORDER BY f.createdAt DESC`,
-  );
-}
-
 export default async function AdminFeedbackPage() {
-  const feedbacks = await getFeedbacks();
+  let feedbacks: SuggestionRow[] = [];
+  try {
+    if (hasDb()) feedbacks = await listSuggestions();
+  } catch {
+    // DB might be unavailable in some envs — show empty list
+  }
 
   return (
     <div style={{ maxWidth: 820, margin: '0 auto', padding: '32px 20px' }}>
@@ -98,13 +85,13 @@ export default async function AdminFeedbackPage() {
                   {f.title}
                 </h2>
                 <p style={{ margin: '4px 0 0', fontSize: 12, color: '#9aa89b' }}>
-                  Par {f.name} ·{' '}
+                  Par {f.author} ·{' '}
                   {new Date(f.createdAt).toLocaleDateString('fr-FR', {
                     day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
                   })}
                 </p>
                 <p style={{ margin: '11px 0 0', fontSize: 13.5, color: '#5a5e52', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
-                  {f.description}
+                  {f.body}
                 </p>
               </div>
 

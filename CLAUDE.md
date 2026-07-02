@@ -2,8 +2,10 @@
 
 ## Description
 Application généalogique familiale pour la famille Dudouyt.
-Stack : **Next.js 16 + Neo4j + Tailwind CSS 4 + Vercel Blob**.
-Déployé sur Vercel. Base de données Neo4j (locale dev, cloud prod).
+Stack : **Next.js 16 + Postgres (Neon) + Tailwind CSS 4 + Vercel Blob**.
+Déployé sur Vercel. Données généalogiques : fichier GEDCOM parsé en mémoire (`gedcom-store.ts`).
+Postgres (Neon, gratuit) ne stocke que les écritures : overrides manuels, métadonnées documents, suggestions.
+Fallback fichier local (`data/*.json`) quand `DATABASE_URL` est absent (dev).
 
 ## Structure des dossiers
 ```
@@ -25,7 +27,7 @@ src/
     admin/              — Géocodage et administration
     feedback/           — Suggestions reçues
     api/                — Routes API Next.js
-      persons/          — CRUD personnes Neo4j
+      persons/          — CRUD personnes (GEDCOM + overrides)
       tree/             — Arbre pour D3
       network/          — Graphe relations
       geocode/          — Géocodage Nominatim
@@ -34,10 +36,11 @@ src/
       ai/               — Agents IA (Claude) ← nouveau
   components/           — Composants React partagés
   lib/
-    neo4j.ts            — Driver Neo4j singleton
-    gedcom-store.ts     — Parsing GEDCOM
-    ai.ts               — Client Anthropic + runAgentsInParallel ← nouveau
-    queries/            — Requêtes Cypher
+    db.ts               — Client Postgres Neon (kv_state + suggestions)
+    gedcom-store.ts     — Parsing GEDCOM (source de données principale)
+    overrides-store.ts  — Édits manuels (Postgres, fallback fichier)
+    documents-store.ts  — Métadonnées documents (Postgres, fichiers sur Blob)
+    ai.ts               — Client Anthropic + runAgentsInParallel
     types/              — Types TypeScript
 ```
 
@@ -117,15 +120,13 @@ const results = await runAgentsInParallel([
 
 ## Données
 - Fichier GEDCOM source : `Dudouyt Heredis 2014-Export.ged`
-- Overrides manuels stockés dans Neo4j (via `overrides-store.ts`)
+- Overrides manuels stockés dans Postgres Neon (via `overrides-store.ts`, table `kv_state`)
 - Photos : Vercel Blob (`BLOB_READ_WRITE_TOKEN`)
 - Géocodage : API Nominatim (OpenStreetMap)
 
 ## Variables d'environnement
 ```
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=...
+DATABASE_URL=postgres://...    ← Postgres Neon (injecté par Vercel) ; absent = fallback fichier
 ANTHROPIC_API_KEY=sk-ant-...   ← obligatoire pour les features IA
 BLOB_READ_WRITE_TOKEN=...
 AUTH_PASSWORD=...
@@ -135,7 +136,7 @@ AUTH_SECRET=...
 ## Conventions de code
 - TypeScript strict
 - Tailwind CSS 4 pour les styles (pas de CSS modules)
-- Requêtes Neo4j dans `src/lib/queries/` (fichiers `.ts` par domaine)
+- Accès base de données via `src/lib/db.ts` uniquement (jamais de SQL dans les pages)
 - Pas de commentaires sauf si la logique est non-évidente
 - Composants Server Components par défaut, `"use client"` uniquement si nécessaire
 - Nommage : `camelCase` pour variables/fonctions, `PascalCase` pour composants

@@ -1,6 +1,6 @@
 'use server';
 
-import { runQuery } from '@/lib/neo4j';
+import { insertSuggestion } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 
 export interface FeedbackState {
@@ -33,17 +33,7 @@ export async function submitSuggestion(data: {
   if (!body) return { error: 'La description est obligatoire.' };
 
   try {
-    await runQuery(
-      `CREATE (s:Suggestion {
-        id: randomUUID(),
-        title: $title,
-        body: $body,
-        author: $author,
-        status: 'open',
-        createdAt: datetime()
-      })`,
-      { title, body, author: author || 'Anonyme' },
-    );
+    await insertSuggestion({ title, body, author });
 
     if (process.env.GITHUB_TOKEN) {
       const [owner, repo] = (process.env.GITHUB_REPO || '').split('/');

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { runSingleQuery } from './neo4j';
+import { hasDb, kvGet, kvSet } from './db';
 
 export interface DocumentMeta {
   id: string;
@@ -15,16 +15,12 @@ export interface DocumentMeta {
 
 const META_FILE = path.join(process.cwd(), 'data', 'documents.json');
 const DOCS_DIR  = path.join(process.cwd(), 'public', 'documents');
-const DB_KEY = 'global';
+const DB_KEY = 'documents';
 
 // ─── Storage detection ─────────────────────────────────────────────────────
 
 function shouldUseBlob(): boolean {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
-}
-
-function shouldUseNeo4j(): boolean {
-  return Boolean(process.env.NEO4J_URI && process.env.NEO4J_USER && process.env.NEO4J_PASSWORD);
 }
 
 // ─── File storage ──────────────────────────────────────────────────────────
@@ -88,53 +84,24 @@ function writeAllToFile(all: Record<string, DocumentMeta[]>): void {
   fs.writeFileSync(META_FILE, JSON.stringify(all, null, 2), 'utf-8');
 }
 
-async function readAllFromNeo4j(): Promise<Record<string, DocumentMeta[]>> {
-  type Row = { docsJson?: string };
-  const row = await runSingleQuery<Row>(
-    `
-      MERGE (d:DocumentsState {id: $id})
-      ON CREATE SET d.docsJson = '{}', d.updatedAt = datetime()
-      RETURN d.docsJson AS docsJson
-    `,
-    { id: DB_KEY },
-  );
-  if (!row) return {};
-  try {
-    return JSON.parse(row.docsJson || '{}') as Record<string, DocumentMeta[]>;
-  } catch {
-    return {};
-  }
-}
-
-async function writeAllToNeo4j(all: Record<string, DocumentMeta[]>): Promise<void> {
-  await runSingleQuery(
-    `
-      MERGE (d:DocumentsState {id: $id})
-      SET d.docsJson = $docsJson, d.updatedAt = datetime()
-      RETURN d.id AS id
-    `,
-    { id: DB_KEY, docsJson: JSON.stringify(all) },
-  );
-}
-
 async function readAll(): Promise<Record<string, DocumentMeta[]>> {
-  if (shouldUseNeo4j()) {
+  if (hasDb()) {
     try {
-      return await readAllFromNeo4j();
+      return (await kvGet<Record<string, DocumentMeta[]>>(DB_KEY)) ?? {};
     } catch (err) {
-      console.error('[documents] Neo4j read failed, falling back to file:', err);
+      console.error('[documents] DB read failed, falling back to file:', err);
     }
   }
   return readAllFromFile();
 }
 
 async function writeAll(all: Record<string, DocumentMeta[]>): Promise<void> {
-  if (shouldUseNeo4j()) {
+  if (hasDb()) {
     try {
-      await writeAllToNeo4j(all);
+      await kvSet(DB_KEY, all);
       return;
     } catch (err) {
-      console.error('[documents] Neo4j write failed, falling back to file:', err);
+      console.error('[documents] DB write failed, falling back to file:', err);
     }
   }
   writeAllToFile(all);

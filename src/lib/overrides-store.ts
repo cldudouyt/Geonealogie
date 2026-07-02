@@ -1,7 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { runSingleQuery } from './neo4j';
+import { hasDb, kvGet, kvSet } from './db';
 
 export interface EventOverride {
   type: string;
@@ -68,13 +68,9 @@ export interface Overrides {
 
 const DATA_FILE = path.join(process.cwd(), 'data', 'overrides.json');
 const TMP_FILE = path.join(os.tmpdir(), 'geonealogie-overrides.json');
-const DB_KEY = 'global';
+const DB_KEY = 'overrides';
 
 let _cache: Overrides | null = null;
-
-function shouldUseNeo4j(): boolean {
-  return Boolean(process.env.NEO4J_URI && process.env.NEO4J_USER && process.env.NEO4J_PASSWORD);
-}
 
 function emptyOverrides(): Overrides {
   return { persons: {}, newPersons: [], deletedPersonIds: [], mergedPersons: {}, ignoredDoublons: [] };
@@ -127,72 +123,26 @@ function persistOverridesToFile(overrides: Overrides): void {
   }
 }
 
-async function loadOverridesFromNeo4j(): Promise<Overrides> {
-  type Row = {
-    personsJson?: string; newPersonsJson?: string;
-    mergedPersonsJson?: string; deletedPersonIdsJson?: string; ignoredDoublonsJson?: string;
-  };
-
-  const row = await runSingleQuery<Row>(
-    `
-      MERGE (o:OverridesState {id: $id})
-      ON CREATE SET o.personsJson = '{}', o.newPersonsJson = '[]',
-                    o.mergedPersonsJson = '{}', o.deletedPersonIdsJson = '[]',
-                    o.ignoredDoublonsJson = '[]', o.updatedAt = datetime()
-      RETURN o.personsJson AS personsJson, o.newPersonsJson AS newPersonsJson,
-             o.mergedPersonsJson AS mergedPersonsJson,
-             o.deletedPersonIdsJson AS deletedPersonIdsJson,
-             o.ignoredDoublonsJson AS ignoredDoublonsJson
-    `,
-    { id: DB_KEY },
-  );
-
-  if (!row) return emptyOverrides();
-
-  try {
-    const persons       = JSON.parse(row.personsJson || '{}') as Overrides['persons'];
-    const newPersons    = JSON.parse(row.newPersonsJson || '[]') as Overrides['newPersons'];
-    const mergedPersons = JSON.parse(row.mergedPersonsJson || '{}') as Overrides['mergedPersons'];
-    const deletedPersonIds = JSON.parse(row.deletedPersonIdsJson || '[]') as Overrides['deletedPersonIds'];
-    const ignoredDoublons  = JSON.parse(row.ignoredDoublonsJson || '[]') as Overrides['ignoredDoublons'];
-    return { persons, newPersons, mergedPersons, deletedPersonIds, ignoredDoublons };
-  } catch (err) {
-    console.error('[overrides] Failed to parse overrides from Neo4j:', err);
-    return emptyOverrides();
-  }
-}
-
-async function persistOverridesToNeo4j(overrides: Overrides): Promise<void> {
-  const personsJson          = JSON.stringify(overrides.persons);
-  const newPersonsJson       = JSON.stringify(overrides.newPersons);
-  const mergedPersonsJson    = JSON.stringify(overrides.mergedPersons ?? {});
-  const deletedPersonIdsJson = JSON.stringify(overrides.deletedPersonIds ?? []);
-  const ignoredDoublonsJson  = JSON.stringify(overrides.ignoredDoublons ?? []);
-
-  await runSingleQuery(
-    `
-      MERGE (o:OverridesState {id: $id})
-      SET o.personsJson = $personsJson,
-          o.newPersonsJson = $newPersonsJson,
-          o.mergedPersonsJson = $mergedPersonsJson,
-          o.deletedPersonIdsJson = $deletedPersonIdsJson,
-          o.ignoredDoublonsJson = $ignoredDoublonsJson,
-          o.updatedAt = datetime()
-      RETURN o.id AS id
-    `,
-    { id: DB_KEY, personsJson, newPersonsJson, mergedPersonsJson, deletedPersonIdsJson, ignoredDoublonsJson },
-  );
+async function loadOverridesFromDb(): Promise<Overrides> {
+  const stored = await kvGet<Overrides>(DB_KEY);
+  if (!stored) return emptyOverrides();
+  stored.persons ??= {};
+  stored.newPersons ??= [];
+  stored.deletedPersonIds ??= [];
+  stored.mergedPersons ??= {};
+  stored.ignoredDoublons ??= [];
+  return stored;
 }
 
 export async function loadOverrides(): Promise<Overrides> {
   if (_cache) return _cache;
 
-  if (shouldUseNeo4j()) {
+  if (hasDb()) {
     try {
-      _cache = await loadOverridesFromNeo4j();
+      _cache = await loadOverridesFromDb();
       return _cache;
     } catch (err) {
-      console.error('[overrides] Neo4j load failed, falling back to file:', err);
+      console.error('[overrides] DB load failed, falling back to file:', err);
     }
   }
 
@@ -203,12 +153,12 @@ export async function loadOverrides(): Promise<Overrides> {
 async function persistOverrides(overrides: Overrides): Promise<void> {
   _cache = overrides;
 
-  if (shouldUseNeo4j()) {
+  if (hasDb()) {
     try {
-      await persistOverridesToNeo4j(overrides);
+      await kvSet(DB_KEY, overrides);
       return;
     } catch (err) {
-      console.error('[overrides] Neo4j persist failed, falling back to file:', err);
+      console.error('[overrides] DB persist failed, falling back to file:', err);
     }
   }
 
