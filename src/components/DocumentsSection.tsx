@@ -106,12 +106,12 @@ export default function DocumentsSection({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm mt-6">
-      <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">Documents</h2>
+    <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6 mt-6">
+      <h2 className="text-lg font-semibold mb-4 text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Documents</h2>
 
       {/* Liste */}
       {docs.length > 0 && (
-        <ul className="divide-y divide-slate-100 dark:divide-slate-800 mb-5">
+        <ul className="divide-y divide-[#f1ebdd] mb-5">
           {docs.map(doc => (
             <li key={doc.id} className="flex items-center gap-3 py-3">
               <span className="text-xl shrink-0 select-none">
@@ -122,18 +122,18 @@ export default function DocumentsSection({
                   href={doc.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline truncate block"
+                  className="text-sm font-medium text-[#2f5142] hover:underline truncate block"
                 >
                   {doc.title || doc.originalName}
                 </a>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-[#9aa89b] mt-0.5">
                   {doc.title && doc.originalName !== doc.title && `${doc.originalName} · `}
                   {formatSize(doc.size)} · {new Date(doc.uploadedAt).toLocaleDateString('fr-FR')}
                 </p>
               </div>
               <button
                 onClick={() => handleDelete(doc.id, doc.title || doc.originalName)}
-                className="shrink-0 p-1.5 text-slate-400 hover:text-red-500 transition-colors rounded"
+                className="shrink-0 p-1.5 text-[#9aa89b] hover:text-[#b91c1c] transition-colors rounded"
                 title="Supprimer ce document"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,7 +147,7 @@ export default function DocumentsSection({
 
       {/* Formulaire d'ajout */}
       <form ref={formRef} onSubmit={handleUpload}>
-        <p className="text-xs text-slate-400 mb-3">
+        <p className="text-xs text-[#8a8474] mb-3">
           Formats acceptés : PDF, images (JPG, PNG…), Word, texte · Max 10 Mo
         </p>
         <div className="flex flex-wrap gap-3 items-end">
@@ -156,7 +156,7 @@ export default function DocumentsSection({
             name="title"
             type="text"
             placeholder="Titre (facultatif)"
-            className="flex-1 min-w-40 px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-primary transition-all"
+            className="flex-1 min-w-40 px-3 py-2 text-sm bg-[#fffdf9] text-[#1c1f1c] border border-[#e0d8c6] rounded-[11px] outline-none focus:border-[#2f5142] focus:ring-2 focus:ring-[#2f5142]/10 transition-all"
           />
           <input
             ref={fileRef}
@@ -164,17 +164,17 @@ export default function DocumentsSection({
             type="file"
             accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.txt"
             required
-            className="text-sm text-slate-500 dark:text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-100 dark:file:bg-slate-700 file:text-slate-700 dark:file:text-slate-200 hover:file:bg-slate-200 dark:hover:file:bg-slate-600 file:cursor-pointer file:transition-colors"
+            className="text-sm text-[#8a8474] file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#eef2ec] file:text-[#2f5142] hover:file:bg-[#e3eae1] file:cursor-pointer file:transition-colors"
           />
           <button
             type="submit"
             disabled={uploading}
-            className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity whitespace-nowrap"
+            className="px-4 py-2 bg-[#1e3a2f] text-[#f1ede2] rounded-[10px] text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity whitespace-nowrap"
           >
             {uploading ? 'Envoi…' : 'Ajouter'}
           </button>
         </div>
-        {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+        {error && <p className="text-xs text-[#b91c1c] mt-2">{error}</p>}
       </form>
     </div>
   );

@@ -167,12 +167,6 @@ body {
   outline: none;
 }
 
-/* Applied only to the tree page to prevent double scrollbars */
-body.tree-page {
-  overflow: hidden;
-  height: 100vh;
-}
-
 /* Leaflet map */
 @import "leaflet/dist/leaflet.css";
 

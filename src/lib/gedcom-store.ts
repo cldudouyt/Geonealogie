@@ -823,8 +823,9 @@ export async function getSiblings(id: string): Promise<PersonRecord[]> {
     .filter(Boolean) as PersonRecord[];
 }
 
-export async function getTreeCentered(rootId: string): Promise<{ rootId: string; nodes: any[]; links: any[] }> {
+export async function getTreeCentered(rootId: string, generations = 2): Promise<{ rootId: string; nodes: any[]; links: any[] }> {
   const s = await getStore();
+  const depth = Math.min(Math.max(Math.round(generations) || 2, 1), 8);
   const nodeIds = new Set<string>();
   const directLineIds = new Set<string>();
 
@@ -848,8 +849,8 @@ export async function getTreeCentered(rootId: string): Promise<{ rootId: string;
     }
   }
 
-  addDirectAncestors(rootId, 6);
-  addDescendants(rootId, 3);
+  addDirectAncestors(rootId, depth);
+  addDescendants(rootId, depth + 1);
 
   for (const id of directLineIds) {
     if (id === rootId) {

@@ -320,7 +320,7 @@ export default function RelationPage() {
   };
 
   return (
-    <div className="h-screen overflow-y-auto" style={{ background: '#f4f1ea' }}>
+    <div className="min-h-full" style={{ background: '#f4f1ea' }}>
       <main className="mx-auto p-6 space-y-6" style={{ maxWidth: '900px' }}>
         {/* Header */}
         <div>

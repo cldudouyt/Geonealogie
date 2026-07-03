@@ -228,7 +228,7 @@ export default function TimelineClient({
   const focusId = searchParams.get('focus') || initialPersonId;
 
   return (
-    <div className="h-screen overflow-y-auto" style={{ background: '#f4f1ea' }}>
+    <div className="min-h-full" style={{ background: '#f4f1ea' }}>
       {/* Header */}
       <header
         className="px-8 py-6 border-b"

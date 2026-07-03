@@ -18,10 +18,10 @@ interface MigrationSectionProps {
 }
 
 const STOP_COLOR: Record<string, string> = {
-  birth:  '#166534',
-  death:  '#dc2626',
-  burial: '#78716c',
-  event:  '#6366f1',
+  birth:  '#2f5142',
+  death:  '#b91c1c',
+  burial: '#8a8474',
+  event:  '#5b7da3',
 };
 
 const STOP_ICON: Record<string, string> = {
@@ -32,14 +32,14 @@ const STOP_ICON: Record<string, string> = {
 };
 
 const MAP_COLORS: Record<string, string> = {
-  birth:   '#166534',
-  death:   '#dc2626',
-  burial:  '#78716c',
-  event:   '#6366f1',
+  birth:   '#2f5142',
+  death:   '#b91c1c',
+  burial:  '#8a8474',
+  event:   '#5b7da3',
 };
 
 function makeStopIcon(type: string): string {
-  const color = MAP_COLORS[type] ?? '#6366f1';
+  const color = MAP_COLORS[type] ?? '#5b7da3';
   if (type === 'birth') {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="${color}" stroke="white" stroke-width="2.5"/><circle cx="14" cy="14" r="5" fill="white"/></svg>`;
   }
@@ -90,10 +90,10 @@ function MapContainer({ stopsJson }: { stopsJson: string }) {
         latlngs.push(ll);
 
         const popup = `<div style="font-family:system-ui,sans-serif;font-size:13px;line-height:1.6;min-width:160px">
-          <strong style="color:${MAP_COLORS[stop.type] ?? '#374151'}">${esc(stop.label)}</strong>
+          <strong style="color:${MAP_COLORS[stop.type] ?? '#1c1f1c'}">${esc(stop.label)}</strong>
           ${stop.dateRaw ? `<br/><span>${esc(stop.dateRaw)}</span>` : ''}
-          ${stop.place ? `<br/><span style="color:#64748b">${esc(stop.place)}</span>` : ''}
-          <br/><span style="color:#94a3b8;font-size:11px">Étape ${i + 1} / ${geoStops.length}</span>
+          ${stop.place ? `<br/><span style="color:#5a5e52">${esc(stop.place)}</span>` : ''}
+          <br/><span style="color:#8a8474;font-size:11px">Étape ${i + 1} / ${geoStops.length}</span>
         </div>`;
 
         L.marker(ll, {
@@ -103,13 +103,13 @@ function MapContainer({ stopsJson }: { stopsJson: string }) {
       }
 
       if (latlngs.length >= 2) {
-        L.polyline(latlngs, { color: '#166534', weight: 3, opacity: 0.7, dashArray: '9 6' }).addTo(leafletMap);
+        L.polyline(latlngs, { color: '#2f5142', weight: 3, opacity: 0.7, dashArray: '9 6' }).addTo(leafletMap);
         for (let i = 0; i < latlngs.length - 1; i++) {
           const [lat1, lon1] = latlngs[i];
           const [lat2, lon2] = latlngs[i + 1];
           const angle = Math.atan2(lat2 - lat1, lon2 - lon1) * (180 / Math.PI);
           L.marker([(lat1 + lat2) / 2, (lon1 + lon2) / 2], {
-            icon: L.divIcon({ html: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" style="transform:rotate(${angle - 90}deg)"><polygon points="9,1 16,16 9,11 2,16" fill="#166534" opacity="0.85"/></svg>`, className: '', iconSize: [18, 18], iconAnchor: [9, 9] }),
+            icon: L.divIcon({ html: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" style="transform:rotate(${angle - 90}deg)"><polygon points="9,1 16,16 9,11 2,16" fill="#2f5142" opacity="0.85"/></svg>`, className: '', iconSize: [18, 18], iconAnchor: [9, 9] }),
             interactive: false,
           }).addTo(leafletMap);
         }
@@ -147,16 +147,16 @@ export default function MigrationSection({ stops, personId: _personId, stopsJson
   if (stopsWithPlace.length < 2) return null;
 
   return (
-    <div className="dark:bg-slate-900 rounded-xl p-6 shadow-sm mt-6" style={{ background: '#fffaf5', border: '1px solid #e8dcc8' }}>
+    <div className="rounded-2xl p-6 mt-6" style={{ background: '#fffdf9', border: '1px solid #e7e0d0' }}>
       <div className="flex items-center justify-between mb-5">
-        <h2 className="text-lg font-semibold" style={{ color: '#3d2e1e' }}>Parcours de migration</h2>
+        <h2 className="text-lg font-semibold" style={{ fontFamily: 'var(--font-serif, Georgia, serif)', color: '#1c1f1c' }}>Parcours de migration</h2>
         <button
           onClick={() => setShowMap(v => !v)}
-          className="text-sm px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+          className="text-sm px-3 py-1.5 rounded-[10px] transition-colors flex items-center gap-1.5"
           style={{
-            background: showMap ? '#166534' : 'transparent',
-            color: showMap ? 'white' : '#166534',
-            border: '1px solid #166534',
+            background: showMap ? '#1e3a2f' : '#fffdf9',
+            color: showMap ? '#f1ede2' : '#2f5142',
+            border: showMap ? '1px solid #1e3a2f' : '1px solid #e0d8c6',
           }}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,7 +175,7 @@ export default function MigrationSection({ stops, personId: _personId, stopsJson
                 <div
                   className="w-9 h-9 rounded-full flex items-center justify-center text-base font-bold mb-2 shrink-0"
                   style={{
-                    background: stop.type === 'death' ? 'white' : (STOP_COLOR[stop.type] ?? '#6366f1'),
+                    background: stop.type === 'death' ? '#fffdf9' : (STOP_COLOR[stop.type] ?? '#5b7da3'),
                     border: stop.type === 'death' ? `2.5px solid ${STOP_COLOR.death}` : 'none',
                     color: stop.type === 'death' ? STOP_COLOR.death : 'white',
                     boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
@@ -183,16 +183,16 @@ export default function MigrationSection({ stops, personId: _personId, stopsJson
                 >
                   {STOP_ICON[stop.type] ?? '◆'}
                 </div>
-                <p className="text-xs font-semibold" style={{ color: STOP_COLOR[stop.type] ?? '#6366f1' }}>{stop.label}</p>
-                {stop.dateRaw && <p className="text-xs mt-0.5" style={{ color: '#8a7560' }}>{stop.dateRaw}</p>}
-                <p className="text-xs mt-0.5 leading-tight" style={{ color: '#5a4a38' }}>{stop.place}</p>
+                <p className="text-xs font-semibold" style={{ color: STOP_COLOR[stop.type] ?? '#5b7da3' }}>{stop.label}</p>
+                {stop.dateRaw && <p className="text-xs mt-0.5" style={{ color: '#8a8474' }}>{stop.dateRaw}</p>}
+                <p className="text-xs mt-0.5 leading-tight" style={{ color: '#5a5e52' }}>{stop.place}</p>
               </div>
 
               {i < stopsWithPlace.length - 1 && (
-                <div className="flex items-center shrink-0 mx-1" style={{ color: '#c4b49a' }}>
-                  <div style={{ width: 24, height: 1, background: '#c4b49a' }} />
+                <div className="flex items-center shrink-0 mx-1" style={{ color: '#d6bd8e' }}>
+                  <div style={{ width: 24, height: 1, background: '#d6bd8e' }} />
                   <svg width="8" height="10" viewBox="0 0 8 10" fill="none">
-                    <path d="M0 0L8 5L0 10" fill="#c4b49a"/>
+                    <path d="M0 0L8 5L0 10" fill="#d6bd8e"/>
                   </svg>
                 </div>
               )}

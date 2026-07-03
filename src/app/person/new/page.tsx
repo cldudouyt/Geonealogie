@@ -14,7 +14,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+      <label className="block text-sm font-medium text-[#5a5e52] mb-1.5">
         {label} {required && <span className="text-red-400">*</span>}
       </label>
       <input
@@ -22,17 +22,17 @@ function Field({
         type={type}
         placeholder={placeholder}
         required={required}
-        className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+        className="w-full px-3.5 py-2.5 text-sm bg-[#fffdf9] text-[#1c1f1c] border border-[#e0d8c6] rounded-[11px] outline-none focus:border-[#2f5142] focus:ring-2 focus:ring-[#2f5142]/10 transition-all"
       />
-      {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-[#8a8474] mt-1">{hint}</p>}
     </div>
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6">
-      <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-4">{title}</h3>
+    <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6">
+      <h3 className="text-sm font-semibold text-[#8a8474] uppercase tracking-[0.14em] mb-4">{title}</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{children}</div>
     </div>
   );
@@ -73,19 +73,19 @@ function PersonSearch({ onSelect }: { onSelect: (id: string, name: string) => vo
         value={query}
         onChange={e => search(e.target.value)}
         placeholder="Rechercher une personne existante…"
-        className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-primary transition-all"
+        className="w-full px-3.5 py-2.5 text-sm bg-[#fffdf9] text-[#1c1f1c] border border-[#e0d8c6] rounded-[11px] outline-none focus:border-[#2f5142] transition-all"
       />
-      {loading && <span className="absolute right-3 top-3 text-xs text-slate-400">…</span>}
+      {loading && <span className="absolute right-3 top-3 text-xs text-[#9aa89b]">…</span>}
       {results.length > 0 && (
-        <ul className="absolute z-10 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+        <ul className="absolute z-10 left-0 right-0 mt-1 bg-[#fffdf9] border border-[#e7e0d0] rounded-lg shadow-xl overflow-hidden max-h-48 overflow-y-auto">
           {results.map(p => (
             <li key={p.id}>
               <button
                 type="button"
                 onClick={() => { onSelect(p.id, p.displayName); setResults([]); setQuery(p.displayName); }}
-                className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                className="w-full text-left px-4 py-2 text-sm text-[#1c1f1c] hover:bg-[#f1f4ef] transition-colors"
               >
-                {p.displayName} {p.birthYear && <span className="text-slate-400">({p.birthYear})</span>}
+                {p.displayName} {p.birthYear && <span className="text-[#9aa89b]">({p.birthYear})</span>}
               </button>
             </li>
           ))}
@@ -116,8 +116,8 @@ function DuplicateWarning({ givenNames, surname }: { givenNames: string; surname
   if (duplicates.length === 0) return null;
 
   return (
-    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg px-4 py-3">
-      <p className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-2">
+    <div className="bg-[#f7e6d6] border border-[#eed9bd] rounded-lg px-4 py-3">
+      <p className="text-sm font-medium text-[#b5651d] mb-2">
         Des personnes similaires existent déjà :
       </p>
       <ul className="space-y-1">
@@ -126,7 +126,7 @@ function DuplicateWarning({ givenNames, surname }: { givenNames: string; surname
             <Link
               href={`/person/${p.id}`}
               target="_blank"
-              className="text-sm text-amber-700 dark:text-amber-400 hover:underline"
+              className="text-sm text-[#b5651d] hover:underline"
             >
               {p.displayName} {p.birthYear && `(${p.birthYear})`}
             </Link>
@@ -158,7 +158,7 @@ function RelationRow({
           name={`relations[${index}][relType]`}
           value={rel.relType}
           onChange={e => onChange({ ...rel, relType: e.target.value as Relation['relType'] })}
-          className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-primary transition-all"
+          className="w-full px-3.5 py-2.5 text-sm bg-[#fffdf9] text-[#1c1f1c] border border-[#e0d8c6] rounded-[11px] outline-none focus:border-[#2f5142] transition-all"
         >
           <option value="">-- Type de lien --</option>
           <option value="child">Enfant de…</option>
@@ -171,7 +171,7 @@ function RelationRow({
             <input type="hidden" name={`relations[${index}][relPersonId]`} value={rel.relPersonId} />
           </div>
         ) : (
-          <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3.5 py-2.5 text-sm text-slate-400">
+          <div className="bg-[#f1f4ef] border border-[#e0d8c6] rounded-[11px] px-3.5 py-2.5 text-sm text-[#9aa89b]">
             Choisir un type d'abord
           </div>
         )}
@@ -179,7 +179,7 @@ function RelationRow({
       <button
         type="button"
         onClick={onRemove}
-        className="mt-1 p-2 text-slate-400 hover:text-red-500 transition-colors"
+        className="mt-1 p-2 text-[#9aa89b] hover:text-[#b91c1c] transition-colors"
         title="Supprimer ce lien"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,46 +223,46 @@ export default function NewPersonPage() {
   }, [state]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 py-4 sticky top-0 z-10">
+    <div className="min-h-screen bg-[#f4f1ea]">
+      <header className="bg-[#fffdf9] border-b border-[#e7e0d0] px-6 py-4 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <Link href="/" className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1">
+          <Link href="/" className="text-sm text-[#8a8474] hover:text-[#2f5142] flex items-center gap-1">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             Retour
           </Link>
-          <span className="text-slate-300 dark:text-slate-600">/</span>
-          <h1 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Ajouter un membre</h1>
+          <span className="text-[#e0d8c6]">/</span>
+          <h1 className="text-sm font-semibold text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Ajouter un membre</h1>
         </div>
       </header>
 
       {/* Success banner with redirect choice */}
       {state?.success && state.personId && (
         <div className="max-w-3xl mx-auto px-6 pt-6">
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-xl p-5">
-            <p className="text-sm font-medium text-green-800 dark:text-green-300 mb-3">
+          <div className="bg-[#eef2ec] border border-[#cfdccf] rounded-2xl p-5">
+            <p className="text-sm font-medium text-[#2f5142] mb-3">
               Membre ajouté avec succès !
             </p>
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={() => router.push(`/person/${state.personId}`)}
-                className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                className="px-4 py-2 bg-[#1e3a2f] text-[#f1ede2] rounded-[10px] text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 Voir la fiche
               </button>
               <button
                 type="button"
                 onClick={() => router.push(`/?focus=${state.personId}`)}
-                className="px-4 py-2 border border-primary text-primary rounded-lg text-sm font-medium hover:bg-primary/5 transition-colors"
+                className="px-4 py-2 border border-[#2f5142] text-[#2f5142] rounded-[10px] text-sm font-medium hover:bg-[#eef2ec] transition-colors"
               >
                 Voir dans l&apos;arbre
               </button>
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                className="px-4 py-2 border border-[#e0d8c6] bg-[#fffdf9] text-[#5a5e52] rounded-[10px] text-sm hover:bg-[#f1f4ef] transition-colors"
               >
                 Ajouter un autre membre
               </button>
@@ -277,7 +277,7 @@ export default function NewPersonPage() {
           {/* Identity */}
           <Section title="Identité">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              <label className="block text-sm font-medium text-[#5a5e52] mb-1.5">
                 Prénom(s) <span className="text-red-400">*</span>
               </label>
               <input
@@ -286,11 +286,11 @@ export default function NewPersonPage() {
                 required
                 value={givenNames}
                 onChange={e => setGivenNames(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full px-3.5 py-2.5 text-sm bg-[#fffdf9] text-[#1c1f1c] border border-[#e0d8c6] rounded-[11px] outline-none focus:border-[#2f5142] focus:ring-2 focus:ring-[#2f5142]/10 transition-all"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              <label className="block text-sm font-medium text-[#5a5e52] mb-1.5">
                 Nom de famille <span className="text-red-400">*</span>
               </label>
               <input
@@ -299,18 +299,18 @@ export default function NewPersonPage() {
                 required
                 value={surname}
                 onChange={e => setSurname(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full px-3.5 py-2.5 text-sm bg-[#fffdf9] text-[#1c1f1c] border border-[#e0d8c6] rounded-[11px] outline-none focus:border-[#2f5142] focus:ring-2 focus:ring-[#2f5142]/10 transition-all"
               />
             </div>
             <Field label="Surnom" name="nickname" placeholder="ex: Mamie" />
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              <label className="block text-sm font-medium text-[#5a5e52] mb-1.5">
                 Sexe <span className="text-red-400">*</span>
               </label>
               <select
                 name="sex"
                 required
-                className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-primary transition-all"
+                className="w-full px-3.5 py-2.5 text-sm bg-[#fffdf9] text-[#1c1f1c] border border-[#e0d8c6] rounded-[11px] outline-none focus:border-[#2f5142] transition-all"
               >
                 <option value="">-- Choisir --</option>
                 <option value="M">Masculin</option>
@@ -325,9 +325,9 @@ export default function NewPersonPage() {
                 id="isAdopted"
                 name="isAdopted"
                 value="yes"
-                className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary"
+                className="w-4 h-4 rounded border-[#e0d8c6] accent-[#2f5142] focus:ring-[#2f5142]"
               />
-              <label htmlFor="isAdopted" className="text-sm text-slate-700 dark:text-slate-300">
+              <label htmlFor="isAdopted" className="text-sm text-[#5a5e52]">
                 Personne adoptée
               </label>
             </div>
@@ -369,19 +369,19 @@ export default function NewPersonPage() {
           </Section>
 
           {/* Relations */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6">
+          <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Liens familiaux</h3>
+              <h3 className="text-sm font-semibold text-[#8a8474] uppercase tracking-[0.14em]">Liens familiaux</h3>
               <button
                 type="button"
                 onClick={addRelation}
-                className="text-xs px-3 py-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors font-medium"
+                className="text-xs px-3 py-1.5 bg-[#eef2ec] text-[#2f5142] rounded-full hover:bg-[#e3eae1] transition-colors font-medium"
               >
                 + Ajouter un lien
               </button>
             </div>
             {relations.length === 0 ? (
-              <p className="text-sm text-slate-400">Aucun lien familial. Cliquez sur « Ajouter un lien » pour en créer un.</p>
+              <p className="text-sm text-[#8a8474]">Aucun lien familial. Cliquez sur « Ajouter un lien » pour en créer un.</p>
             ) : (
               <div className="space-y-3">
                 {relations.map((rel, idx) => (
@@ -398,18 +398,18 @@ export default function NewPersonPage() {
           </div>
 
           {/* Notes */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-6">
-            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-4">Notes</h3>
+          <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6">
+            <h3 className="text-sm font-semibold text-[#8a8474] uppercase tracking-[0.14em] mb-4">Notes</h3>
             <textarea
               name="notes"
               rows={4}
               placeholder="Informations complémentaires…"
-              className="w-full px-3.5 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-primary transition-all resize-y"
+              className="w-full px-3.5 py-2.5 text-sm bg-[#fffdf9] text-[#1c1f1c] border border-[#e0d8c6] rounded-[11px] outline-none focus:border-[#2f5142] transition-all resize-y"
             />
           </div>
 
           {state?.error && (
-            <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3">
+            <p className="text-sm text-[#b91c1c] bg-[#fef2f2] border border-[#fca5a5] rounded-lg px-4 py-3">
               {state.error}
             </p>
           )}
@@ -418,11 +418,11 @@ export default function NewPersonPage() {
             <button
               type="submit"
               disabled={pending}
-              className="px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="px-6 py-2.5 bg-[#1e3a2f] text-[#f1ede2] rounded-[10px] text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
               {pending ? 'Création…' : 'Ajouter ce membre'}
             </button>
-            <Link href="/" className="px-6 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+            <Link href="/" className="px-6 py-2.5 border border-[#e0d8c6] bg-[#fffdf9] text-[#5a5e52] rounded-[10px] text-sm hover:bg-[#f1f4ef] transition-colors">
               Annuler
             </Link>
           </div>

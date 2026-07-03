@@ -97,7 +97,7 @@ export default function PlaceAutocomplete({ value, onChange, placeholder, classN
         <ul
           style={{
             position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 9999,
-            background: 'white', border: '1px solid #e2e8f0', borderRadius: 8,
+            background: '#fffdf9', border: '1px solid #e7e0d0', borderRadius: 8,
             boxShadow: '0 4px 16px rgba(0,0,0,0.12)', marginTop: 2,
             listStyle: 'none', padding: '4px 0', maxHeight: 240, overflowY: 'auto',
           }}
@@ -108,13 +108,13 @@ export default function PlaceAutocomplete({ value, onChange, placeholder, classN
               onMouseDown={() => select(s)}
               style={{
                 padding: '8px 12px', cursor: 'pointer', fontSize: 13,
-                background: i === activeIdx ? '#f1f5f9' : 'transparent',
-                borderBottom: i < suggestions.length - 1 ? '1px solid #f1f5f9' : 'none',
+                background: i === activeIdx ? '#f1f4ef' : 'transparent',
+                borderBottom: i < suggestions.length - 1 ? '1px solid #f1ebdd' : 'none',
               }}
             >
-              <span style={{ fontWeight: 500, color: '#1e293b' }}>{s.label}</span>
+              <span style={{ fontWeight: 500, color: '#1c1f1c' }}>{s.label}</span>
               {s.fullLabel !== s.label && (
-                <span style={{ display: 'block', fontSize: 11, color: '#94a3b8', marginTop: 1,
+                <span style={{ display: 'block', fontSize: 11, color: '#9aa89b', marginTop: 1,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {s.fullLabel}
                 </span>

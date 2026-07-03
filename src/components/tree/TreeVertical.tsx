@@ -1,5 +1,6 @@
 'use client';
 
+import { Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TreeData, TreeNode } from '@/lib/types';
 
@@ -28,6 +29,21 @@ function renderName(displayName: string, isCenter: boolean): React.ReactNode {
       </span>
     );
   });
+}
+
+/* ── Generation labels ──────────────────────────────────────── */
+function ancestorLabel(gen: number): string {
+  if (gen === 1) return 'Parents';
+  if (gen === 2) return 'Grands-parents';
+  if (gen === 3) return 'Arrière-grands-parents';
+  return `Aïeux (G${gen})`;
+}
+
+function descendantLabel(gen: number): string {
+  if (gen === 1) return 'Enfants';
+  if (gen === 2) return 'Petits-enfants';
+  if (gen === 3) return 'Arrière-petits-enfants';
+  return `Descendants (G${gen})`;
 }
 
 function cardBorder(s: 'M' | 'F' | 'U', isCenter: boolean): React.CSSProperties {
@@ -267,16 +283,34 @@ export default function TreeVertical({ treeData, focusId, onFocus }: TreeVertica
 
   const centerIds = new Set([focusNode.id]);
 
-  const parentIds = [...new Set(childToParents.get(focusNode.id) ?? [])];
-  const parents = parentIds.map(id => nodeMap.get(id)).filter(Boolean) as TreeNode[];
+  /* Ancestor levels: [parents, grands-parents, …] as far as the data goes */
+  const ancestorLevels: TreeNode[][] = [];
+  const seenUp = new Set<string>([focusNode.id]);
+  let frontierUp = [focusNode.id];
+  while (frontierUp.length > 0) {
+    const nextIds = [...new Set(frontierUp.flatMap(id => childToParents.get(id) ?? []))]
+      .filter(id => !seenUp.has(id));
+    const level = nextIds.map(id => nodeMap.get(id)).filter(Boolean) as TreeNode[];
+    if (level.length === 0) break;
+    for (const p of level) seenUp.add(p.id);
+    ancestorLevels.push(level);
+    frontierUp = level.map(p => p.id);
+  }
+  const parentIds = (ancestorLevels[0] ?? []).map(p => p.id);
 
-  const grandParentIds = parentIds.flatMap(pid => childToParents.get(pid) ?? []);
-  const grandParents = [...new Set(grandParentIds)]
-    .map(id => nodeMap.get(id))
-    .filter(Boolean) as TreeNode[];
-
-  const childIds = [...new Set(parentToChildren.get(focusNode.id) ?? [])];
-  const children = childIds.map(id => nodeMap.get(id)).filter(Boolean) as TreeNode[];
+  /* Descendant levels: [enfants, petits-enfants, …] */
+  const descendantLevels: TreeNode[][] = [];
+  const seenDown = new Set<string>([focusNode.id]);
+  let frontierDown = [focusNode.id];
+  while (frontierDown.length > 0) {
+    const nextIds = [...new Set(frontierDown.flatMap(id => parentToChildren.get(id) ?? []))]
+      .filter(id => !seenDown.has(id));
+    const level = nextIds.map(id => nodeMap.get(id)).filter(Boolean) as TreeNode[];
+    if (level.length === 0) break;
+    for (const p of level) seenDown.add(p.id);
+    descendantLevels.push(level);
+    frontierDown = level.map(p => p.id);
+  }
 
   const spouseIds = spouseMap.get(focusNode.id) ?? [];
   const spouses = spouseIds.map(id => nodeMap.get(id)).filter(Boolean) as TreeNode[];
@@ -313,21 +347,21 @@ export default function TreeVertical({ treeData, focusId, onFocus }: TreeVertica
           gap: 0,
         }}
       >
-        {grandParents.length > 0 && (
-          <>
-            <GenRow persons={grandParents} centerIds={centerIds} onNav={nav} label="Grands-parents" />
-            <Connector />
-          </>
-        )}
-
-        {parents.length > 0 && (
-          <GenRow persons={parents} centerIds={centerIds} onNav={nav} label="Parents" />
-        )}
+        {/* Ancestor rows, oldest generation first */}
+        {[...ancestorLevels].reverse().map((level, i) => {
+          const gen = ancestorLevels.length - i;
+          return (
+            <Fragment key={`anc-${gen}`}>
+              <GenRow persons={level} centerIds={centerIds} onNav={nav} label={ancestorLabel(gen)} />
+              {gen > 1 && <Connector />}
+            </Fragment>
+          );
+        })}
 
         {/* Focus generation — [fratrie …, FOCUS, conjoint] in one row */}
         {hasSiblings ? (
           <>
-            {parents.length > 0 && <Connector />}
+            {ancestorLevels.length > 0 && <Connector />}
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14 }}>
               {/* Siblings with label */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
@@ -357,24 +391,26 @@ export default function TreeVertical({ treeData, focusId, onFocus }: TreeVertica
                 ))}
               </div>
             </div>
-            {children.length > 0 && <Connector />}
           </>
         ) : (
           <>
-            {parents.length > 0 && <Connector />}
+            {ancestorLevels.length > 0 && <Connector />}
             <GenRow
               persons={focusRow}
               centerIds={centerIds}
               onNav={nav}
-              label={parents.length === 0 ? 'Personne de référence' : undefined}
+              label={ancestorLevels.length === 0 ? 'Personne de référence' : undefined}
             />
-            {children.length > 0 && <Connector />}
           </>
         )}
 
-        {children.length > 0 && (
-          <GenRow persons={children} centerIds={centerIds} onNav={nav} label="Enfants" />
-        )}
+        {/* Descendant rows */}
+        {descendantLevels.map((level, i) => (
+          <Fragment key={`desc-${i + 1}`}>
+            <Connector />
+            <GenRow persons={level} centerIds={centerIds} onNav={nav} label={descendantLabel(i + 1)} />
+          </Fragment>
+        ))}
       </div>
     </div>
   );

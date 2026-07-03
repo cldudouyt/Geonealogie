@@ -173,7 +173,7 @@ export default async function AnomaliesPage() {
   ];
 
   return (
-    <div className="min-h-screen overflow-y-auto" style={{ background: '#f4f1ea' }}>
+    <div className="min-h-full" style={{ background: '#f4f1ea' }}>
       <main className="mx-auto px-6 py-10" style={{ maxWidth: 820 }}>
 
         {/* En-tête */}

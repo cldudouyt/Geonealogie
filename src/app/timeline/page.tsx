@@ -116,7 +116,7 @@ export default async function TimelinePage({
 
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center h-screen" style={{ background: '#f4f1ea', color: '#9a9080' }}>
+      <div className="flex items-center justify-center h-full" style={{ background: '#f4f1ea', color: '#9a9080' }}>
         Chargement…
       </div>
     }>

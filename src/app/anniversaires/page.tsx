@@ -111,7 +111,7 @@ export default async function AnniversairesPage() {
   });
 
   return (
-    <div className="h-screen overflow-y-auto" style={{ background: '#f4f1ea' }}>
+    <div className="min-h-full" style={{ background: '#f4f1ea' }}>
       <main className="mx-auto px-6 py-10 space-y-6" style={{ maxWidth: '760px' }}>
 
         {/* En-tête */}

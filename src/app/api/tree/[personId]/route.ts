@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTreeCentered } from '@/lib/gedcom-store';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ personId: string }> }
 ) {
   const { personId } = await params;
+  const genParam = parseInt(request.nextUrl.searchParams.get('generations') ?? '', 10);
+  const generations = Number.isFinite(genParam) ? Math.min(Math.max(genParam, 1), 8) : 2;
 
   try {
-    const tree = await getTreeCentered(personId);
+    const tree = await getTreeCentered(personId, generations);
     return NextResponse.json(tree);
   } catch (error) {
     console.error('Tree fetch error:', error);

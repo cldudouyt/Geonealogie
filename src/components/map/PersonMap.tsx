@@ -182,7 +182,7 @@ export default function PersonMap({ markers, centerId }: PersonMapProps) {
   return (
     <div>
       <div ref={mapRef} style={{ height: '420px', width: '100%', borderRadius: '8px', zIndex: 0 }} />
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-xs text-slate-500 dark:text-slate-400">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-xs text-[#8a8474]">
         {/* Family colors */}
         {surnames.map(s => (
           <span key={s} className="flex items-center gap-1.5">
@@ -191,7 +191,7 @@ export default function PersonMap({ markers, centerId }: PersonMapProps) {
           </span>
         ))}
         {/* Divider */}
-        {surnames.length > 0 && <span className="text-slate-300 dark:text-slate-600">|</span>}
+        {surnames.length > 0 && <span className="text-[#e0d8c6]">|</span>}
         {/* Shape legend */}
         <span className="flex items-center gap-1">
           <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#94a3b8"/></svg>

@@ -109,7 +109,7 @@ interface SectionHeaderProps {
 function SectionHeader({ icon, label, loading, searched, count, badgeCls, externalHref, externalLabel, externalCls }: SectionHeaderProps) {
   return (
     <div className="flex items-center justify-between mb-3">
-      <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-2">
+      <h3 className="text-sm font-semibold text-[#5a5e52] flex items-center gap-2">
         {icon}
         {label}
         {loading && <Spinner />}
@@ -180,25 +180,25 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
   const wikidataSearchUrl = `https://www.wikidata.org/w/index.php?search=${encodeURIComponent(fullName)}&ns0=1`;
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm overflow-hidden mt-6">
+    <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl overflow-hidden mt-6">
       <button
         onClick={toggle}
-        className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+        className="w-full flex items-center justify-between px-6 py-4 hover:bg-[#f1f4ef] transition-colors"
       >
         <div className="flex items-center gap-2">
-          <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-[#8a8474]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <h2 className="text-base font-semibold text-slate-700 dark:text-slate-300">Recherche en ligne</h2>
-          <span className="text-xs text-slate-400 font-normal">Maitron, Wikipedia, Wikidata, VIAF, BnF…</span>
+          <h2 className="text-base font-semibold text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Recherche en ligne</h2>
+          <span className="text-xs text-[#9aa89b] font-normal">Maitron, Wikipedia, Wikidata, VIAF, BnF…</span>
         </div>
-        <svg className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className={`w-4 h-4 text-[#9aa89b] transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {open && (
-        <div className="border-t border-slate-100 dark:border-slate-800 px-6 py-5 space-y-6">
+        <div className="border-t border-[#f1ebdd] px-6 py-5 space-y-6">
 
           {/* Maitron */}
           <div>
@@ -206,23 +206,23 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
               icon={<span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-white" style={{ background: '#b91c1c' }}>M</span>}
               label="Maitron"
               loading={loading} searched={searched} count={maitronResults.length}
-              badgeCls="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+              badgeCls="bg-red-100 text-red-700"
               externalHref={maitronDirectUrl} externalLabel="Maitron" externalCls="text-red-700"
             />
             {!loading && searched && maitronResults.length === 0 && (
-              <p className="text-sm text-slate-400 py-1">Aucun résultat Maitron pour &laquo;{fullName}&raquo;.</p>
+              <p className="text-sm text-[#8a8474] py-1">Aucun résultat Maitron pour &laquo;{fullName}&raquo;.</p>
             )}
             {!loading && maitronResults.length > 0 && (
               <div className="space-y-2">
                 {maitronResults.map((r) => (
                   <a key={r.url} href={r.url} target="_blank" rel="noopener noreferrer"
-                    className="flex gap-3 p-3 rounded-lg border border-red-100 dark:border-red-900/30 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors group">
-                    <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                      <span className="text-xs font-bold text-red-700 dark:text-red-400">M</span>
+                    className="flex gap-3 p-3 rounded-lg border border-red-100 hover:bg-red-50 transition-colors group">
+                    <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-red-700">M</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-red-800 dark:text-red-300 group-hover:underline leading-tight">{r.title}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">{r.excerpt}</p>
+                      <p className="text-sm font-medium text-red-800 group-hover:underline leading-tight">{r.title}</p>
+                      <p className="text-xs text-[#8a8474] mt-1 line-clamp-2 leading-relaxed">{r.excerpt}</p>
                     </div>
                     <ExtIcon className="text-red-300 group-hover:text-red-600" />
                   </a>
@@ -234,15 +234,15 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
           {/* Wikipedia */}
           <div>
             <SectionHeader
-              icon={<span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 inline-flex items-center justify-center text-xs font-bold">W</span>}
+              icon={<span className="w-5 h-5 rounded-full bg-[#eef2ec] text-[#2f5142] inline-flex items-center justify-center text-xs font-bold">W</span>}
               label="Wikipedia"
               loading={loading} searched={searched} count={wikiResults.length}
-              badgeCls="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+              badgeCls="bg-[#eef2ec] text-[#2f5142]"
               externalHref={`https://fr.wikipedia.org/w/index.php?search=${encodeURIComponent(fullName)}`}
-              externalLabel="Wikipedia" externalCls="text-primary"
+              externalLabel="Wikipedia" externalCls="text-[#2f5142]"
             />
             {!loading && searched && wikiResults.length === 0 && (
-              <p className="text-sm text-slate-400 py-1">Aucun résultat Wikipedia pour &laquo;{fullName}&raquo;.</p>
+              <p className="text-sm text-[#8a8474] py-1">Aucun résultat Wikipedia pour &laquo;{fullName}&raquo;.</p>
             )}
             {!loading && wikiResults.length > 0 && (
               <div className="space-y-2">
@@ -250,19 +250,19 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
                   <a key={result.title}
                     href={result.content_urls?.desktop.page ?? `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(result.title)}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="flex gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-primary/30 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
+                    className="flex gap-3 p-3 rounded-lg border border-[#e9e2d2] hover:border-[#c9a86a] hover:bg-[#f1f4ef] transition-colors group">
                     {result.thumbnail && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={result.thumbnail.source} alt={result.title} className="w-14 h-14 object-cover rounded shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium group-hover:text-primary transition-colors">{result.title}</p>
-                        <span className="text-xs text-slate-400 uppercase">{lang}</span>
+                        <p className="text-sm font-medium text-[#1c1f1c] group-hover:text-[#2f5142] transition-colors">{result.title}</p>
+                        <span className="text-xs text-[#9aa89b] uppercase">{lang}</span>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-3 leading-relaxed">{result.extract}</p>
+                      <p className="text-xs text-[#8a8474] mt-1 line-clamp-3 leading-relaxed">{result.extract}</p>
                     </div>
-                    <ExtIcon className="text-slate-300 group-hover:text-primary" />
+                    <ExtIcon className="text-[#d6bd8e] group-hover:text-[#2f5142]" />
                   </a>
                 ))}
               </div>
@@ -275,22 +275,22 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
               icon={<span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-white" style={{ background: '#006699' }}>Q</span>}
               label="Wikidata"
               loading={loading} searched={searched} count={wikidataResults.length}
-              badgeCls="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+              badgeCls="bg-blue-100 text-blue-700"
               externalHref={wikidataSearchUrl} externalLabel="Wikidata" externalCls="text-blue-600"
             />
             {!loading && searched && wikidataResults.length === 0 && (
-              <p className="text-sm text-slate-400 py-1">Aucun résultat Wikidata pour &laquo;{fullName}&raquo;.</p>
+              <p className="text-sm text-[#8a8474] py-1">Aucun résultat Wikidata pour &laquo;{fullName}&raquo;.</p>
             )}
             {!loading && wikidataResults.length > 0 && (
               <div className="space-y-2">
                 {wikidataResults.map((r) => (
                   <a key={r.id} href={r.url} target="_blank" rel="noopener noreferrer"
-                    className="flex gap-3 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors group">
+                    className="flex gap-3 p-3 rounded-lg border border-blue-100 hover:bg-blue-50 transition-colors group">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold text-white" style={{ background: '#006699' }}>Q</div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-blue-800 dark:text-blue-300 group-hover:underline leading-tight">{r.label}</p>
-                      {r.description && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{r.description}</p>}
-                      <p className="text-xs text-slate-400 mt-0.5">{r.id}</p>
+                      <p className="text-sm font-medium text-blue-800 group-hover:underline leading-tight">{r.label}</p>
+                      {r.description && <p className="text-xs text-[#8a8474] mt-1 leading-relaxed">{r.description}</p>}
+                      <p className="text-xs text-[#9aa89b] mt-0.5">{r.id}</p>
                     </div>
                     <ExtIcon className="text-blue-300 group-hover:text-blue-600" />
                   </a>
@@ -305,21 +305,21 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
               icon={<span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-white" style={{ background: '#7c3aed' }}>V</span>}
               label="VIAF — Autorités internationales"
               loading={loading} searched={searched} count={viafResults.length}
-              badgeCls="bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
+              badgeCls="bg-violet-100 text-violet-700"
               externalHref={viafSearchUrl} externalLabel="VIAF" externalCls="text-violet-600"
             />
             {!loading && searched && viafResults.length === 0 && (
-              <p className="text-sm text-slate-400 py-1">Aucun résultat VIAF pour &laquo;{fullName}&raquo;.</p>
+              <p className="text-sm text-[#8a8474] py-1">Aucun résultat VIAF pour &laquo;{fullName}&raquo;.</p>
             )}
             {!loading && viafResults.length > 0 && (
               <div className="space-y-2">
                 {viafResults.map((r) => (
                   <a key={r.viafid} href={r.url} target="_blank" rel="noopener noreferrer"
-                    className="flex gap-3 p-3 rounded-lg border border-violet-100 dark:border-violet-900/30 hover:bg-violet-50 dark:hover:bg-violet-900/10 transition-colors group">
+                    className="flex gap-3 p-3 rounded-lg border border-violet-100 hover:bg-violet-50 transition-colors group">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold text-white" style={{ background: '#7c3aed' }}>V</div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-violet-800 dark:text-violet-300 group-hover:underline leading-tight">{r.term}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">VIAF ID : {r.viafid}</p>
+                      <p className="text-sm font-medium text-violet-800 group-hover:underline leading-tight">{r.term}</p>
+                      <p className="text-xs text-[#9aa89b] mt-0.5">VIAF ID : {r.viafid}</p>
                     </div>
                     <ExtIcon className="text-violet-300 group-hover:text-violet-600" />
                   </a>
@@ -334,22 +334,22 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
               icon={<span className="w-5 h-5 rounded-full inline-flex items-center justify-center text-xs font-bold text-white" style={{ background: '#1e40af' }}>B</span>}
               label="BnF — Catalogue national"
               loading={loading} searched={searched} count={bnfResults.length}
-              badgeCls="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+              badgeCls="bg-blue-100 text-blue-800"
               externalHref={bnfSearchUrl} externalLabel="BnF" externalCls="text-blue-800"
             />
             {!loading && searched && bnfResults.length === 0 && (
-              <p className="text-sm text-slate-400 py-1">Aucun résultat BnF pour &laquo;{fullName}&raquo;.</p>
+              <p className="text-sm text-[#8a8474] py-1">Aucun résultat BnF pour &laquo;{fullName}&raquo;.</p>
             )}
             {!loading && bnfResults.length > 0 && (
               <div className="space-y-2">
                 {bnfResults.map((r) => (
                   <a key={r.url} href={r.url} target="_blank" rel="noopener noreferrer"
-                    className="flex gap-3 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors group">
+                    className="flex gap-3 p-3 rounded-lg border border-blue-100 hover:bg-blue-50 transition-colors group">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold text-white" style={{ background: '#1e40af' }}>B</div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-blue-900 dark:text-blue-300 group-hover:underline leading-tight line-clamp-2">{r.title}</p>
+                      <p className="text-sm font-medium text-blue-900 group-hover:underline leading-tight line-clamp-2">{r.title}</p>
                       {(r.creator || r.date) && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{r.creator}{r.creator && r.date ? ' · ' : ''}{r.date}</p>
+                        <p className="text-xs text-[#8a8474] mt-1">{r.creator}{r.creator && r.date ? ' · ' : ''}{r.date}</p>
                       )}
                     </div>
                     <ExtIcon className="text-blue-300 group-hover:text-blue-700" />
@@ -361,15 +361,15 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
 
           {/* Autres sources */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-3">Autres sources</h3>
+            <h3 className="text-sm font-semibold text-[#5a5e52] mb-3">Autres sources</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {EXTERNAL_SOURCES.map((source) => {
                 const href = source.url(nameWithDates, surname, firstName);
                 return (
                   <a key={source.label} href={href} target="_blank" rel="noopener noreferrer"
-                    className="flex flex-col gap-0.5 px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    className="flex flex-col gap-0.5 px-3 py-2.5 rounded-lg border border-[#e0d8c6] bg-[#fffdf9] hover:bg-[#f1f4ef] transition-colors">
                     <span className="text-sm font-semibold" style={{ color: source.color }}>{source.label}</span>
-                    <span className="text-xs text-slate-400 leading-tight">{source.description}</span>
+                    <span className="text-xs text-[#9aa89b] leading-tight">{source.description}</span>
                   </a>
                 );
               })}
@@ -377,9 +377,9 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
           </div>
 
           {/* Search term info */}
-          <p className="text-xs text-slate-400">
-            Terme recherché : <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{fullName}</span>
-            {birthPlace && <> · Lieu : <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{birthPlace}</span></>}
+          <p className="text-xs text-[#8a8474]">
+            Terme recherché : <span className="font-mono bg-[#f1ece0] px-1.5 py-0.5 rounded">{fullName}</span>
+            {birthPlace && <> · Lieu : <span className="font-mono bg-[#f1ece0] px-1.5 py-0.5 rounded">{birthPlace}</span></>}
           </p>
         </div>
       )}

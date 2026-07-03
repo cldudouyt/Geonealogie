@@ -96,10 +96,10 @@ export default async function PersonPage({ params }: PersonPageProps) {
   const person = await getPerson(id);
   if (!person) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center bg-[#f4f1ea]">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Personne introuvable</h1>
-          <Link href="/" className="text-blue-600 mt-4 inline-block">Retour à l&apos;arbre</Link>
+          <h1 className="text-2xl font-bold text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Personne introuvable</h1>
+          <Link href="/" className="text-[#2f5142] underline mt-4 inline-block">Retour à l&apos;arbre</Link>
         </div>
       </div>
     );
@@ -238,7 +238,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
   const initials = person.displayName.split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase() || '?';
 
   return (
-    <div className="h-screen overflow-y-auto bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-full bg-[#f4f1ea]">
       {/* Hero header */}
       <div className="relative overflow-hidden" style={{ background: heroGradient, minHeight: '260px' }}>
         {/* Blurred photo background */}
@@ -289,7 +289,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
             </Link>
             <Link
               href={`/tree?focus=${id}`}
-              className="px-3 py-1.5 bg-white text-slate-800 rounded-lg text-sm font-semibold hover:bg-white/90 transition-colors"
+              className="px-3 py-1.5 bg-white text-[#1e3a2f] rounded-lg text-sm font-semibold hover:bg-white/90 transition-colors"
             >
               Voir dans l&apos;arbre
             </Link>
@@ -380,24 +380,24 @@ export default async function PersonPage({ params }: PersonPageProps) {
 
         {/* Bio narrative */}
         {bio && (
-          <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl px-6 py-4 mb-6">
-            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed italic">{bio}</p>
+          <div className="bg-[#f1f4ef] border border-[#dde5da] rounded-2xl px-6 py-4 mb-6">
+            <p className="text-sm text-[#3f4a41] leading-relaxed italic" style={{ fontFamily: 'var(--font-serif, Georgia, serif)', fontSize: '0.95rem' }}>{bio}</p>
           </div>
         )}
 
         {/* Timeline */}
         {timeline.length > 0 && (
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm mb-6">
-            <h2 className="text-lg font-semibold mb-5 text-slate-700 dark:text-slate-300">Chronologie</h2>
-            <ol className="relative border-l-2 border-slate-200 dark:border-slate-700 space-y-5 ml-3">
+          <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6 mb-6">
+            <h2 className="text-lg font-semibold mb-5 text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Chronologie</h2>
+            <ol className="relative border-l-2 border-[#e9e2d2] space-y-5 ml-3">
               {timeline.map((item, i) => (
                 <li key={i} className="ml-6">
-                  <span className="absolute -left-3 flex items-center justify-center w-6 h-6 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 text-xs">
+                  <span className="absolute -left-3 flex items-center justify-center w-6 h-6 bg-[#eef2ec] rounded-full text-[#2f5142] text-xs">
                     {item.icon}
                   </span>
                   <div>
-                    <p className="font-medium text-slate-800 dark:text-slate-200 text-sm">{item.label}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="font-medium text-[#1c1f1c] text-sm">{item.label}</p>
+                    <p className="text-xs text-[#8a8474]">
                       {item.dateRaw && <span>{item.dateRaw}</span>}
                       {item.dateRaw && item.place && <span> — </span>}
                       {item.place && <span>{item.place}</span>}
@@ -405,11 +405,11 @@ export default async function PersonPage({ params }: PersonPageProps) {
                     {item.note && (
                       item.note.length > 250 ? (
                         <details className="mt-1">
-                          <summary className="text-xs text-blue-500 cursor-pointer hover:text-blue-400 select-none">Voir la note…</summary>
-                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 whitespace-pre-wrap leading-relaxed">{item.note}</p>
+                          <summary className="text-xs text-[#2f5142] cursor-pointer hover:text-[#c9a86a] select-none">Voir la note…</summary>
+                          <p className="text-xs text-[#8a8474] mt-1 whitespace-pre-wrap leading-relaxed">{item.note}</p>
                         </details>
                       ) : (
-                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 whitespace-pre-wrap leading-relaxed">{item.note}</p>
+                        <p className="text-xs text-[#8a8474] mt-1 whitespace-pre-wrap leading-relaxed">{item.note}</p>
                       )
                     )}
                   </div>
@@ -424,8 +424,8 @@ export default async function PersonPage({ params }: PersonPageProps) {
 
         {/* Map — relatives context */}
         {mapMarkers.length > 0 && (
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm mb-6 mt-6">
-            <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">Carte — famille proche</h2>
+          <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6 mb-6 mt-6">
+            <h2 className="text-lg font-semibold mb-4 text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Carte — famille proche</h2>
             <PersonMapWrapper markers={mapMarkers} centerId={id} />
           </div>
         )}
@@ -433,8 +433,8 @@ export default async function PersonPage({ params }: PersonPageProps) {
         {/* Family */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {(parents.length > 0 || adoptiveParents.length > 0) && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">Parents</h2>
+            <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6">
+              <h2 className="text-lg font-semibold mb-4 text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Parents</h2>
               <div className="space-y-2">
                 {parents.map(p => <PersonListItem key={p.id} person={p} />)}
                 {adoptiveParents.map(p => <PersonListItem key={p.id} person={p} badge="adoptif" />)}
@@ -443,20 +443,20 @@ export default async function PersonPage({ params }: PersonPageProps) {
           )}
           {siblings.length > 0 && <FamilySection title="Fratrie" persons={siblings} />}
           {spouses.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">Conjoints</h2>
+            <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6">
+              <h2 className="text-lg font-semibold mb-4 text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Conjoints</h2>
               <div className="space-y-4">
                 {spouses.map((s) => s.person && (
                   <div key={s.familyId}>
                     <PersonListItem person={s.person} />
                     <div className="ml-5 mt-1 space-y-0.5">
                       {s.marriageDateRaw && (
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-[#8a8474]">
                           Mariage : {s.marriageDateRaw}{s.marriagePlace && ` — ${s.marriagePlace}`}
                         </p>
                       )}
                       {s.divorceDateRaw && (
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-[#8a8474]">
                           Divorce : {s.divorceDateRaw}
                         </p>
                       )}
@@ -467,8 +467,8 @@ export default async function PersonPage({ params }: PersonPageProps) {
             </div>
           )}
           {(children.length > 0 || adoptedChildren.length > 0) && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">Enfants</h2>
+            <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6">
+              <h2 className="text-lg font-semibold mb-4 text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Enfants</h2>
               <div className="space-y-2">
                 {children.map(p => <PersonListItem key={p.id} person={p} />)}
                 {adoptedChildren.map(p => <PersonListItem key={p.id} person={p} badge="adoptif" />)}
@@ -479,9 +479,9 @@ export default async function PersonPage({ params }: PersonPageProps) {
 
         {/* Biographical notes */}
         {person.notes && (
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm mt-6">
-            <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">Notes biographiques</h2>
-            <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">{person.notes}</p>
+          <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6 mt-6">
+            <h2 className="text-lg font-semibold mb-4 text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Notes biographiques</h2>
+            <p className="text-sm text-[#5a5e52] whitespace-pre-wrap leading-relaxed">{person.notes}</p>
           </div>
         )}
 
@@ -503,8 +503,8 @@ export default async function PersonPage({ params }: PersonPageProps) {
 
 function FamilySection({ title, persons }: { title: string; persons: PersonRecord[] }) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm">
-      <h2 className="text-lg font-semibold mb-4 text-slate-700 dark:text-slate-300">{title}</h2>
+    <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6">
+      <h2 className="text-lg font-semibold mb-4 text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>{title}</h2>
       <div className="space-y-2">
         {persons.map(p => <PersonListItem key={p.id} person={p} />)}
       </div>
@@ -517,12 +517,12 @@ function PersonListItem({ person, badge }: { person: PersonRecord; badge?: strin
   return (
     <Link
       href={`/person/${person.id}`}
-      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
+      className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#f1f4ef] transition-colors group"
     >
       <span className={`w-2.5 h-2.5 rounded-full ${dot} shrink-0`} />
-      <span className="text-sm group-hover:text-blue-600 transition-colors">{person.displayName}</span>
-      {badge && <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400">{badge}</span>}
-      {person.birthYear && <span className="text-xs text-slate-400 ml-auto">{person.birthYear}</span>}
+      <span className="text-sm text-[#1c1f1c] group-hover:text-[#2f5142] transition-colors">{person.displayName}</span>
+      {badge && <span className="text-xs px-1.5 py-0.5 rounded-full bg-[#f7e6d6] text-[#b5651d]">{badge}</span>}
+      {person.birthYear && <span className="text-xs text-[#9aa89b] ml-auto">{person.birthYear}</span>}
     </Link>
   );
 }

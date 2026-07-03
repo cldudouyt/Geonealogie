@@ -149,6 +149,9 @@ const TABS: { id: ViewMode; label: string }[] = [
   { id: 'liste',    label: 'Liste' },
 ];
 
+const GEN_OPTIONS = [1, 2, 3, 4, 5];
+const DEFAULT_GENERATIONS = 2;
+
 /* ── Dot-grid background ─────────────────────────────────────── */
 const DOT_GRID: React.CSSProperties = {
   backgroundImage: 'radial-gradient(#e4dcc8 1px, transparent 1px)',
@@ -194,6 +197,8 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
   const focusId = searchParams.get('focus') ?? defaultFocusId;
   const viewParam = searchParams.get('view') as ViewMode | null;
   const view: ViewMode = TABS.some(t => t.id === viewParam) ? viewParam! : 'vertical';
+  const genParam = parseInt(searchParams.get('gen') ?? '', 10);
+  const generations = GEN_OPTIONS.includes(genParam) ? genParam : DEFAULT_GENERATIONS;
 
   const [treeData, setTreeData] = useState<TreeData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -201,12 +206,12 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
   const [trail, setTrail] = useState<{id: string; name: string}[]>([{ id: focusId, name: '' }]);
   const [defaultName, setDefaultName] = useState('');
 
-  const loadTree = useCallback(async (id: string) => {
+  const loadTree = useCallback(async (id: string, gen: number) => {
     if (!id) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/tree/${encodeURIComponent(id)}`);
+      const res = await fetch(`/api/tree/${encodeURIComponent(id)}?generations=${gen}`);
       if (!res.ok) throw new Error('Échec du chargement');
       const data: TreeData = await res.json();
       setTreeData(data);
@@ -218,8 +223,8 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
   }, []);
 
   useEffect(() => {
-    loadTree(focusId);
-  }, [focusId, loadTree]);
+    loadTree(focusId, generations);
+  }, [focusId, generations, loadTree]);
 
   // Fill empty trail names and capture defaultFocusId name
   useEffect(() => {
@@ -241,10 +246,17 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
     router.push(`/tree?${params.toString()}`, { scroll: false });
   };
 
+  const setGenerations = (n: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('gen', String(n));
+    router.push(`/tree?${params.toString()}`, { scroll: false });
+  };
+
   const onFocus = useCallback((id: string, name?: string) => {
     const params = new URLSearchParams();
     params.set('focus', id);
     params.set('view', view);
+    params.set('gen', String(generations));
     router.push(`/tree?${params.toString()}`, { scroll: false });
 
     const resolvedName = name ?? '';
@@ -253,7 +265,7 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
       if (idx >= 0) return prev.slice(0, idx + 1);
       return [...prev, { id, name: resolvedName }];
     });
-  }, [router, view]);
+  }, [router, view, generations]);
 
   const focusName = treeData
     ? (treeData.nodes.find(n => n.id === treeData.rootId)?.displayName ?? '')
@@ -280,8 +292,8 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
 
         <PersonSearch onSelect={onFocus} />
 
-        {/* Mode selector */}
-        <div style={{ marginTop: 0 }}>
+        {/* Mode selector + generations selector */}
+        <div style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
           <div style={{
             display: 'inline-flex',
             background: '#ece5d5',
@@ -312,6 +324,52 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
                 </button>
               );
             })}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '.1em',
+              textTransform: 'uppercase',
+              color: '#9a9080',
+            }}>
+              Générations
+            </span>
+            <div style={{
+              display: 'inline-flex',
+              background: '#fffdf9',
+              border: '1px solid #e0d8c6',
+              borderRadius: 10,
+              padding: 3,
+              gap: 2,
+            }}>
+              {GEN_OPTIONS.map(n => {
+                const active = generations === n;
+                return (
+                  <button
+                    key={n}
+                    onClick={() => setGenerations(n)}
+                    title={`Afficher ${n} génération${n > 1 ? 's' : ''} d'ascendants et de descendants`}
+                    style={{
+                      width: 28,
+                      height: 26,
+                      borderRadius: 8,
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 13,
+                      fontWeight: active ? 700 : 500,
+                      fontFamily: 'inherit',
+                      transition: 'background .15s, color .15s',
+                      background: active ? '#1e3a2f' : 'transparent',
+                      color: active ? '#f1ede2' : '#6c7064',
+                    }}
+                  >
+                    {n}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -496,7 +554,7 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
             </p>
             <p style={{ fontSize: 13, color: '#b03a2e', margin: '0 0 14px' }}>{error}</p>
             <button
-              onClick={() => loadTree(focusId)}
+              onClick={() => loadTree(focusId, generations)}
               style={{
                 padding: '8px 16px',
                 background: '#1e3a2f',

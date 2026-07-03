@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import NavRail from './NavRail';
 import GlobalHeader from './GlobalHeader';
@@ -6,6 +7,13 @@ import GlobalHeader from './GlobalHeader';
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isLogin = pathname === '/login';
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  // The shell scroller persists across client navigations; Next.js only resets
+  // window scroll, so reset it manually on route change.
+  useEffect(() => {
+    scrollerRef.current?.scrollTo(0, 0);
+  }, [pathname]);
 
   if (isLogin) {
     return <>{children}</>;
@@ -16,7 +24,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <NavRail />
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <GlobalHeader />
-        <div style={{ flex: 1, overflowY: 'auto', background: '#f4f1ea' }}>
+        <div ref={scrollerRef} style={{ flex: 1, overflowY: 'auto', background: '#f4f1ea' }}>
           {children}
         </div>
       </main>
