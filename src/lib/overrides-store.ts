@@ -125,7 +125,17 @@ function persistOverridesToFile(overrides: Overrides): void {
 
 async function loadOverridesFromDb(): Promise<Overrides> {
   const stored = await kvGet<Overrides>(DB_KEY);
-  if (!stored) return emptyOverrides();
+  if (!stored) {
+    // First read on a fresh database: seed from the committed file so manual
+    // merges and edits survive the storage migration.
+    const fromFile = loadOverridesFromFile();
+    try {
+      await kvSet(DB_KEY, fromFile);
+    } catch (err) {
+      console.error('[overrides] Failed to seed DB from file:', err);
+    }
+    return fromFile;
+  }
   stored.persons ??= {};
   stored.newPersons ??= [];
   stored.deletedPersonIds ??= [];
