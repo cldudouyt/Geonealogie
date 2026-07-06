@@ -23,7 +23,7 @@ function toTitleCase(s: string): string {
 
 function formatGivenNames(givenNames: string): string {
   const names = givenNames.replace(/,/g, '').trim().split(/\s+/).filter(Boolean);
-  return names.join(', ');
+  return names.join(' ');
 }
 import { getPerson, getParents, getChildren, getSpouses, getSiblings, formatPlaceFull } from '@/lib/gedcom-store';
 import type { PersonRecord } from '@/lib/gedcom-store';
@@ -286,6 +286,15 @@ export default async function PersonPage({ params }: PersonPageProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
               Éditer
+            </Link>
+            <Link
+              href={`/feedback/new?person=${id}&name=${encodeURIComponent(person.displayName)}`}
+              className="px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 backdrop-blur-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              Suggérer une correction
             </Link>
             <Link
               href={`/tree?focus=${id}`}

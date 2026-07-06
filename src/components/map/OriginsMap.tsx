@@ -88,8 +88,11 @@ export default function OriginsMap({ places, flyToRef, focusedPerson }: Props) {
       }).addTo(map);
 
       const bounds: [number, number][] = [];
+      const sorted = [...places].sort((a, b) => b.count - a.count);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rankedMarkers: { marker: any; lat: number; lng: number; width: number }[] = [];
 
-      for (const entry of places) {
+      sorted.forEach(entry => {
         const html = buildPinHtml(entry.place, entry.count, entry.color);
         const icon = L.divIcon({
           html,
@@ -99,7 +102,7 @@ export default function OriginsMap({ places, flyToRef, focusedPerson }: Props) {
           popupAnchor: [0, -62],
         });
 
-        L.marker([entry.lat, entry.lng], { icon })
+        const marker = L.marker([entry.lat, entry.lng], { icon })
           .bindPopup(
             `<div style="font-size:13px;min-width:160px">
               <strong style="color:#1c1f1c">${entry.place}</strong><br/>
@@ -107,11 +110,35 @@ export default function OriginsMap({ places, flyToRef, focusedPerson }: Props) {
               <span style="color:#2f5142;font-weight:700">${entry.count} personne${entry.count > 1 ? 's' : ''}</span>
             </div>`,
             { maxWidth: 220 }
-          )
-          .addTo(map);
+          );
 
+        // Largeur estimée de l'étiquette (police 11.5px bold + compteur + padding)
+        const width = 6.5 * entry.place.length + 6 * String(entry.count).length + 32;
+        rankedMarkers.push({ marker, lat: entry.lat, lng: entry.lng, width });
         bounds.push([entry.lat, entry.lng]);
-      }
+      });
+
+      // Déclutter glouton : parcours par count décroissant, un pin n'est affiché
+      // que si son étiquette ne chevauche pas celle d'un foyer plus gros déjà
+      // affiché au zoom courant. Les petits lieux apparaissent en zoomant.
+      const refreshMarkerVisibility = () => {
+        const zoom = map.getZoom();
+        const placed: { x: number; y: number; w: number }[] = [];
+        for (const { marker, lat, lng, width } of rankedMarkers) {
+          const pt = map.project([lat, lng], zoom);
+          const collides = placed.some(
+            p => Math.abs(p.x - pt.x) < (p.w + width) / 2 + 12 && Math.abs(p.y - pt.y) < 56
+          );
+          if (!collides) {
+            placed.push({ x: pt.x, y: pt.y, w: width });
+            if (!map.hasLayer(marker)) marker.addTo(map);
+          } else if (map.hasLayer(marker)) {
+            map.removeLayer(marker);
+          }
+        }
+      };
+
+      map.on('zoomend', refreshMarkerVisibility);
 
       if (bounds.length > 0) {
         map.fitBounds(bounds as Parameters<typeof map.fitBounds>[0], {
@@ -119,6 +146,8 @@ export default function OriginsMap({ places, flyToRef, focusedPerson }: Props) {
           maxZoom: 8,
         });
       }
+
+      refreshMarkerVisibility();
 
       flyToRef.current = (lat: number, lng: number) => {
         map.flyTo([lat, lng], 9, { duration: 1.2 });

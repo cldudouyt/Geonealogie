@@ -192,7 +192,7 @@ async function buildStore(): Promise<GedcomStore> {
     const nameTag = indi.getName();
     const givenNames = getVal(nameTag?.getGivenName()) || '';
     const surname = getVal(nameTag?.getSurname()) || '';
-    const displayName = `${givenNames.split(',')[0].trim()} ${surname}`.trim();
+    const displayName = buildDisplayName(givenNames, surname);
     const nickname = getVal(indi.get('NAME')?.get('NICK'));
 
     const sexVal = getVal(indi.getSex());
@@ -526,8 +526,13 @@ export function getStore(): Promise<GedcomStore> {
   return storePromise;
 }
 
+function buildDisplayName(givenNames: string, surname: string): string {
+  const given = givenNames.split(',').map(s => s.trim()).filter(Boolean).join(' ');
+  return `${given} ${surname}`.trim();
+}
+
 function newPersonToRecord(np: NewPerson): PersonRecord {
-  const displayName = `${np.givenNames.split(',')[0].trim()} ${np.surname}`.trim();
+  const displayName = buildDisplayName(np.givenNames, np.surname);
   return {
     id: np.id,
     givenNames: np.givenNames,
@@ -618,7 +623,7 @@ async function applyOverrides(s: GedcomStore): Promise<void> {
     }
     if (edit.photoUrl    !== undefined) person.photoUrl    = edit.photoUrl;
     // Recompute displayName
-    person.displayName = `${person.givenNames.split(',')[0].trim()} ${person.surname}`.trim();
+    person.displayName = buildDisplayName(person.givenNames, person.surname);
   }
 
   // Add new persons and wire up relationships

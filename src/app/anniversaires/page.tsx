@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getAllPersons, getStore } from '@/lib/gedcom-store';
+import type { PersonRecord } from '@/lib/gedcom-store';
 import { Badge } from '@/components/ui/Badge';
 
 export const metadata = { title: 'Anniversaires — Géonéalogie' };
@@ -8,6 +9,8 @@ const MONTHS_FR = ['janvier','février','mars','avril','mai','juin','juillet','a
 const MONTHS_GEDCOM: Record<string, number> = {
   JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12
 };
+
+const LIVING_MAX_AGE = 100;
 
 function parseDayMonth(raw?: string): { day: number; month: number } | null {
   if (!raw) return null;
@@ -19,11 +22,14 @@ function parseDayMonth(raw?: string): { day: number; month: number } | null {
   return { day, month };
 }
 
-function daysUntil(day: number, month: number, today: Date): number {
+function nextOccurrence(day: number, month: number, today: Date): { daysUntil: number; targetYear: number } {
   const thisYear = today.getFullYear();
   let target = new Date(thisYear, month - 1, day);
   if (target < today) target = new Date(thisYear + 1, month - 1, day);
-  return Math.round((target.getTime() - today.getTime()) / 86400000);
+  return {
+    daysUntil: Math.round((target.getTime() - today.getTime()) / 86400000),
+    targetYear: target.getFullYear(),
+  };
 }
 
 function extractYear(raw?: string): string | undefined {
@@ -32,9 +38,24 @@ function extractYear(raw?: string): string | undefined {
   return m?.[1];
 }
 
-export default async function AnniversairesPage() {
+function isPresumedAlive(p: PersonRecord | undefined, currentYear: number): boolean {
+  if (!p) return false;
+  if (p.deathDateRaw || p.deathDate || p.deathYear) return false;
+  const birthYear = p.birthYear ? parseInt(p.birthYear) : NaN;
+  return !isNaN(birthYear) && currentYear - birthYear < LIVING_MAX_AGE;
+}
+
+export default async function AnniversairesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ancetres?: string }>;
+}) {
+  const { ancetres } = await searchParams;
+  const includeAncestors = ancetres === '1';
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const currentYear = today.getFullYear();
 
   const persons = await getAllPersons();
   const s = await getStore();
@@ -49,40 +70,68 @@ export default async function AnniversairesPage() {
     daysUntil: number;
     type: 'naissance' | 'mariage';
     spouseName?: string;
+    alive: boolean;
+    upcomingAge?: number;
   };
 
   const entries: Entry[] = [];
 
+  // Dédoublonnage : le GEDCOM contient des personnes dupliquées (mêmes nom + date)
+  const seenBirths = new Set<string>();
+
   for (const p of persons) {
     const birth = parseDayMonth(p.birthDateRaw);
-    if (birth) {
-      entries.push({
-        personId: p.id,
-        name: p.displayName,
-        sex: p.sex,
-        day: birth.day,
-        month: birth.month,
-        year: p.birthYear,
-        daysUntil: daysUntil(birth.day, birth.month, today),
-        type: 'naissance',
-      });
-    }
+    if (!birth) continue;
+
+    const birthKey = `${p.displayName}|${birth.day}/${birth.month}|${p.birthYear ?? ''}`;
+    if (seenBirths.has(birthKey)) continue;
+    seenBirths.add(birthKey);
+
+    const alive = isPresumedAlive(p, currentYear);
+    if (!includeAncestors && !alive) continue;
+
+    const { daysUntil, targetYear } = nextOccurrence(birth.day, birth.month, today);
+    const birthYearNum = p.birthYear ? parseInt(p.birthYear) : NaN;
+
+    entries.push({
+      personId: p.id,
+      name: p.displayName,
+      sex: p.sex,
+      day: birth.day,
+      month: birth.month,
+      year: p.birthYear,
+      daysUntil,
+      type: 'naissance',
+      alive,
+      upcomingAge: !isNaN(birthYearNum) ? targetYear - birthYearNum : undefined,
+    });
   }
 
-  // Marriage anniversaries — iterate families directly to avoid N+1 calls
-  const seenFams = new Set<string>();
+  // Anniversaires de mariage — dédoublonnés par couple + date, car le GEDCOM
+  // contient des enregistrements FAM dupliqués pour un même couple
+  const seenCouples = new Set<string>();
   for (const [, fam] of s.families) {
     const marr = parseDayMonth(fam.marriageDateRaw);
     if (!marr) continue;
-    if (seenFams.has(fam.id)) continue;
-    seenFams.add(fam.id);
 
     const husb = fam.husbandId ? s.persons.get(fam.husbandId) : undefined;
     const wife = fam.wifeId ? s.persons.get(fam.wifeId) : undefined;
     if (!husb && !wife) continue;
 
+    const marriageYear = extractYear(fam.marriageDateRaw);
+    const coupleKey = [husb?.displayName ?? '', wife?.displayName ?? '']
+      .sort()
+      .join('|') + `|${marr.day}/${marr.month}|${marriageYear ?? ''}`;
+    if (seenCouples.has(coupleKey)) continue;
+    seenCouples.add(coupleKey);
+
+    const bothAlive = isPresumedAlive(husb, currentYear) && isPresumedAlive(wife, currentYear);
+    if (!includeAncestors && !bothAlive) continue;
+
     const primary = husb ?? wife!;
     const spouse = husb ? wife : undefined;
+    const { daysUntil, targetYear } = nextOccurrence(marr.day, marr.month, today);
+    const marriageYearNum = marriageYear ? parseInt(marriageYear) : NaN;
 
     entries.push({
       personId: primary.id,
@@ -90,9 +139,11 @@ export default async function AnniversairesPage() {
       spouseName: spouse?.displayName,
       day: marr.day,
       month: marr.month,
-      year: extractYear(fam.marriageDateRaw),
-      daysUntil: daysUntil(marr.day, marr.month, today),
+      year: marriageYear,
+      daysUntil,
       type: 'mariage',
+      alive: bothAlive,
+      upcomingAge: !isNaN(marriageYearNum) ? targetYear - marriageYearNum : undefined,
     });
   }
 
@@ -115,27 +166,52 @@ export default async function AnniversairesPage() {
       <main className="mx-auto px-6 py-10 space-y-6" style={{ maxWidth: '760px' }}>
 
         {/* En-tête */}
-        <div className="mb-8">
-          <h1
+        <div className="mb-8" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
+          <div>
+            <h1
+              style={{
+                fontFamily: 'var(--font-serif, Newsreader, serif)',
+                fontSize: '30px',
+                fontWeight: 500,
+                color: '#1c1f1c',
+                letterSpacing: '-0.02em',
+                marginBottom: '6px',
+              }}
+            >
+              Anniversaires
+            </h1>
+            <p style={{ fontSize: '13.5px', color: '#8a8474' }}>
+              {includeAncestors
+                ? 'Naissances et mariages à venir dans les 12 prochains mois, ancêtres inclus.'
+                : 'Les anniversaires à fêter dans la famille au cours des 12 prochains mois.'}
+            </p>
+          </div>
+          <Link
+            href={includeAncestors ? '/anniversaires' : '/anniversaires?ancetres=1'}
             style={{
-              fontFamily: 'var(--font-serif, Newsreader, serif)',
-              fontSize: '30px',
-              fontWeight: 500,
-              color: '#1c1f1c',
-              letterSpacing: '-0.02em',
-              marginBottom: '6px',
+              flexShrink: 0,
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '8px 14px',
+              borderRadius: '10px',
+              fontSize: '13px',
+              fontWeight: 600,
+              textDecoration: 'none',
+              marginTop: '4px',
+              ...(includeAncestors
+                ? { background: '#1e3a2f', color: '#f1ede2', border: '1px solid #1e3a2f' }
+                : { background: '#fffdf9', color: '#1c1f1c', border: '1px solid #e0d8c6' }),
             }}
           >
-            Anniversaires
-          </h1>
-          <p style={{ fontSize: '13.5px', color: '#8a8474' }}>
-            Naissances et mariages à venir dans les 12 prochains mois.
-          </p>
+            Inclure les ancêtres
+          </Link>
         </div>
 
         {upcoming.length === 0 ? (
           <p style={{ color: '#8a8474', textAlign: 'center', padding: '48px 0' }}>
-            Aucun anniversaire prévu dans les 12 prochains mois.
+            {includeAncestors
+              ? 'Aucun anniversaire prévu dans les 12 prochains mois.'
+              : 'Aucun anniversaire de personne vivante dans les 12 prochains mois. Activez « Inclure les ancêtres » pour voir tous les événements.'}
           </p>
         ) : (
           months.map(month => {
@@ -179,10 +255,16 @@ export default async function AnniversairesPage() {
                   const badgeLabel = isToday ? "Aujourd'hui" : `dans ${e.daysUntil} j`;
                   const dayColor = isToday ? '#b8860b' : '#2f5142';
 
-                  const sublabel =
-                    e.type === 'naissance'
-                      ? `Naissance${e.year ? ` · ${e.sex === 'M' ? 'né' : 'née'} en ${e.year}` : ''}`
+                  let sublabel: string;
+                  if (e.type === 'naissance') {
+                    sublabel = e.alive && e.upcomingAge != null
+                      ? `Fête ses ${e.upcomingAge} ans`
+                      : `Naissance${e.year ? ` · ${e.sex === 'M' ? 'né' : 'née'} en ${e.year}` : ''}`;
+                  } else {
+                    sublabel = e.alive && e.upcomingAge != null
+                      ? `Fêtent leurs ${e.upcomingAge} ans de mariage`
                       : `Mariage${e.year ? ` · ${e.year}` : ''}`;
+                  }
 
                   return (
                     <div

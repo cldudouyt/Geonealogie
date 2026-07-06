@@ -17,7 +17,7 @@ async function buildSurnameGroups(): Promise<SurnameGroup[]> {
     if (!groups.has(key)) groups.set(key, { ids: [], names: new Set() });
     const g = groups.get(key)!;
     g.ids.push(p.id);
-    if (p.givenNames) g.names.add(p.givenNames.split(' ')[0]);
+    if (p.givenNames) g.names.add(p.givenNames.split(/[,\s]+/).filter(Boolean)[0]);
     const year = p.birthYear ? parseInt(p.birthYear) : undefined;
     if (year && (!g.oldest || year < g.oldest.year)) {
       g.oldest = { id: p.id, year };
@@ -389,17 +389,38 @@ export default async function Dashboard() {
                   padding: '24px',
                 }}
               >
-                <h2
+                <div
                   style={{
-                    fontFamily: 'var(--font-serif)',
-                    fontSize: '18px',
-                    fontWeight: 500,
-                    color: '#1c1f1c',
-                    margin: '0 0 20px',
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    justifyContent: 'space-between',
+                    marginBottom: '20px',
                   }}
                 >
-                  Répartition par siècle
-                </h2>
+                  <h2
+                    style={{
+                      fontFamily: 'var(--font-serif)',
+                      fontSize: '18px',
+                      fontWeight: 500,
+                      color: '#1c1f1c',
+                      margin: 0,
+                    }}
+                  >
+                    Répartition par siècle
+                  </h2>
+                  <a
+                    href="/stats"
+                    style={{
+                      fontFamily: 'var(--font-sans)',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: '#2f5142',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Toutes les statistiques →
+                  </a>
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {stats.centuries.map(c => (
                     <div key={c.label} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

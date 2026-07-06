@@ -14,10 +14,16 @@ export async function submitFeedback(
 ): Promise<FeedbackState> {
   const name = formData.get('name')?.toString().trim() || '';
   const title = formData.get('title')?.toString().trim() || '';
-  const description = formData.get('description')?.toString().trim() || '';
+  let description = formData.get('description')?.toString().trim() || '';
+  const personId = formData.get('personId')?.toString().trim() || '';
+  const personName = formData.get('personName')?.toString().trim() || '';
 
   if (!title) return { error: 'Le titre est obligatoire.' };
   if (!description) return { error: 'La description est obligatoire.' };
+
+  if (personId) {
+    description += `\n\n—\nFiche concernée : ${personName ? `${personName} ` : ''}(/person/${personId})`;
+  }
 
   return submitSuggestion({ author: name || undefined, title, body: description });
 }

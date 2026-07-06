@@ -3,6 +3,27 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import OriginsMapWrapper from './OriginsMapWrapper';
 import type { BirthplaceEntry, FocusedPerson } from './OriginsMap';
+import { formatPlaceLabel } from '@/lib/format-place';
+
+function normalizePlaces(raw: BirthplaceEntry[]): { places: BirthplaceEntry[]; unknownCount: number } {
+  const merged = new Map<string, BirthplaceEntry>();
+  let unknownCount = 0;
+  for (const entry of raw) {
+    const label = formatPlaceLabel(entry.place);
+    if (!label) {
+      unknownCount += entry.count;
+      continue;
+    }
+    const existing = merged.get(label);
+    if (existing) {
+      existing.count += entry.count;
+    } else {
+      merged.set(label, { ...entry, place: label, region: formatPlaceLabel(entry.region) });
+    }
+  }
+  const places = Array.from(merged.values()).sort((a, b) => b.count - a.count);
+  return { places, unknownCount };
+}
 
 interface PersonSuggestion {
   id: string;
@@ -16,6 +37,7 @@ interface PersonSuggestion {
 export default function OriginsMapSection() {
   const flyToRef = useRef<((lat: number, lng: number) => void) | null>(null);
   const [places, setPlaces] = useState<BirthplaceEntry[]>([]);
+  const [unknownCount, setUnknownCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   // Search state
@@ -30,7 +52,11 @@ export default function OriginsMapSection() {
   useEffect(() => {
     fetch('/api/persons/birthplaces')
       .then(r => r.json())
-      .then(d => setPlaces(d.places || []))
+      .then(d => {
+        const { places: cleaned, unknownCount: unknown } = normalizePlaces(d.places || []);
+        setPlaces(cleaned);
+        setUnknownCount(unknown);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -84,7 +110,7 @@ export default function OriginsMapSection() {
         name: person.displayName,
         lat: person.birthLat,
         lng: person.birthLon,
-        birthPlace: person.birthPlace,
+        birthPlace: formatPlaceLabel(person.birthPlace) || undefined,
       });
     }
   }
@@ -316,6 +342,11 @@ export default function OriginsMapSection() {
           {!loading && places.length === 0 && (
             <div style={{ fontSize: 13, color: 'var(--ink-500)', padding: '20px 0' }}>
               Aucun lieu géolocalisé pour l'instant.
+            </div>
+          )}
+          {!loading && unknownCount > 0 && (
+            <div style={{ fontSize: 11.5, color: 'var(--ink-500)', padding: '6px 2px 0' }}>
+              Lieu inconnu : {unknownCount} personne{unknownCount > 1 ? 's' : ''} (non affiché{unknownCount > 1 ? 'es' : 'e'} sur la carte)
             </div>
           )}
         </div>

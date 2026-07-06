@@ -20,6 +20,7 @@ interface PathNode {
 interface RelationResult {
   path: PathNode[] | null;
   relationship: string | null;
+  article?: string;
   degree: number | null;
   samePerson?: boolean;
 }
@@ -481,9 +482,7 @@ export default function RelationPage() {
             <span style={{ fontSize: '14.5px' }}>
               <span style={{ fontWeight: 700 }}>{result.path[result.path.length - 1]?.name}</span>
               {result.relationship ? (
-                <> est {result.relationship === 'conjoint(e)' ? 'le/la ' : 'le/la '}
-                  <span style={{ fontWeight: 700 }}>{result.relationship}</span> de
-                </>
+                <> est {result.article === "l'" ? "l'" : result.article ? `${result.article} ` : ''}<span style={{ fontWeight: 700 }}>{result.relationship}</span> de</>
               ) : (
                 <> est relié(e) à</>
               )}

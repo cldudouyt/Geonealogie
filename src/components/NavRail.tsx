@@ -41,6 +41,11 @@ const RelationIcon = () => (
     <circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="12" r="2.4"/><path d="M8.5 12h7"/>
   </svg>
 );
+const StatsIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round">
+    <path d="M4 20V10M10 20V4M16 20v-8M21 20H3"/>
+  </svg>
+);
 const TimelineIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round">
     <path d="M3 12h4l3-7 4 14 3-7h4"/>
@@ -91,6 +96,7 @@ const NAV_GROUPS = [
       { href: '/anniversaires', label: 'Anniversaires', icon: <CalendarIcon /> },
       { href: '/relation', label: 'Chemin de parenté', icon: <RelationIcon /> },
       { href: '/timeline', label: 'Parcours migratoire', icon: <TimelineIcon /> },
+      { href: '/stats', label: 'Statistiques', icon: <StatsIcon /> },
     ],
   },
   {

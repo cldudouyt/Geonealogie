@@ -1,7 +1,7 @@
 'use client';
 
-import { useActionState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useActionState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { submitFeedback, type FeedbackState } from '../actions';
 import Link from 'next/link';
 
@@ -29,7 +29,18 @@ const labelStyle: React.CSSProperties = {
 };
 
 export default function FeedbackNewPage() {
+  return (
+    <Suspense>
+      <FeedbackNewForm />
+    </Suspense>
+  );
+}
+
+function FeedbackNewForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const personId = searchParams.get('person');
+  const personName = searchParams.get('name');
   const [state, action, pending] = useActionState<FeedbackState | null, FormData>(
     submitFeedback,
     null,
@@ -168,7 +179,36 @@ export default function FeedbackNewPage() {
           Une idée, une erreur à corriger ou une fonctionnalité manquante ?
         </p>
 
+        {personId && personName && (
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#eef2ec',
+              color: '#2f5142',
+              borderRadius: 999,
+              padding: '5px 12px',
+              fontSize: 12.5,
+              fontWeight: 600,
+              marginBottom: 20,
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            Fiche concernée : {personName}
+          </div>
+        )}
+
         <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {personId && (
+            <>
+              <input type="hidden" name="personId" value={personId} />
+              {personName && <input type="hidden" name="personName" value={personName} />}
+            </>
+          )}
           {/* Prénom */}
           <div>
             <label htmlFor="name" style={labelStyle}>
@@ -204,6 +244,7 @@ export default function FeedbackNewPage() {
               name="title"
               type="text"
               required
+              defaultValue={personName ? `Correction fiche : ${personName}` : undefined}
               placeholder="Ex : Ajouter un export PDF de la fiche"
               style={inputStyle}
               onFocus={(e) => {

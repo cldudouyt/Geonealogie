@@ -53,8 +53,8 @@ function getInitials(name: string): string {
 
 function formatName(p: { givenNames?: string; surname?: string; displayName: string }): string {
   if (!p.givenNames) return p.displayName;
-  const names = p.givenNames.replace(/,/g, '').trim().split(/\s+/).filter(Boolean);
-  const given = names.join(', ');
+  const names = p.givenNames.replace(/,/g, ' ').trim().split(/\s+/).filter(Boolean);
+  const given = names.join(' ');
   return p.surname ? `${given} ${p.surname}` : given;
 }
 
