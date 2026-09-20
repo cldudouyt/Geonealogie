@@ -1,10 +1,14 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useSyncExternalStore } from 'react';
 import { login } from './actions';
 
+const subscribe = () => () => {};
+
 export default function LoginPage() {
+  const hydrated = useSyncExternalStore(subscribe, () => true, () => false);
   const [state, action, pending] = useActionState(login, null);
+  useEffect(() => { if (state?.success) window.location.assign('/'); }, [state?.success]);
 
   return (
     <div
@@ -155,7 +159,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || !hydrated}
             style={{
               width: '100%',
               height: 46,

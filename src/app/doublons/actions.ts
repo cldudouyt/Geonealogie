@@ -1,50 +1,34 @@
 'use server';
-
 import { revalidatePath } from 'next/cache';
-import { getAllPersons, clearStore } from '@/lib/gedcom-store';
-import { savePersonEdit, deletePerson, mergePerson, ignoreDoublon, type PersonEdit } from '@/lib/overrides-store';
-
-export async function mergePersonsAction(keepId: string, deleteId: string): Promise<void> {
-  const persons = await getAllPersons();
-  const keep = persons.find(p => p.id === keepId);
-  const del  = persons.find(p => p.id === deleteId);
-  if (!keep || !del) return;
-
-  const transfer: PersonEdit = {};
-  if (!keep.birthDateRaw  && del.birthDateRaw)  transfer.birthDateRaw  = del.birthDateRaw;
-  if (!keep.birthPlace    && del.birthPlace)    transfer.birthPlace    = del.birthPlace;
-  if (!keep.birthPlaceFull && del.birthPlaceFull) transfer.birthPlaceFull = del.birthPlaceFull;
-  if (!keep.deathDateRaw  && del.deathDateRaw)  transfer.deathDateRaw  = del.deathDateRaw;
-  if (!keep.deathPlace    && del.deathPlace)    transfer.deathPlace    = del.deathPlace;
-  if (!keep.deathPlaceFull && del.deathPlaceFull) transfer.deathPlaceFull = del.deathPlaceFull;
-  if (!keep.burialDateRaw && del.burialDateRaw) transfer.burialDateRaw = del.burialDateRaw;
-  if (!keep.burialPlace   && del.burialPlace)   transfer.burialPlace   = del.burialPlace;
-  if (!keep.chrDateRaw    && del.chrDateRaw)    transfer.chrDateRaw    = del.chrDateRaw;
-  if (!keep.chrPlace      && del.chrPlace)      transfer.chrPlace      = del.chrPlace;
-  if (!keep.occupation    && del.occupation)    transfer.occupation    = del.occupation;
-  if (!keep.nationality   && del.nationality)   transfer.nationality   = del.nationality;
-  if (!keep.nickname      && del.nickname)      transfer.nickname      = del.nickname;
-  if (!keep.notes && del.notes) transfer.notes = del.notes;
-  else if (keep.notes && del.notes && del.notes !== keep.notes) {
-    transfer.notes = `${keep.notes}\n\n[Fusionné]\n${del.notes}`;
-  }
-
-  if (Object.keys(transfer).length > 0) {
-    await savePersonEdit(keepId, transfer);
-  }
-
-  await mergePerson(keepId, deleteId);
+import { getPerson, clearStore } from '@/lib/gedcom-store';
+import { loadOverrides, deletePerson, mergePerson, ignoreDoublon, type PersonEdit } from '@/lib/overrides-store';
+import { requireRole } from '@/lib/session';
+import { MERGE_FIELDS, type MergeField } from '@/lib/merge-fields';
+export async function previewMerge(aId: string, bId: string) {
+  await requireRole('admin'); clearStore();
+  const state = await loadOverrides();
+  const [a,b] = await Promise.all([getPerson(aId), getPerson(bId)]);
+  if (!a || !b || a.id === b.id) throw new Error('Ces fiches ne peuvent pas être comparées.');
+  return { a, b, revision: state.revision ?? 0 };
+}
+export async function mergePersonsAction(keepId: string, deleteId: string, choices: Partial<Record<MergeField, 'keep' | 'other'>> = {}, revision?: number): Promise<void> {
+  const session = await requireRole('admin');
+  if (revision === undefined) throw new Error('Ouvrez la comparaison avant de fusionner.');
   clearStore();
-  revalidatePath('/doublons');
+  const state = await loadOverrides();
+  const [keep, other] = await Promise.all([getPerson(keepId), getPerson(deleteId)]);
+  if (!keep || !other) throw new Error('Fiche introuvable.');
+  const edit: Record<string, unknown> = {};
+  for (const key of Object.keys(MERGE_FIELDS) as MergeField[]) {
+    edit[key] = choices[key] === 'other' ? other[key] : (keep[key] ?? other[key]);
+    if (edit[key] === undefined) delete edit[key];
+  }
+  if (!choices.notes && keep.notes && other.notes && keep.notes !== other.notes) edit.notes = `${keep.notes}\n\n${other.notes}`;
+  edit.events = Array.from(new Map([...keep.events, ...other.events].map(e => [JSON.stringify(e), e])).values());
+  const sourcesFor = (id: string) => (state.newPersons.find(p => p.id === id) ?? state.persons[id])?.sources ?? [];
+  edit.sources = [...sourcesFor(keepId), ...sourcesFor(deleteId)];
+  await mergePerson(keepId, deleteId, edit as PersonEdit, session.name, revision);
+  clearStore(); revalidatePath('/', 'layout');
 }
-
-export async function deletePersonAction(id: string): Promise<void> {
-  await deletePerson(id);
-  clearStore();
-  revalidatePath('/doublons');
-}
-
-export async function ignoreDoublonAction(idA: string, idB: string): Promise<void> {
-  await ignoreDoublon(idA, idB);
-  revalidatePath('/doublons');
-}
+export async function deletePersonAction(id: string): Promise<void> { const session = await requireRole('admin'); await deletePerson(id, session.name); clearStore(); revalidatePath('/', 'layout'); }
+export async function ignoreDoublonAction(a: string, b: string): Promise<void> { const session = await requireRole('admin'); await ignoreDoublon(a, b, session.name); revalidatePath('/doublons'); }

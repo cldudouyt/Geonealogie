@@ -2,7 +2,9 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import { mergePersonsAction, ignoreDoublonAction } from './actions';
+import { useRouter } from 'next/navigation';
+import { mergePersonsAction, ignoreDoublonAction, previewMerge } from './actions';
+import { MERGE_FIELDS, type MergeField } from '@/lib/merge-fields';
 import { Button } from '@/components/ui/Button';
 
 interface Person {
@@ -27,32 +29,37 @@ const CONF_STYLE: Record<PairCardProps['confidence'], { headBg: string; confCol:
 };
 
 export default function PairCard({ a, b, confidence, reasons }: PairCardProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
   const [pickMerge, setPickMerge] = useState(false);
+  const [preview, setPreview] = useState<Awaited<ReturnType<typeof previewMerge>> | null>(null);
+  const [choices, setChoices] = useState<Partial<Record<MergeField, 'keep' | 'other'>>>({});
+  const [error, setError] = useState('');
+  const [merged, setMerged] = useState(false);
+  const openPreview = () => startTransition(async () => { try { setPreview(await previewMerge(a.id, b.id)); setPickMerge(true); setError(''); } catch (e) { setError(e instanceof Error ? e.message : 'Comparaison indisponible.'); } });
 
   const { headBg, confCol, label } = CONF_STYLE[confidence];
 
-  if (done) return null;
+  if (done) return merged ? <div className="source-item" role="status">Fusion enregistrée. <Link href="/history">Consulter l’historique ou annuler</Link></div> : null;
 
   const handleMerge = (keepId: string, deleteId: string) => {
     startTransition(async () => {
-      await mergePersonsAction(keepId, deleteId);
-      setDone(true);
+      try { await mergePersonsAction(keepId, deleteId, choices, preview?.revision); setMerged(true); setDone(true); router.push('/doublons?merged=1'); }
+      catch (e) { setError(e instanceof Error ? e.message : 'La fusion a échoué.'); }
     });
   };
 
   const handleIgnore = () => {
     startTransition(async () => {
-      await ignoreDoublonAction(a.id, b.id);
-      setDone(true);
+      try { await ignoreDoublonAction(a.id, b.id); setDone(true); } catch { setError('La modification n’a pas été enregistrée.'); }
     });
   };
 
   const persons: Person[] = [a, b];
 
   return (
-    <div
+    <div data-pair={[a.id, b.id].sort().join(':')}
       style={{
         border: '1px solid #e7e0d0',
         borderRadius: 16,
@@ -101,27 +108,15 @@ export default function PairCard({ a, b, confidence, reasons }: PairCardProps) {
 
       {/* Footer */}
       <div style={{ padding: '12px 18px', borderTop: '1px solid #f1ebdd', background: '#fffdf9' }}>
-        {pickMerge ? (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12.5, color: '#6c7064', marginRight: 4 }}>Garder&nbsp;:</span>
-            {persons.map(p => (
-              <Button
-                key={p.id}
-                size="sm"
-                variant="primary"
-                onClick={() => handleMerge(p.id, p.id === a.id ? b.id : a.id)}
-              >
-                {p.displayName}
-              </Button>
-            ))}
-            <Button size="sm" variant="ghost" onClick={() => setPickMerge(false)}>Annuler</Button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="primary" onClick={() => setPickMerge(true)}>Fusionner</Button>
-            <Button variant="secondary" onClick={handleIgnore}>Ignorer</Button>
-          </div>
-        )}
+        {error && <p role="alert" className="error-message">{error}</p>}
+        {pickMerge && preview ? <div>
+          <h3>Comparer et préparer la fusion</h3><p>La fiche de gauche sera conservée. Choisissez chaque valeur à garder ; les événements, sources et documents seront réunis.</p>
+          <div className="comparison-scroll"><table className="comparison-table"><thead><tr><th>Information</th><th>{a.displayName}</th><th>{b.displayName}</th><th>Résultat</th></tr></thead><tbody>
+            {(Object.keys(MERGE_FIELDS) as MergeField[]).filter(key => preview.a[key] != null || preview.b[key] != null).map(key => <tr key={key}><th scope="row">{MERGE_FIELDS[key]}</th><td>{String(preview.a[key] ?? '—')}</td><td>{String(preview.b[key] ?? '—')}</td><td><select aria-label={`Valeur conservée : ${MERGE_FIELDS[key]}`} value={choices[key] ?? (preview.a[key] == null ? 'other' : 'keep')} onChange={e => setChoices(c => ({ ...c, [key]: e.target.value as 'keep' | 'other' }))}><option value="keep">Gauche</option><option value="other">Droite</option></select></td></tr>)}
+          </tbody></table></div><p>Les notes différentes sont réunies si aucun choix explicite n’est fait pour ce champ. L’opération pourra être annulée dans l’historique.</p>
+          <div className="action-row"><Button disabled={isPending} onClick={() => handleMerge(a.id, b.id)}>Confirmer la fusion</Button><Button variant="secondary" onClick={() => setPickMerge(false)}>Annuler</Button></div>
+        </div> : <div className="action-row"><Button variant="primary" onClick={openPreview}>Comparer avant de fusionner</Button><Button variant="secondary" onClick={handleIgnore}>Ignorer</Button></div>}
+
       </div>
     </div>
   );

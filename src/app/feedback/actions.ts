@@ -1,5 +1,6 @@
 'use server';
 
+import { requireRole } from '@/lib/session';
 import { insertSuggestion } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 
@@ -33,6 +34,7 @@ export async function submitSuggestion(data: {
   title: string;
   body: string;
 }): Promise<FeedbackState> {
+  await requireRole('contributor');
   const { author, title, body } = data;
 
   if (!title) return { error: 'Le titre est obligatoire.' };

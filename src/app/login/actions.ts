@@ -2,23 +2,17 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { makeSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth';
+import { authenticate, makeSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth';
 
 export async function login(
-  _prevState: { error: string } | null,
+  _prevState: { error?: string; success?: boolean } | null,
   formData: FormData,
-): Promise<{ error: string }> {
+): Promise<{ error?: string; success?: boolean }> {
   const password = formData.get('password')?.toString() || '';
 
-  if (!process.env.AUTH_PASSWORD) {
-    return { error: 'AUTH_PASSWORD non configuré dans .env.local' };
-  }
-
-  if (password !== process.env.AUTH_PASSWORD) {
-    return { error: 'Mot de passe incorrect' };
-  }
-
-  const token = await makeSessionToken();
+  const account = await authenticate(password);
+  if (!account) return { error: 'Mot de passe incorrect ou accès non configuré.' };
+  const token = await makeSessionToken(account);
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
@@ -28,7 +22,7 @@ export async function login(
     path: '/',
   });
 
-  redirect('/');
+  return { success: true };
 }
 
 export async function logout(): Promise<void> {

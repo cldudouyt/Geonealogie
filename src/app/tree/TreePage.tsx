@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback, useRef, Fragment } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { TreeData } from '@/lib/types';
+import { useReference } from '@/components/PersonalJourney';
+import type { TreeData, TreeNode } from '@/lib/types';
 import TreeVertical from '@/components/tree/TreeVertical';
 import TreeRadial from '@/components/tree/TreeRadial';
 import TreeListeSosa from '@/components/tree/TreeListeSosa';
@@ -62,7 +63,7 @@ function PersonSearch({ onSelect }: { onSelect: (id: string, name: string) => vo
       <div style={{ position: 'relative' }}>
         <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style={{
           position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-          color: '#9a9080', pointerEvents: 'none',
+          color: '#6c7064', pointerEvents: 'none',
         }}>
           <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.4"/>
           <line x1="10.5" y1="10.5" x2="13.5" y2="13.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
@@ -85,11 +86,11 @@ function PersonSearch({ onSelect }: { onSelect: (id: string, name: string) => vo
           onBlurCapture={e => { e.currentTarget.style.borderColor = '#e0d8c6'; e.currentTarget.style.boxShadow = 'none'; }}
         />
         {searching && (
-          <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: '#9a9080' }}>…</span>
+          <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: '#6c7064' }}>…</span>
         )}
         {!searching && query && (
           <button type="button" onClick={() => { setQuery(''); setSuggestions([]); setShowDropdown(false); }}
-            style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: '#9a9080', fontSize: 15 }}>
+            style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: '#6c7064', fontSize: 15 }}>
             ✕
           </button>
         )}
@@ -116,7 +117,7 @@ function PersonSearch({ onSelect }: { onSelect: (id: string, name: string) => vo
                   {p.displayName}
                 </div>
                 {(p.birthYear || p.birthPlace) && (
-                  <div style={{ fontSize: 11.5, color: '#8a8474', marginTop: 1 }}>
+                  <div style={{ fontSize: 11.5, color: '#6c7064', marginTop: 1 }}>
                     {[p.birthYear, p.birthPlace].filter(Boolean).join(' · ')}
                   </div>
                 )}
@@ -130,7 +131,7 @@ function PersonSearch({ onSelect }: { onSelect: (id: string, name: string) => vo
           position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
           background: '#fffdf9', border: '1px solid #e0d8c6', borderRadius: 12,
           boxShadow: '0 8px 24px -8px rgba(0,0,0,.18)', zIndex: 200, padding: '12px 14px',
-          fontSize: 13, color: '#9a9080',
+          fontSize: 13, color: '#6c7064',
         }}>
           Aucun résultat
         </div>
@@ -194,12 +195,17 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const focusId = searchParams.get('focus') ?? defaultFocusId;
+  const reference = useReference();
+  const focusId = searchParams.get('focus') ?? reference?.id ?? defaultFocusId;
   const viewParam = searchParams.get('view') as ViewMode | null;
   const view: ViewMode = TABS.some(t => t.id === viewParam) ? viewParam! : 'vertical';
   const genParam = parseInt(searchParams.get('gen') ?? '', 10);
   const generations = GEN_OPTIONS.includes(genParam) ? genParam : DEFAULT_GENERATIONS;
 
+  const [fullscreen, setFullscreen] = useState(false);
+  const [selected, setSelected] = useState<TreeNode | null>(null);
+  const previewDialog = useRef<HTMLDialogElement>(null);
+  const selectNode = (id: string) => { const node = treeData?.nodes.find(n => n.id === id); if (node) { setSelected(node); previewDialog.current?.showModal(); } };
   const [treeData, setTreeData] = useState<TreeData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState<string | null>(null);
@@ -267,12 +273,10 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
     });
   }, [router, view, generations]);
 
-  const focusName = treeData
-    ? (treeData.nodes.find(n => n.id === treeData.rootId)?.displayName ?? '')
-    : '';
-
   return (
-    <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className={`tree-page ${fullscreen ? 'tree-fullscreen' : ''}`} style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div className="tree-top-actions"><button className="secondary-action" onClick={() => setFullscreen(v => !v)}>{fullscreen ? 'Quitter le plein écran' : 'Arbre en plein écran'}</button></div>
+      <dialog ref={previewDialog} className="person-preview" aria-labelledby="person-preview-title"><button className="secondary-action" onClick={() => previewDialog.current?.close()}>Fermer ×</button>{selected && <><h2 id="person-preview-title">{selected.displayName}</h2><p>{[selected.birthYear, selected.deathYear].filter(Boolean).join(' – ')}</p><div className="action-row"><Link className="primary-action" href={`/person/${selected.id}`}>Voir sa fiche</Link><button className="secondary-action" onClick={() => { onFocus(selected.id, selected.displayName); previewDialog.current?.close(); }}>Centrer l’arbre</button></div></>}</dialog>
       {/* ── Page header ─────────────────────────────────────── */}
       <div style={{ padding: '28px 32px 16px' }}>
         <h1 style={{
@@ -286,11 +290,11 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
         }}>
           Arbre généalogique
         </h1>
-        <p style={{ fontSize: 13.5, color: '#8a8474', margin: '6px 0 16px' }}>
-          Cliquez sur une personne pour recentrer l&apos;arbre sur elle.
+        <p style={{ fontSize: 13.5, color: '#6c7064', margin: '6px 0 16px' }}>
+          Sélectionnez une personne pour découvrir sa fiche ou explorer sa branche.
         </p>
 
-        <PersonSearch onSelect={onFocus} />
+<details className="tree-settings"><summary>Rechercher et régler l’arbre</summary><PersonSearch onSelect={onFocus} />
 
         {/* Mode selector + generations selector */}
         <div style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
@@ -332,7 +336,7 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
               fontWeight: 700,
               letterSpacing: '.1em',
               textTransform: 'uppercase',
-              color: '#9a9080',
+              color: '#6c7064',
             }}>
               Générations
             </span>
@@ -372,6 +376,7 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
             </div>
           </div>
         </div>
+        </details>
       </div>
 
       {/* ── Focus person card ────────────────────────────────── */}
@@ -391,7 +396,7 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
         ].filter(Boolean).join(' · ');
         return (
           <div style={{ padding: '0 32px 16px' }}>
-            <div style={{
+            <div className="tree-focus-card" style={{
               background: '#fffdf9',
               border: '1px solid #e7e0d0',
               borderRadius: 16,
@@ -423,14 +428,14 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
                     Centre de l&apos;arbre
                   </span>
                 </div>
-                {meta && <div style={{ fontSize: 13, color: '#8a8474', marginTop: 2 }}>{meta}</div>}
+                {meta && <div style={{ fontSize: 13, color: '#6c7064', marginTop: 2 }}>{meta}</div>}
               </div>
               {/* Buttons */}
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                 <button
                   onClick={() => {
-                    onFocus(defaultFocusId, defaultName);
-                    setTrail([{ id: defaultFocusId, name: defaultName }]);
+                    onFocus(reference?.id ?? defaultFocusId, reference?.name ?? defaultName);
+                    setTrail([{ id: reference?.id ?? defaultFocusId, name: reference?.name ?? defaultName }]);
                   }}
                   style={{
                     height: 36, padding: '0 14px', borderRadius: 10, border: '1px solid #e0d8c6',
@@ -439,7 +444,7 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
                   }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
-                  Recentrer sur {defaultName || firstName}
+                  Recentrer sur {reference?.name || defaultName || firstName}
                 </button>
                 <Link
                   href={`/person/${focusId}`}
@@ -457,7 +462,7 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
             </div>
             {/* Navigation breadcrumb trail */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.1em', color: '#9a9080', textTransform: 'uppercase', flexShrink: 0 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.1em', color: '#6c7064', textTransform: 'uppercase', flexShrink: 0 }}>
                 Navigation
               </span>
               {trail.map((t, i) => {
@@ -506,12 +511,12 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
             minHeight: 300,
             gap: 12,
           }}>
-            <p style={{ fontSize: 15, color: '#8a8474', margin: 0 }}>
+            <p style={{ fontSize: 15, color: '#6c7064', margin: 0 }}>
               Sélectionnez une personne via la{' '}
               <a href="/search" style={{ color: '#2f5142', textDecoration: 'underline' }}>
                 recherche
               </a>{' '}
-              pour centrer l'arbre.
+              pour centrer l&apos;arbre.
             </p>
           </div>
         )}
@@ -535,8 +540,8 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
                 borderRadius: '50%',
                 animation: 'spin 0.7s linear infinite',
               }} />
-              <p style={{ fontSize: 13.5, color: '#8a8474', margin: 0 }}>
-                Chargement de l'arbre…
+              <p style={{ fontSize: 13.5, color: '#6c7064', margin: 0 }}>
+                Chargement de l&apos;arbre…
               </p>
             </div>
           </div>
@@ -580,10 +585,10 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
             }}
           >
             {view === 'vertical' && (
-              <TreeVertical treeData={treeData} focusId={focusId} onFocus={onFocus} />
+              <TreeVertical treeData={treeData} focusId={focusId} onFocus={selectNode} />
             )}
             {(view === 'fan' || view === 'wheel') && (
-              <TreeRadial treeData={treeData} mode={view} onFocus={onFocus} />
+              <TreeRadial treeData={treeData} mode={view} onFocus={selectNode} />
             )}
             {view === 'liste' && (
               <div style={{ padding: 24 }}>

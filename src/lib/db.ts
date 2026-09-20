@@ -23,6 +23,7 @@ function ensureSchema(): Promise<void> {
           updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
       `;
+      await sql`ALTER TABLE kv_state ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0`;
       await sql`
         CREATE TABLE IF NOT EXISTS suggestions (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -95,4 +96,18 @@ export async function insertSuggestion(data: {
     INSERT INTO suggestions (title, body, author)
     VALUES (${data.title}, ${data.body}, ${data.author || 'Anonyme'})
   `;
+}
+
+export async function kvReadVersion<T>(id: string): Promise<{ data: T; version: number } | null> {
+  await ensureSchema();
+  const rows = await getSql()`SELECT data, version FROM kv_state WHERE id = ${id}`;
+  return rows.length ? { data: rows[0].data as T, version: Number(rows[0].version) } : null;
+}
+export async function kvCompareSet(id: string, version: number | null, data: unknown): Promise<boolean> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = version === null
+    ? await sql`INSERT INTO kv_state (id, data, version) VALUES (${id}, ${JSON.stringify(data)}::jsonb, 1) ON CONFLICT (id) DO NOTHING RETURNING id`
+    : await sql`UPDATE kv_state SET data = ${JSON.stringify(data)}::jsonb, version = version + 1, updated_at = now() WHERE id = ${id} AND version = ${version} RETURNING id`;
+  return rows.length > 0;
 }

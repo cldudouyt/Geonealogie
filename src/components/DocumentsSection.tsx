@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { useSession } from './SessionContext';
 import { upload } from '@vercel/blob/client';
 import type { DocumentMeta } from '@/lib/documents-store';
 
@@ -31,6 +32,7 @@ export default function DocumentsSection({
   initialDocs: DocumentMeta[];
 }) {
   const [docs, setDocs] = useState(initialDocs);
+  const { canEdit } = useSession();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
@@ -131,7 +133,7 @@ export default function DocumentsSection({
                   {formatSize(doc.size)} · {new Date(doc.uploadedAt).toLocaleDateString('fr-FR')}
                 </p>
               </div>
-              <button
+              {canEdit && <button
                 onClick={() => handleDelete(doc.id, doc.title || doc.originalName)}
                 className="shrink-0 p-1.5 text-[#9aa89b] hover:text-[#b91c1c] transition-colors rounded"
                 title="Supprimer ce document"
@@ -139,14 +141,14 @@ export default function DocumentsSection({
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
-              </button>
+              </button>}
             </li>
           ))}
         </ul>
       )}
 
       {/* Formulaire d'ajout */}
-      <form ref={formRef} onSubmit={handleUpload}>
+      {canEdit && <form ref={formRef} onSubmit={handleUpload}>
         <p className="text-xs text-[#8a8474] mb-3">
           Formats acceptés : PDF, images (JPG, PNG…), Word, texte · Max 10 Mo
         </p>
@@ -175,7 +177,7 @@ export default function DocumentsSection({
           </button>
         </div>
         {error && <p className="text-xs text-[#b91c1c] mt-2">{error}</p>}
-      </form>
+      </form>}
     </div>
   );
 }

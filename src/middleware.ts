@@ -1,29 +1,19 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { SESSION_COOKIE, verifySessionToken } from '@/lib/auth';
-
+import { NextResponse, type NextRequest } from 'next/server';
+import { SESSION_COOKIE, readSessionToken, permits } from '@/lib/auth';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
-  // La page de login et le clear-cache admin sont toujours accessibles
   if (pathname === '/login') return NextResponse.next();
-  if (pathname === '/api/admin/clear-cache') return NextResponse.next();
-  if (pathname === '/api/admin/debug-person') return NextResponse.next();
-  if (pathname === '/api/admin/debug-journey') return NextResponse.next();
-  if (pathname.startsWith('/api/journey/')) return NextResponse.next();
-
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
-  const valid = token ? await verifySessionToken(token) : false;
-
-  if (!valid) {
-    const loginUrl = new URL('/login', request.url);
-    return NextResponse.redirect(loginUrl);
+  const session = await readSessionToken(request.cookies.get(SESSION_COOKIE)?.value || '');
+  if (!session) {
+    if (pathname.startsWith('/api/')) return NextResponse.json({ error: 'Connexion requise.' }, { status: 401 });
+    return NextResponse.redirect(new URL('/login', request.url));
   }
-
+  if (pathname === '/api/logout') return NextResponse.next();
+  const admin = /^\/(api\/)?admin(\/|$)/.test(pathname) || pathname.startsWith('/doublons') || pathname.startsWith('/history') || pathname.startsWith('/api/geocode/batch') || pathname === '/api/export/backup';
+  const writing = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
+  const editor = /\/person\/(new|[^/]+\/edit)$/.test(pathname);
+  const minimum = admin ? 'admin' : (writing || editor) ? 'contributor' : 'reader';
+  if (!permits(session.role, minimum)) return NextResponse.json({ error: 'Accès réservé à un rôle autorisé.' }, { status: 403 });
   return NextResponse.next();
 }
-
-export const config = {
-  // Protège toutes les routes sauf les assets statiques Next.js
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest\\.json).*)'],
-};
+export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest\\.json).*)'] };

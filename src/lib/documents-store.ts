@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { hasDb, kvGet, kvSet } from './db';
+import { loadOverrides } from './overrides-store';
+import { readState, mutateState } from './state-store';
 
 export interface DocumentMeta {
   id: string;
@@ -13,7 +14,6 @@ export interface DocumentMeta {
   uploadedAt: string;
 }
 
-const META_FILE = path.join(process.cwd(), 'data', 'documents.json');
 const DOCS_DIR  = path.join(process.cwd(), 'public', 'documents');
 const DB_KEY = 'documents';
 
@@ -71,65 +71,23 @@ export async function deleteFromStorage(url: string, personId: string): Promise<
 
 // ─── Metadata storage ──────────────────────────────────────────────────────
 
-function readAllFromFile(): Record<string, DocumentMeta[]> {
-  try {
-    return JSON.parse(fs.readFileSync(META_FILE, 'utf-8'));
-  } catch {
-    return {};
-  }
-}
-
-function writeAllToFile(all: Record<string, DocumentMeta[]>): void {
-  fs.mkdirSync(path.dirname(META_FILE), { recursive: true });
-  fs.writeFileSync(META_FILE, JSON.stringify(all, null, 2), 'utf-8');
-}
-
-async function readAll(): Promise<Record<string, DocumentMeta[]>> {
-  if (hasDb()) {
-    try {
-      return (await kvGet<Record<string, DocumentMeta[]>>(DB_KEY)) ?? {};
-    } catch (err) {
-      console.error('[documents] DB read failed, falling back to file:', err);
-    }
-  }
-  return readAllFromFile();
-}
-
-async function writeAll(all: Record<string, DocumentMeta[]>): Promise<void> {
-  if (hasDb()) {
-    try {
-      await kvSet(DB_KEY, all);
-      return;
-    } catch (err) {
-      console.error('[documents] DB write failed, falling back to file:', err);
-    }
-  }
-  writeAllToFile(all);
-}
-
-// ─── Public API ────────────────────────────────────────────────────────────
-
+async function readAll(): Promise<Record<string, DocumentMeta[]>> { return readState(DB_KEY, {}); }
 export async function getDocumentsForPerson(personId: string): Promise<DocumentMeta[]> {
   const all = await readAll();
-  return all[personId] ?? [];
+  const aliases = (await loadOverrides()).mergedPersons ?? {};
+  const canonical = (id: string) => { const seen = new Set<string>(); while (aliases[id] && !seen.has(id)) { seen.add(id); id = aliases[id]; } return id; };
+  return Object.entries(all).filter(([id]) => canonical(id) === canonical(personId)).flatMap(([, docs]) => docs);
 }
-
 export async function saveDocumentMeta(doc: DocumentMeta): Promise<void> {
-  const all = await readAll();
-  if (!all[doc.personId]) all[doc.personId] = [];
-  all[doc.personId].push(doc);
-  await writeAll(all);
+  await mutateState<Record<string, DocumentMeta[]>, void>(DB_KEY, {}, all => { all[doc.personId] ??= []; all[doc.personId].push(doc); });
 }
-
-export async function deleteDocumentMeta(
-  personId: string,
-  docId: string,
-): Promise<DocumentMeta | null> {
-  const all = await readAll();
-  const docs = all[personId] ?? [];
-  const doc = docs.find(d => d.id === docId);
-  if (!doc) return null;
-  all[personId] = docs.filter(d => d.id !== docId);
-  await writeAll(all);
-  return doc;
+export async function deleteDocumentMeta(personId: string, docId: string): Promise<DocumentMeta | null> {
+  const visible = (await getDocumentsForPerson(personId)).find(doc => doc.id === docId);
+  if (!visible) return null;
+  personId = visible.personId;
+  return mutateState<Record<string, DocumentMeta[]>, DocumentMeta | null>(DB_KEY, {}, all => {
+    const doc = (all[personId] ?? []).find(d => d.id === docId);
+    all[personId] = (all[personId] ?? []).filter(d => d.id !== docId);
+    return doc ?? null;
+  });
 }

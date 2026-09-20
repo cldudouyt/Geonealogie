@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { loadOverrides } from '@/lib/overrides-store';
 import { getAllPersons, getStore } from '@/lib/gedcom-store';
 
 function gedDate(raw?: string): string {
@@ -9,15 +10,12 @@ function gedPlace(place?: string): string {
   return place || '';
 }
 
-function tag(level: number, tagName: string, value?: string): string {
-  if (!value) return '';
-  return `${level} ${tagName} ${value}\n`;
-}
-
 export async function GET() {
   const persons = await getAllPersons();
   const store = await getStore();
 
+  const overrides = await loadOverrides();
+  const sourceRecords: string[] = [];
   const lines: string[] = [];
 
   // Header
@@ -27,7 +25,7 @@ export async function GET() {
   lines.push('1 CHAR UTF-8');
   lines.push('1 SOUR Geonealogie');
   lines.push('2 VERS 1.0');
-  lines.push(`1 DATE ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}`);
+  lines.push(`1 DATE ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}`);
 
   // Individuals
   for (const p of persons) {
@@ -38,10 +36,10 @@ export async function GET() {
     if (p.nickname) lines.push(`2 NICK ${p.nickname}`);
     if (p.sex !== 'U') lines.push(`1 SEX ${p.sex}`);
 
-    if (p.birthDateRaw || p.birthPlaceFull) {
+    if (p.birthDateRaw || p.birthPlaceFull || p.birthPlace) {
       lines.push('1 BIRT');
       if (p.birthDateRaw) lines.push(`2 DATE ${gedDate(p.birthDateRaw)}`);
-      if (p.birthPlaceFull) lines.push(`2 PLAC ${gedPlace(p.birthPlaceFull)}`);
+      if (p.birthPlaceFull || p.birthPlace) lines.push(`2 PLAC ${gedPlace(p.birthPlaceFull || p.birthPlace)}`);
     }
 
     if (p.chrDateRaw || p.chrPlace) {
@@ -50,10 +48,10 @@ export async function GET() {
       if (p.chrPlace) lines.push(`2 PLAC ${p.chrPlace}`);
     }
 
-    if (p.deathDateRaw || p.deathPlaceFull) {
+    if (p.deathDateRaw || p.deathPlaceFull || p.deathPlace) {
       lines.push('1 DEAT');
       if (p.deathDateRaw) lines.push(`2 DATE ${gedDate(p.deathDateRaw)}`);
-      if (p.deathPlaceFull) lines.push(`2 PLAC ${gedPlace(p.deathPlaceFull)}`);
+      if (p.deathPlaceFull || p.deathPlace) lines.push(`2 PLAC ${gedPlace(p.deathPlaceFull || p.deathPlace)}`);
     }
 
     if (p.burialDateRaw || p.burialPlace) {
@@ -77,6 +75,20 @@ export async function GET() {
       }
     }
 
+    for (const event of p.events) {
+      lines.push('1 EVEN', `2 TYPE ${event.type}`);
+      if (event.dateRaw) lines.push(`2 DATE ${gedDate(event.dateRaw)}`);
+      if (event.placeFull || event.place) lines.push(`2 PLAC ${event.placeFull || event.place}`);
+      if (event.note) { const [first, ...rest] = event.note.split('\n'); lines.push(`2 NOTE ${first}`, ...rest.map(line => `3 CONT ${line}`)); }
+    }
+    const sources = (overrides.newPersons.find(n => n.id === p.id) ?? overrides.persons[p.id])?.sources ?? [];
+    for (const source of sources) {
+      const sourceId = `S-${source.id}`;
+      lines.push(`1 SOUR @${sourceId}@`, `2 NOTE ${source.event}`, `2 QUAY ${source.confidence === 'confirmed' ? 3 : source.confidence === 'approximate' ? 1 : 0}`);
+      const [first, ...rest] = source.reference.split('\n');
+      sourceRecords.push(`0 @${sourceId}@ SOUR`, `1 TITL ${source.event}`, `1 TEXT ${first}`, ...rest.map(line => `2 CONT ${line}`));
+      if (source.url) sourceRecords.push(`1 NOTE ${source.url}`);
+    }
     // Family links
     const parentFams = new Set<string>();
     for (const [famId, fam] of store.families) {
@@ -109,7 +121,7 @@ export async function GET() {
     }
   }
 
-  lines.push('0 TRLR');
+  lines.push(...sourceRecords, '0 TRLR');
 
   const gedcom = lines.filter(Boolean).join('\r\n') + '\r\n';
 

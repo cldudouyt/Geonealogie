@@ -1,5 +1,6 @@
 'use server';
 
+import { requireRole } from '@/lib/session';
 import { addNewPerson, type NewPerson, type PersonRelation } from '@/lib/overrides-store';
 import { clearStore } from '@/lib/gedcom-store';
 import { geocodePlaces } from '@/lib/geocoder';
@@ -47,6 +48,7 @@ export async function createPerson(
   _prev: NewPersonState | null,
   formData: FormData,
 ): Promise<NewPersonState> {
+  const session = await requireRole('contributor');
   const get = (k: string) => formData.get(k)?.toString().trim() || undefined;
 
   const givenNames = get('givenNames');
@@ -58,7 +60,7 @@ export async function createPerson(
   if (!surname)    return { error: 'Le nom de famille est obligatoire.' };
   if (!sex)        return { error: 'Le sexe est obligatoire.' };
 
-  const id = `custom-${Date.now()}`;
+  const id = `custom-${crypto.randomUUID()}`;
 
   // Parse multiple relations from formData (relations[0][relType], relations[0][relPersonId], …)
   const relations: PersonRelation[] = [];
@@ -103,7 +105,7 @@ export async function createPerson(
     if (p[key] === undefined || p[key] === false) delete p[key];
   }
 
-  await addNewPerson(person);
+  try { await addNewPerson(person, session.name); } catch { return { error: 'La sauvegarde a échoué. Vos saisies sont conservées ; réessayez.' }; }
 
   // Geocode places in background (best-effort, non-blocking)
   const places = [birthPlace, deathPlace, burialPlace].filter(Boolean) as string[];
