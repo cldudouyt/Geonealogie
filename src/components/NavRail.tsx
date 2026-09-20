@@ -1,7 +1,8 @@
 'use client';
+import { useSession } from './SessionContext';
+import { ROLE_LABELS } from '@/lib/auth';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { logout } from '@/app/login/actions';
 
 /* ── Inline SVG icons ─────────────────────────────────────────────── */
 const HomeIcon = () => (
@@ -111,12 +112,14 @@ const NAV_GROUPS = [
     items: [
       { href: '/admin/geocode', label: 'Géocodage', icon: <GeoIcon /> },
       { href: '/feedback', label: 'Suggestions reçues', icon: <FeedbackIcon /> },
+      { href: '/history', label: 'Historique', icon: <TimelineIcon /> },
     ],
   },
 ];
 
 export default function NavRail() {
   const pathname = usePathname();
+  const session = useSession();
 
   return (
     <nav
@@ -168,11 +171,11 @@ export default function NavRail() {
       {/* Nav groups */}
       <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
         <div style={{ height: '100%', padding: '0 8px', overflowY: 'auto' }}>
-        {NAV_GROUPS.map((group) => (
+        {NAV_GROUPS.filter(group => session.isAdmin || !['Administration', 'Qualité des données'].includes(group.label)).map((group) => (
           <div key={group.label} style={{ marginBottom: 20 }}>
             <div style={{
               fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase',
-              color: '#5a7060', padding: '0 11px', marginBottom: 4,
+              color: '#9aa89b', padding: '0 11px', marginBottom: 4,
             }}>
               {group.label}
             </div>
@@ -201,6 +204,7 @@ export default function NavRail() {
         }} />
       </div>
 
+      <div className="nav-utilities">{session.canEdit && <Link href="/feedback/new">Suggérer une amélioration</Link>}<a href="/api/export/gedcom">Exporter les données GEDCOM</a></div>
       {/* Footer — profile + logout */}
       <div style={{ marginTop: 18, padding: '14px 8px 4px', borderTop: '1px solid rgba(255,255,255,.09)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 8px 10px' }}>
@@ -209,13 +213,13 @@ export default function NavRail() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 12, fontWeight: 600, color: '#c9a86a', flexShrink: 0,
           }}>
-            CD
+            {session.name.slice(0, 2).toUpperCase()}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: '#e8e4d8' }}>Clément Dudouyt</div>
-            <div style={{ fontSize: 10.5, color: '#8b9a8c', marginTop: 2 }}>Administrateur</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: '#e8e4d8' }}>{session.name}</div>
+            <div style={{ fontSize: 10.5, color: '#8b9a8c', marginTop: 2 }}>{ROLE_LABELS[session.role]}</div>
           </div>
-          <form action={logout}>
+          <form action="/api/logout" method="post">
             <button
               type="submit"
               title="Se déconnecter"
@@ -265,6 +269,7 @@ function NavItem({
         color: active ? '#f0e6cf' : '#a9b6a9',
         background: active ? 'rgba(201,168,106,.16)' : 'transparent',
       }}
+      aria-current={active ? 'page' : undefined}
       className={active ? '' : 'nav-item-inactive'}
     >
       {icon}

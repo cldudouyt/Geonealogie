@@ -1,3 +1,9 @@
+import { getSession } from '@/lib/session';
+import { permits } from '@/lib/auth';
+import PersonTabs from '@/components/PersonTabs';
+import SourcesSection from '@/components/SourcesSection';
+import { PersonJourney } from '@/components/PersonalJourney';
+import { loadOverrides } from '@/lib/overrides-store';
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
@@ -71,7 +77,7 @@ function generateBio(
     if (person.deathPlaceFull || person.deathPlace) d += ` à ${formatPlaceFull(person.deathPlaceFull) || person.deathPlace}`;
     if (person.birthYear && person.deathYear) {
       const age = parseInt(person.deathYear) - parseInt(person.birthYear);
-      if (age > 0 && age < 120) d += `, à l'âge de ${age} ans`;
+      if (age > 0 && age < 120) d += `, à l'âge de $environ {age} ans`;
     }
     lines.push(d);
   }
@@ -92,6 +98,8 @@ interface PersonPageProps {
 
 export default async function PersonPage({ params }: PersonPageProps) {
   const { id } = await params;
+  const session = await getSession();
+  const canEdit = session && permits(session.role, 'contributor');
 
   const person = await getPerson(id);
   if (!person) {
@@ -105,6 +113,8 @@ export default async function PersonPage({ params }: PersonPageProps) {
     );
   }
 
+  const overrides = await loadOverrides();
+  const sources = (overrides.newPersons.find(p => p.id === id) ?? overrides.persons[id])?.sources ?? [];
   const parents = await getParents(id);
   const children = await getChildren(id);
   const documents = await getDocumentsForPerson(id);
@@ -278,7 +288,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
               </svg>
               PDF
             </Link>
-            <Link
+            {canEdit && <Link
               href={`/person/${id}/edit`}
               className="px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 backdrop-blur-sm"
             >
@@ -286,7 +296,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
               Éditer
-            </Link>
+            </Link>}
             <Link
               href={`/feedback/new?person=${id}&name=${encodeURIComponent(person.displayName)}`}
               className="px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 backdrop-blur-sm"
@@ -365,7 +375,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       {(placeLabel || occupation) && <span aria-hidden="true" style={{ opacity: 0.5 }}>·</span>}
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                      {age} ans
+                      environ {age} ans
                     </span>
                   )}
                 </p>
@@ -387,7 +397,9 @@ export default async function PersonPage({ params }: PersonPageProps) {
 
       <main className="max-w-4xl mx-auto p-6">
 
-        {/* Bio narrative */}
+<PersonJourney id={id} name={person.displayName} />
+        <PersonTabs panels={[
+          <>        {/* Bio narrative */}
         {bio && (
           <div className="bg-[#f1f4ef] border border-[#dde5da] rounded-2xl px-6 py-4 mb-6">
             <p className="text-sm text-[#3f4a41] leading-relaxed italic" style={{ fontFamily: 'var(--font-serif, Georgia, serif)', fontSize: '0.95rem' }}>{bio}</p>
@@ -406,7 +418,8 @@ export default async function PersonPage({ params }: PersonPageProps) {
                   </span>
                   <div>
                     <p className="font-medium text-[#1c1f1c] text-sm">{item.label}</p>
-                    <p className="text-xs text-[#8a8474]">
+                    {sources.filter(source => source.event === item.label || source.event === [item.label, item.dateRaw].filter(Boolean).join(' · ')).map(source => <span key={source.id} className={`certainty certainty-${source.confidence}`}>{source.confidence === 'confirmed' ? 'Source confirmée' : source.confidence === 'approximate' ? 'Date approximative' : 'À vérifier'} · voir Sources</span>)}
+                    <p className="text-xs text-[#6c7064]">
                       {item.dateRaw && <span>{item.dateRaw}</span>}
                       {item.dateRaw && item.place && <span> — </span>}
                       {item.place && <span>{item.place}</span>}
@@ -415,10 +428,10 @@ export default async function PersonPage({ params }: PersonPageProps) {
                       item.note.length > 250 ? (
                         <details className="mt-1">
                           <summary className="text-xs text-[#2f5142] cursor-pointer hover:text-[#c9a86a] select-none">Voir la note…</summary>
-                          <p className="text-xs text-[#8a8474] mt-1 whitespace-pre-wrap leading-relaxed">{item.note}</p>
+                          <p className="text-xs text-[#6c7064] mt-1 whitespace-pre-wrap leading-relaxed">{item.note}</p>
                         </details>
                       ) : (
-                        <p className="text-xs text-[#8a8474] mt-1 whitespace-pre-wrap leading-relaxed">{item.note}</p>
+                        <p className="text-xs text-[#6c7064] mt-1 whitespace-pre-wrap leading-relaxed">{item.note}</p>
                       )
                     )}
                   </div>
@@ -428,18 +441,16 @@ export default async function PersonPage({ params }: PersonPageProps) {
           </div>
         )}
 
-        {/* Migration / life journey — pass coords as JSON string to bypass RSC number serialization bug */}
-        <MigrationSection stops={journeyStops} personId={id} stopsJson={JSON.stringify(journeyStops)} />
-
-        {/* Map — relatives context */}
-        {mapMarkers.length > 0 && (
-          <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6 mb-6 mt-6">
-            <h2 className="text-lg font-semibold mb-4 text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Carte — famille proche</h2>
-            <PersonMapWrapper markers={mapMarkers} centerId={id} />
+        {/* Biographical notes */}
+        {person.notes && (
+          <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6 mt-6">
+            <h2 className="text-lg font-semibold mb-4 text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Notes biographiques</h2>
+            <p className="text-sm text-[#5a5e52] whitespace-pre-wrap leading-relaxed">{person.notes}</p>
           </div>
         )}
 
-        {/* Family */}
+</>,
+          <><h2 className="section-heading">Famille proche</h2>{!parents.length && !children.length && !spouses.length && !siblings.length && !adoptiveParents.length && !adoptedChildren.length && <p className="empty-state">Aucun lien de parenté renseigné pour cette personne.</p>}        {/* Family */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {(parents.length > 0 || adoptiveParents.length > 0) && (
             <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6">
@@ -460,12 +471,12 @@ export default async function PersonPage({ params }: PersonPageProps) {
                     <PersonListItem person={s.person} />
                     <div className="ml-5 mt-1 space-y-0.5">
                       {s.marriageDateRaw && (
-                        <p className="text-xs text-[#8a8474]">
+                        <p className="text-xs text-[#6c7064]">
                           Mariage : {s.marriageDateRaw}{s.marriagePlace && ` — ${s.marriagePlace}`}
                         </p>
                       )}
                       {s.divorceDateRaw && (
-                        <p className="text-xs text-[#8a8474]">
+                        <p className="text-xs text-[#6c7064]">
                           Divorce : {s.divorceDateRaw}
                         </p>
                       )}
@@ -486,14 +497,20 @@ export default async function PersonPage({ params }: PersonPageProps) {
           )}
         </div>
 
-        {/* Biographical notes */}
-        {person.notes && (
-          <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6 mt-6">
-            <h2 className="text-lg font-semibold mb-4 text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Notes biographiques</h2>
-            <p className="text-sm text-[#5a5e52] whitespace-pre-wrap leading-relaxed">{person.notes}</p>
+</>,
+          <><h2 className="section-heading">Lieux de vie</h2>        {/* Migration / life journey — pass coords as JSON string to bypass RSC number serialization bug */}
+        <MigrationSection stops={journeyStops} personId={id} stopsJson={JSON.stringify(journeyStops)} />
+
+        {/* Map — relatives context */}
+        {mapMarkers.length > 0 && (
+          <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6 mb-6 mt-6">
+            <h2 className="text-lg font-semibold mb-4 text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Carte — famille proche</h2>
+            <PersonMapWrapper markers={mapMarkers} centerId={id} />
           </div>
         )}
 
+</>,
+          <><SourcesSection id={id} sources={sources} documents={documents} events={Array.from(new Set(timeline.map(e => [e.label, e.dateRaw].filter(Boolean).join(' · '))))} />
         {/* Online research */}
         <ResearchPanel
           givenNames={person.givenNames}
@@ -505,6 +522,8 @@ export default async function PersonPage({ params }: PersonPageProps) {
 
         {/* Documents */}
         <DocumentsSection personId={id} initialDocs={documents} />
+</>
+        ]} />
       </main>
     </div>
   );

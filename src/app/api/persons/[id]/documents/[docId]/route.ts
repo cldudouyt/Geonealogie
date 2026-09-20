@@ -12,7 +12,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Document introuvable' }, { status: 404 });
   }
 
-  await deleteFromStorage(doc.url, id);
+  await deleteFromStorage(doc.url, doc.personId);
 
   return NextResponse.json({ ok: true });
 }

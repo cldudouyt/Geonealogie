@@ -16,10 +16,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const jsonResponse = await handleUpload({
       body,
       request,
-      onBeforeGenerateToken: async (_pathname) => ({
+      onBeforeGenerateToken: async () => ({
         allowedContentTypes: ALLOWED_TYPES,
         maximumSizeInBytes: 10 * 1024 * 1024,
-        allowOverwrite: true,
+        allowOverwrite: false,
       }),
       onUploadCompleted: async ({ blob }) => {
         console.log('[blob] upload completed:', blob.url);

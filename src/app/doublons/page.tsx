@@ -1,5 +1,6 @@
 import { getAllPersons } from '@/lib/gedcom-store';
 import { loadOverrides } from '@/lib/overrides-store';
+import Link from 'next/link';
 import PairCard from './PairCard';
 
 export const metadata = { title: 'Détection de doublons — Géonéalogie' };
@@ -123,7 +124,8 @@ async function findDuplicates(): Promise<{ pairs: DuplicatePair[]; ignoredCount:
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default async function DoublonsPage() {
+export default async function DoublonsPage({ searchParams }: { searchParams: Promise<{ merged?: string }> }) {
+  const { merged } = await searchParams;
   const { pairs, ignoredCount } = await findDuplicates();
 
   const certain  = pairs.filter(p => p.confidence === 'certain').length;
@@ -144,6 +146,7 @@ export default async function DoublonsPage() {
           </p>
         </div>
 
+        {merged === '1' && <p role="status" className="empty-state">Fusion enregistrée. <Link href="/history">Consulter l’historique ou annuler</Link></p>}
         {/* Grille stats 4 colonnes */}
         <div className="grid grid-cols-4 gap-4">
           {[

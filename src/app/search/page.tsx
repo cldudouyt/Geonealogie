@@ -301,7 +301,7 @@ export default function SearchPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(!initialQ);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [archiveHits, setArchiveHits] = useState<ArchiveHits>({});
   const [archiveLoading, setArchiveLoading] = useState(false);
   const limit = 20;
@@ -406,8 +406,9 @@ export default function SearchPage() {
               letterSpacing: '-0.02em',
             }}
           >
-            Recherche
+            {searchParams.get('choose') === 'me' ? 'Retrouvez votre fiche' : 'Recherche'}
           </h1>
+          {searchParams.get('choose') === 'me' && <p className="empty-state">Recherchez votre nom, ouvrez votre fiche puis choisissez « C’est moi / choisir comme point de départ ».</p>}
           <p style={{ fontSize: 13.5, color: '#6c7064', margin: 0 }}>
             Dans l&apos;arbre et les archives externes (BnF, Maitron, VIAF, Wikidata).
           </p>

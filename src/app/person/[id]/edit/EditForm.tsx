@@ -50,7 +50,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function EditForm({ person }: { person: PersonRecord }) {
+export default function EditForm({ person, version }: { person: PersonRecord; version: number }) {
   const boundSave = saveEdit.bind(null, person.id);
   const [state, action, pending] = useActionState<EditState | null, FormData>(boundSave, null);
 
@@ -144,7 +144,7 @@ export default function EditForm({ person }: { person: PersonRecord }) {
     setEvents(ev => [...ev, { type: '', dateRaw: '', place: '', note: '' }]);
 
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} className="space-y-5"><input type="hidden" name="version" value={version} />
       {/* Hidden fields */}
       <input type="hidden" name="events" value={JSON.stringify(events)} />
       <input type="hidden" name="photoUrl" value={photoUrl} />

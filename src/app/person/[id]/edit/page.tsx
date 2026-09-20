@@ -1,6 +1,8 @@
 import { getPerson } from '@/lib/gedcom-store';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { loadOverrides } from '@/lib/overrides-store';
+import { requireRole } from '@/lib/session';
 import EditForm from './EditForm';
 
 interface Props {
@@ -8,6 +10,8 @@ interface Props {
 }
 
 export default async function EditPersonPage({ params }: Props) {
+  await requireRole('contributor');
+  const overrides = await loadOverrides();
   const { id } = await params;
   const person = await getPerson(id);
   if (!person) return notFound();
@@ -34,11 +38,11 @@ export default async function EditPersonPage({ params }: Props) {
       <main className="max-w-3xl mx-auto px-6 py-8">
         <div className="mb-6">
           <p className="text-sm text-[#b5651d] bg-[#f7e6d6] border border-[#eed9bd] rounded-lg px-4 py-2.5">
-            Les modifications sont stockées localement et s&apos;appliquent par-dessus les données GEDCOM d&apos;origine. Les champs laissés vides conserveront leur valeur actuelle.
+            Vos modifications sont enregistrées avec un historique. Les champs laissés vides conserveront leur valeur actuelle.
           </p>
         </div>
 
-        <EditForm person={person} />
+        <EditForm person={person} version={overrides.personVersions?.[id] ?? 0} />
       </main>
     </div>
   );

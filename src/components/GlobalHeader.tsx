@@ -1,4 +1,5 @@
 'use client';
+import { useSession } from './SessionContext';
 import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -13,6 +14,7 @@ interface SearchResult {
 }
 
 export default function GlobalHeader() {
+  const { canEdit } = useSession();
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
@@ -89,7 +91,7 @@ export default function GlobalHeader() {
   }, []);
 
   return (
-    <header style={{
+    <header className="global-header" style={{
       height: 66, flexShrink: 0,
       borderBottom: '1px solid #e4ddcd',
       background: 'rgba(244,241,234,.85)',
@@ -112,7 +114,10 @@ export default function GlobalHeader() {
             onFocus={() => { setFocused(true); if (results.length > 0) setOpen(true); }}
             onBlur={() => setFocused(false)}
             onKeyDown={handleKeyDown}
+            aria-label="Rechercher une personne"
             role="combobox"
+            aria-controls="global-search-results"
+            aria-activedescendant={activeIndex >= 0 ? `search-option-${activeIndex}` : undefined}
             aria-expanded={open}
             aria-autocomplete="list"
             placeholder="Rechercher une personne, un lieu, une date…"
@@ -129,7 +134,7 @@ export default function GlobalHeader() {
 
         {/* Autocomplete dropdown */}
         {open && results.length > 0 && (
-          <div style={{
+          <div id="global-search-results" role="listbox" style={{
             position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 6,
             background: '#fffdf9', border: '1px solid #e7e0d0', borderRadius: 14,
             boxShadow: '0 8px 24px rgba(0,0,0,.1)', overflow: 'hidden', zIndex: 200,
@@ -141,6 +146,9 @@ export default function GlobalHeader() {
               return (
                 <button
                   key={p.id}
+                  role="option"
+                  id={`search-option-${idx}`}
+                  aria-selected={idx === activeIndex}
                   type="button"
                   onMouseDown={e => e.preventDefault()}
                   onClick={() => goToPerson(p.id)}
@@ -165,7 +173,7 @@ export default function GlobalHeader() {
                     </span>
                     {meta && (
                       <span style={{
-                        display: 'block', fontSize: 11.5, color: '#8a8474',
+                        display: 'block', fontSize: 11.5, color: '#6c7064',
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       }}>
                         {meta}
@@ -196,8 +204,8 @@ export default function GlobalHeader() {
       </div>
 
       {/* Actions */}
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <Link href="/feedback" style={{
+      <div className="header-actions" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+        {canEdit && <Link href="/feedback/new" style={{
           height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid #e0d8c6',
           background: '#fffdf9', color: '#3a4038', fontSize: 13, fontWeight: 600,
           display: 'flex', alignItems: 'center', gap: 7, textDecoration: 'none',
@@ -206,8 +214,8 @@ export default function GlobalHeader() {
             <path d="M12 20h9M3 20l1-4 11-11a2.1 2.1 0 0 1 3 3L7 19z"/>
           </svg>
           Suggérer
-        </Link>
-        <a href="/api/export?format=gedcom" style={{
+        </Link>}
+        <a href="/api/export/gedcom" style={{
           height: 38, padding: '0 15px', borderRadius: 10, border: '1px solid transparent',
           background: '#1e3a2f', color: '#f1ede2', fontSize: 13, fontWeight: 600,
           display: 'flex', alignItems: 'center', gap: 7, textDecoration: 'none',

@@ -90,6 +90,7 @@ interface GedcomStore {
 
 let storePromise: Promise<GedcomStore> | null = null;
 let storeBuiltAt = 0;
+let storeRevision = -1;
 const STORE_TTL_MS = 60_000; // 60s — ensures cross-instance cache invalidation on Vercel
 
 function stripXref(pointer: string | undefined): string {
@@ -514,14 +515,16 @@ async function buildStore(): Promise<GedcomStore> {
   return s;
 }
 
-export function getStore(): Promise<GedcomStore> {
+export async function getStore(): Promise<GedcomStore> {
+  const revision = (await loadOverrides()).revision ?? 0;
+  if (revision !== storeRevision) { storePromise = null; storeRevision = revision; }
   if (storePromise && Date.now() - storeBuiltAt > STORE_TTL_MS) {
     storePromise = null;
     clearOverridesCache();
   }
   if (!storePromise) {
     storeBuiltAt = Date.now();
-    storePromise = buildStore();
+    storePromise = buildStore().catch(error => { storePromise = null; throw error; });
   }
   return storePromise;
 }

@@ -1,8 +1,7 @@
+import { getPerson } from '@/lib/gedcom-store';
 import { NextRequest, NextResponse } from 'next/server';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { uploadToStorage } from '@/lib/documents-store';
-import { savePersonEdit } from '@/lib/overrides-store';
-import { clearStore } from '@/lib/gedcom-store';
 
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
@@ -18,6 +17,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  if (!await getPerson(id)) return NextResponse.json({ error: 'Personne introuvable.' }, { status: 404 });
   const contentType = req.headers.get('content-type') ?? '';
 
   // ── Local dev fallback: regular FormData POST ─────────────────────────────
@@ -41,11 +41,9 @@ export async function POST(
     }
 
     const ext = file.type.split('/')[1].replace('jpeg', 'jpg');
-    const filename = `avatar-${id}.${ext}`;
+    const filename = `avatar-${crypto.randomUUID()}.${ext}`;
     const buffer = Buffer.from(await file.arrayBuffer());
     const photoUrl = await uploadToStorage(id, filename, buffer, file.type);
-    await savePersonEdit(id, { photoUrl });
-    clearStore();
     return NextResponse.json({ photoUrl });
   }
 
@@ -61,20 +59,17 @@ export async function POST(
     const jsonResponse = await handleUpload({
       body,
       request: req,
-      onBeforeGenerateToken: async () => {
+      onBeforeGenerateToken: async (pathname) => {
+        if (!pathname.startsWith(`documents/${id}/`)) throw new Error('Emplacement de photo invalide.');
         return {
           allowedContentTypes: [...ALLOWED_TYPES],
           maximumSizeInBytes: MAX_SIZE,
           tokenPayload: JSON.stringify({ personId: id }),
-          addRandomSuffix: false,
-          allowOverwrite: true,
+          addRandomSuffix: true,
+          allowOverwrite: false,
         };
       },
-      onUploadCompleted: async ({ blob, tokenPayload }) => {
-        const { personId } = JSON.parse(tokenPayload!);
-        await savePersonEdit(personId, { photoUrl: blob.url });
-        clearStore();
-      },
+      onUploadCompleted: async () => {},
     });
     return NextResponse.json(jsonResponse);
   } catch (err) {

@@ -1,8 +1,4 @@
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { hasDb, kvGet, kvSet } from './db';
-
+import { readState, mutateState } from './state-store';
 export interface EventOverride {
   type: string;
   dateRaw?: string;
@@ -37,6 +33,7 @@ export interface PersonEdit {
   notes?: string;
   events?: EventOverride[];
   photoUrl?: string;
+  sources?: SourceEvidence[];
 }
 
 export interface PersonRelation {
@@ -56,7 +53,13 @@ export interface NewPerson extends PersonEdit {
   relations?: PersonRelation[];
 }
 
+export interface SourceEvidence { id: string; event: string; reference: string; url?: string; documentId?: string; confidence: 'confirmed' | 'approximate' | 'unverified' }
+export interface HistoryEntry { id: string; at: string; actor: string; label: string; personIds: string[]; before: Omit<Overrides, 'history'> }
 export interface Overrides {
+  revision?: number;
+  personVersions?: Record<string, number>;
+  updatedAt?: Record<string, string>;
+  history?: HistoryEntry[];
   persons: Record<string, PersonEdit>;
   newPersons: NewPerson[];
   deletedPersonIds?: string[];
@@ -66,165 +69,66 @@ export interface Overrides {
   ignoredDoublons?: string[];
 }
 
-const DATA_FILE = path.join(process.cwd(), 'data', 'overrides.json');
-const TMP_FILE = path.join(os.tmpdir(), 'geonealogie-overrides.json');
-const DB_KEY = 'overrides';
 
-let _cache: Overrides | null = null;
-
-function emptyOverrides(): Overrides {
-  return { persons: {}, newPersons: [], deletedPersonIds: [], mergedPersons: {}, ignoredDoublons: [] };
+const empty = (): Overrides => ({ persons: {}, newPersons: [], deletedPersonIds: [], mergedPersons: {}, ignoredDoublons: [], revision: 0, history: [] });
+export async function loadOverrides(): Promise<Overrides> { return readState('overrides', empty()); }
+export function clearOverridesCache(): void {}
+export async function commitOverridesToGitHub(): Promise<void> {}
+export async function changeOverrides<R>(actor: string, label: string, personIds: string[], change: (state: Overrides) => R): Promise<R> {
+  return mutateState('overrides', empty(), state => {
+    const before = structuredClone(state);
+    delete before.history;
+    const result = change(state);
+    state.revision = (state.revision ?? 0) + 1;
+    state.updatedAt ??= {}; state.personVersions ??= {};
+    const at = new Date().toISOString();
+    for (const id of personIds) { state.updatedAt[id] = at; state.personVersions[id] = (state.personVersions[id] ?? 0) + 1; }
+    state.history ??= [];
+    state.history.push({ id: crypto.randomUUID(), at, actor, label, personIds, before });
+    return result;
+  });
 }
-
-function getFilePath(): string {
-  try {
-    if (fs.existsSync(TMP_FILE)) return TMP_FILE;
-  } catch {
-    // ignore
-  }
-  return DATA_FILE;
+export async function savePersonEdit(id: string, edit: PersonEdit, actor = 'Application', expectedVersion?: number): Promise<void> {
+  await changeOverrides(actor, 'Modification de fiche', [id], s => {
+    if (expectedVersion !== undefined && (s.personVersions?.[id] ?? 0) !== expectedVersion) throw new Error('Cette fiche a changé depuis son ouverture. Rechargez-la avant de réessayer.');
+    const custom = s.newPersons.find(p => p.id === id);
+    if (custom) Object.assign(custom, edit);
+    else s.persons[id] = { ...s.persons[id], ...edit };
+  });
 }
-
-function writeFilePath(): string {
-  try {
-    fs.accessSync(path.dirname(DATA_FILE), fs.constants.W_OK);
-    return DATA_FILE;
-  } catch {
-    return TMP_FILE;
-  }
+export async function addNewPerson(person: NewPerson, actor = 'Application'): Promise<void> {
+  await changeOverrides(actor, 'Ajout de personne', [person.id], s => {
+    if (s.newPersons.some(p => p.id === person.id)) throw new Error('Cette personne existe déjà.');
+    s.newPersons.push(person);
+  });
 }
-
-function loadOverridesFromFile(): Overrides {
-  try {
-    const file = getFilePath();
-    const raw = fs.readFileSync(file, 'utf-8');
-    const parsed = JSON.parse(raw) as Overrides;
-    parsed.persons ??= {};
-    parsed.newPersons ??= [];
-    parsed.deletedPersonIds ??= [];
-    parsed.mergedPersons ??= {};
-    parsed.ignoredDoublons ??= [];
-    return parsed;
-  } catch {
-    return emptyOverrides();
-  }
+export async function deletePerson(id: string, actor = 'Application'): Promise<void> {
+  await changeOverrides(actor, 'Suppression de personne', [id], s => { s.deletedPersonIds ??= []; if (!s.deletedPersonIds.includes(id)) s.deletedPersonIds.push(id); });
 }
-
-function persistOverridesToFile(overrides: Overrides): void {
-  const file = writeFilePath();
-  try {
-    const json = JSON.stringify(overrides, null, 2);
-    fs.writeFileSync(file, json, 'utf-8');
-    if (file !== TMP_FILE) {
-      fs.writeFileSync(TMP_FILE, json, 'utf-8');
-    }
-  } catch (err) {
-    console.error('[overrides] Failed to write overrides file:', err);
-  }
+export async function mergePerson(keepId: string, deleteId: string, edit: PersonEdit = {}, actor = 'Application', expectedRevision?: number): Promise<void> {
+  await changeOverrides(actor, 'Fusion de doublons', [keepId, deleteId], s => {
+    if (keepId === deleteId || s.deletedPersonIds?.includes(keepId) || s.deletedPersonIds?.includes(deleteId)) throw new Error('Fusion impossible : rechargez les fiches.');
+    if (expectedRevision !== undefined && (s.revision ?? 0) !== expectedRevision) throw new Error('Les données ont changé. Rechargez la comparaison.');
+    const custom = s.newPersons.find(p => p.id === keepId);
+    if (custom) Object.assign(custom, edit); else s.persons[keepId] = { ...s.persons[keepId], ...edit };
+    s.mergedPersons ??= {}; s.mergedPersons[deleteId] = keepId;
+    s.deletedPersonIds ??= []; s.deletedPersonIds.push(deleteId);
+  });
 }
-
-async function loadOverridesFromDb(): Promise<Overrides> {
-  const stored = await kvGet<Overrides>(DB_KEY);
-  if (!stored) {
-    // First read on a fresh database: seed from the committed file so manual
-    // merges and edits survive the storage migration.
-    const fromFile = loadOverridesFromFile();
-    try {
-      await kvSet(DB_KEY, fromFile);
-    } catch (err) {
-      console.error('[overrides] Failed to seed DB from file:', err);
-    }
-    return fromFile;
-  }
-  stored.persons ??= {};
-  stored.newPersons ??= [];
-  stored.deletedPersonIds ??= [];
-  stored.mergedPersons ??= {};
-  stored.ignoredDoublons ??= [];
-  return stored;
+export async function ignoreDoublon(idA: string, idB: string, actor = 'Application'): Promise<void> {
+  await changeOverrides(actor, 'Doublon écarté', [idA, idB], s => { s.ignoredDoublons ??= []; const key = [idA,idB].sort().join(':'); if (!s.ignoredDoublons.includes(key)) s.ignoredDoublons.push(key); });
 }
+export async function restoreLatest(entryId: string, actor: string): Promise<void> {
+  const affected: string[] = [];
+  await changeOverrides(actor, 'Restauration de la dernière modification', affected, s => {
+    const last = s.history?.at(-1);
+    if (!last || last.id !== entryId) throw new Error('Une modification plus récente existe. Rechargez l’historique.');
+    affected.push(...last.personIds);
+    const versions = { ...s.personVersions };
+    const revision = s.revision;
+    Object.assign(s, structuredClone(last.before));
+    s.revision = revision;
+    s.personVersions = versions;
 
-export async function loadOverrides(): Promise<Overrides> {
-  if (_cache) return _cache;
-
-  if (hasDb()) {
-    try {
-      _cache = await loadOverridesFromDb();
-      return _cache;
-    } catch (err) {
-      console.error('[overrides] DB load failed, falling back to file:', err);
-    }
-  }
-
-  _cache = loadOverridesFromFile();
-  return _cache;
-}
-
-async function persistOverrides(overrides: Overrides): Promise<void> {
-  _cache = overrides;
-
-  if (hasDb()) {
-    try {
-      await kvSet(DB_KEY, overrides);
-      return;
-    } catch (err) {
-      console.error('[overrides] DB persist failed, falling back to file:', err);
-    }
-  }
-
-  persistOverridesToFile(overrides);
-}
-
-export async function savePersonEdit(id: string, edit: PersonEdit): Promise<void> {
-  const overrides = await loadOverrides();
-  overrides.persons[id] = { ...overrides.persons[id], ...edit };
-  await persistOverrides(overrides);
-}
-
-export async function addNewPerson(person: NewPerson): Promise<void> {
-  const overrides = await loadOverrides();
-  overrides.newPersons = overrides.newPersons.filter((p) => p.id !== person.id);
-  overrides.newPersons.push(person);
-  await persistOverrides(overrides);
-}
-
-export function clearOverridesCache(): void {
-  _cache = null;
-}
-
-export async function commitOverridesToGitHub(): Promise<void> {
-  // Kept for backward compatibility; DB persistence supersedes git commits.
-}
-
-export async function deletePerson(id: string): Promise<void> {
-  const overrides = await loadOverrides();
-  overrides.deletedPersonIds ??= [];
-  if (!overrides.deletedPersonIds.includes(id)) {
-    overrides.deletedPersonIds.push(id);
-  }
-  // Remove from newPersons if it's a custom person
-  overrides.newPersons = overrides.newPersons.filter(p => p.id !== id);
-  await persistOverrides(overrides);
-}
-
-export async function mergePerson(keepId: string, deleteId: string): Promise<void> {
-  const overrides = await loadOverrides();
-  overrides.mergedPersons ??= {};
-  overrides.mergedPersons[deleteId] = keepId;
-  overrides.deletedPersonIds ??= [];
-  if (!overrides.deletedPersonIds.includes(deleteId)) {
-    overrides.deletedPersonIds.push(deleteId);
-  }
-  overrides.newPersons = overrides.newPersons.filter(p => p.id !== deleteId);
-  await persistOverrides(overrides);
-}
-
-export async function ignoreDoublon(idA: string, idB: string): Promise<void> {
-  const overrides = await loadOverrides();
-  overrides.ignoredDoublons ??= [];
-  const key = [idA, idB].sort().join(':');
-  if (!overrides.ignoredDoublons.includes(key)) {
-    overrides.ignoredDoublons.push(key);
-  }
-  await persistOverrides(overrides);
+  });
 }

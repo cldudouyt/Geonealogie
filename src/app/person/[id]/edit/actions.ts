@@ -1,5 +1,6 @@
 'use server';
 
+import { requireRole } from '@/lib/session';
 import { savePersonEdit, type PersonEdit, type EventOverride } from '@/lib/overrides-store';
 import { clearStore } from '@/lib/gedcom-store';
 import { getCached, geocodeSingle } from '@/lib/geocoder';
@@ -15,6 +16,9 @@ export async function saveEdit(
   _prev: EditState | null,
   formData: FormData,
 ): Promise<EditState> {
+  const session = await requireRole('contributor');
+  const version = Number(formData.get('version'));
+  if (!Number.isInteger(version) || version < 0) return { error: 'Rechargez la fiche avant de la modifier.' };
   const get = (k: string) => formData.get(k)?.toString().trim() || undefined;
 
   const isAdoptedRaw = formData.get('isAdopted')?.toString();
@@ -88,7 +92,8 @@ export async function saveEdit(
     }
   }
 
-  await savePersonEdit(id, edit);
+  try { await savePersonEdit(id, edit, session.name, version); }
+  catch (error) { return { error: error instanceof Error ? error.message : 'La sauvegarde a échoué. Vos saisies sont conservées.' }; }
   clearStore();
 
   redirect(`/person/${id}`);

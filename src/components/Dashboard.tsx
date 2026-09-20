@@ -1,4 +1,7 @@
 import { getAllPersons, getStore } from '@/lib/gedcom-store';
+import { PersonalJourney } from './PersonalJourney';
+import { loadOverrides } from '@/lib/overrides-store';
+import Link from 'next/link';
 import SurnameGrid from './SurnameGrid';
 
 interface SurnameGroup {
@@ -54,32 +57,23 @@ async function getStats() {
   // Distribution par siècle
   const centuryCounts = new Map<number, number>();
   for (const y of years) {
-    const century = Math.floor(y / 100) * 100;
+    const century = Math.floor((y - 1) / 100) * 100;
     centuryCounts.set(century, (centuryCounts.get(century) ?? 0) + 1);
   }
   const centuries = Array.from(centuryCounts.entries())
     .sort(([a], [b]) => a - b)
     .map(([century, count]) => ({ label: `${century + 1}–${century + 100}`, count }));
 
-  // 3 dernières personnes (approximation : ordre GEDCOM inverse = ordre ajout)
-  const recentPersons = Array.from(store.persons.values())
-    .filter(p => p.givenNames || p.surname)
-    .slice(-3)
-    .reverse()
-    .map(p => ({
-      id: p.id,
-      displayName: p.displayName,
-      sex: p.sex,
-      birthYear: p.birthYear,
-      deathYear: p.deathYear,
-    }));
+  const overrides = await loadOverrides();
+  const recentPersons = persons.filter(p => overrides.updatedAt?.[p.id])
+    .sort((a, b) => (overrides.updatedAt?.[b.id] ?? '').localeCompare(overrides.updatedAt?.[a.id] ?? '')).slice(0, 3);
 
   return {
     totalPersons: persons.length,
     totalFamilies: store.families.size,
     minYear,
     maxYear,
-    totalCountries: countries.size || 9,
+    totalCountries: countries.size || null,
     centuries,
     recentPersons,
   };
@@ -99,10 +93,12 @@ const SEX_INK: Record<string, string> = {
 export default async function Dashboard() {
   const stats = await getStats();
   const surnameGroups = await buildSurnameGroups();
+  const people = await getAllPersons();
+  const story = people.find(p => p.photoUrl && p.notes) ?? people.find(p => p.notes && p.events.length > 1) ?? people.find(p => p.notes) ?? people.find(p => p.birthYear && p.deathYear && p.occupations.length > 0);
   const centuryMax = stats.centuries.length ? Math.max(...stats.centuries.map(c => c.count)) : 1;
 
   return (
-    <div style={{ background: '#f4f1ea', minHeight: '100vh' }}>
+    <div className="dashboard" style={{ background: '#f4f1ea', minHeight: '100vh' }}>
       <style>{`
         .dash-nav-card { background: #fffdf9; border-color: #e7e0d0; transition: border-color .15s, box-shadow .15s; }
         .dash-nav-card:hover { border-color: #c9a86a; box-shadow: 0 4px 16px rgba(201,168,106,.12); }
@@ -113,7 +109,8 @@ export default async function Dashboard() {
       `}</style>
 
       {/* ── Hero ── */}
-      <div style={{ padding: '52px 48px 44px', maxWidth: '1080px', margin: '0 auto' }}>
+      <div className="dashboard-hero" style={{ padding: '52px 48px 44px', maxWidth: '1080px', margin: '0 auto' }}>
+        <div className="dashboard-intro">
         {/* Tag */}
         <span
           style={{
@@ -130,7 +127,7 @@ export default async function Dashboard() {
             marginBottom: '20px',
           }}
         >
-          Mémoire familiale · depuis 1799
+          Mémoire familiale
         </span>
 
         {/* H1 */}
@@ -145,7 +142,7 @@ export default async function Dashboard() {
             margin: '0 0 14px',
           }}
         >
-          Sept générations,<br />une seule histoire.
+          Votre famille,<br />au fil du temps.
         </h1>
 
         {/* Sous-titre */}
@@ -160,8 +157,9 @@ export default async function Dashboard() {
           Explorez l&apos;arbre de la famille Dudouyt — des percepteurs de la Manche aux Mercader de Barcelone et Santiago de Cuba.
         </p>
 
+        </div><PersonalJourney />
         {/* Stats en colonnes */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'stretch', gap: 0 }}>
+        <div className="dashboard-stats" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'stretch', gap: 0 }}>
           {[
             { value: stats.totalPersons, label: 'Personnes' },
             { value: stats.totalFamilies, label: 'Familles' },
@@ -169,11 +167,11 @@ export default async function Dashboard() {
               value: stats.minYear && stats.maxYear ? `${stats.minYear}–${stats.maxYear}` : '–',
               label: 'Période',
             },
-            { value: stats.totalCountries, label: 'Pays d\'origine' },
+            { value: stats.totalCountries ?? '–', label: 'Pays renseignés' },
           ].map((stat, i) => (
             <div key={stat.label} style={{ display: 'flex', alignItems: 'stretch' }}>
               {i > 0 && (
-                <div
+                <div className="stat-divider"
                   style={{
                     alignSelf: 'stretch',
                     width: '1px',
@@ -199,7 +197,7 @@ export default async function Dashboard() {
                   style={{
                     fontFamily: 'var(--font-sans)',
                     fontSize: '11px',
-                    color: '#8a8474',
+                    color: '#6c7064',
                     textTransform: 'uppercase',
                     letterSpacing: '.12em',
                     fontWeight: 600,
@@ -214,8 +212,9 @@ export default async function Dashboard() {
         </div>
       </div>
 
+      <div className="dashboard-journey">{story && <section className="story-card">{story.photoUrl && <img className="story-photo" src={story.photoUrl} alt={`Portrait de ${story.displayName}`} />}<div><p className="eyebrow">Une vie à découvrir</p><h2>{story.displayName}</h2><p>{story.notes?.slice(0, 220) || `${story.displayName} (${story.birthYear}–${story.deathYear}). ${story.occupations.join(', ')}. Découvrez les événements et les lieux renseignés dans sa fiche.`}{(story.notes?.length ?? 0) > 220 ? '…' : ''}</p><Link className="secondary-action" href={`/person/${story.id}`}>Découvrir son histoire et ses documents →</Link></div></section>}</div>
       {/* ── Section principale ── */}
-      <div
+      <div className="dashboard-content"
         style={{
           maxWidth: '1080px',
           margin: '0 auto',
@@ -224,7 +223,7 @@ export default async function Dashboard() {
       >
 
         {/* Grille navigation rapide */}
-        <div
+        <div className="dashboard-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
@@ -315,7 +314,7 @@ export default async function Dashboard() {
                   style={{
                     fontFamily: 'var(--font-sans)',
                     fontSize: '12px',
-                    color: '#8a8474',
+                    color: '#6c7064',
                     margin: '2px 0 0',
                   }}
                 >
@@ -327,7 +326,7 @@ export default async function Dashboard() {
         </div>
 
         {/* Grille principale 2 colonnes */}
-        <div
+        <div className="dashboard-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: '1.35fr 1fr',
@@ -367,7 +366,7 @@ export default async function Dashboard() {
                 style={{
                   fontFamily: 'var(--font-sans)',
                   fontSize: '13px',
-                  color: '#8a8474',
+                  color: '#6c7064',
                 }}
               >
                 {surnameGroups.length} lignées
@@ -430,7 +429,7 @@ export default async function Dashboard() {
                           flexShrink: 0,
                           textAlign: 'right',
                           fontSize: '12px',
-                          color: '#9a9080',
+                          color: '#6c7064',
                           fontFamily: 'var(--font-sans)',
                         }}
                       >
@@ -492,7 +491,7 @@ export default async function Dashboard() {
                     margin: '0 0 16px',
                   }}
                 >
-                  Ajouts récents
+                  Dernières modifications
                 </h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {stats.recentPersons.map(p => {
@@ -551,7 +550,7 @@ export default async function Dashboard() {
                             <p
                               style={{
                                 fontSize: '11.5px',
-                                color: '#8a8474',
+                                color: '#6c7064',
                                 fontFamily: 'var(--font-sans)',
                                 margin: '2px 0 0',
                               }}

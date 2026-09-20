@@ -91,6 +91,10 @@ function PersonCard({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Explorer ${person.displayName}`}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
       onClick={onClick}
       title={isCenter ? `Voir la fiche de ${person.displayName}` : `Centrer sur ${person.displayName}`}
       style={{
@@ -325,9 +329,7 @@ export default function TreeVertical({ treeData, focusId, onFocus }: TreeVertica
     .filter(Boolean) as TreeNode[];
 
   const nav = (id: string) => {
-    if (id === focusNode.id) {
-      router.push(`/person/${id}`);
-    } else if (onFocus) {
+    if (onFocus) {
       onFocus(id, nodeMap.get(id)?.displayName);
     } else {
       router.push(`/person/${id}`);

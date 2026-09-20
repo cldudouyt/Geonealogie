@@ -161,6 +161,8 @@ export default function TreeRadial({ treeData, mode, onFocus }: TreeRadialProps)
         {segments.map(seg => (
           <g
             key={seg.node.id}
+            role="button" tabIndex={0} aria-label={`Explorer ${seg.node.displayName}`}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (onFocus) onFocus(seg.node.id); else router.push(`/person/${seg.node.id}`); } }}
             style={{ cursor: 'pointer' }}
             onClick={() => onFocus ? onFocus(seg.node.id) : router.push(`/person/${seg.node.id}`)}
           >
@@ -197,7 +199,9 @@ export default function TreeRadial({ treeData, mode, onFocus }: TreeRadialProps)
         {root && (
           <g
             style={{ cursor: 'pointer' }}
-            onClick={() => router.push(`/person/${root.id}`)}
+            role="button" tabIndex={0} aria-label={`Explorer ${root.displayName}`}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (onFocus) onFocus(root.id); else router.push(`/person/${root.id}`); } }}
+            onClick={() => onFocus ? onFocus(root.id) : router.push(`/person/${root.id}`)}
           >
 
             <circle
