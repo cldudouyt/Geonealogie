@@ -301,6 +301,7 @@ export default function SearchPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [searchError, setSearchError] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [archiveHits, setArchiveHits] = useState<ArchiveHits>({});
   const [archiveLoading, setArchiveLoading] = useState(false);
@@ -310,6 +311,7 @@ export default function SearchPage() {
     async (pageNum: number = 1) => {
       setLoading(true);
       setSearched(true);
+      setSearchError(false);
 
       const params = new URLSearchParams();
       if (query) params.set('q', query);
@@ -324,12 +326,15 @@ export default function SearchPage() {
 
       try {
         const res = await fetch(`/api/persons?${params}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         setResults(data.persons || []);
         setTotal(data.total || 0);
         setCurrentPage(pageNum);
       } catch {
         setResults([]);
+        setTotal(0);
+        setSearchError(true);
       } finally {
         setLoading(false);
       }
@@ -376,15 +381,23 @@ export default function SearchPage() {
     if (!initialQ) return;
     setSearched(true);
     setLoading(true);
+    setSearchError(false);
     const params = new URLSearchParams({ q: initialQ, page: '1', limit: String(limit) });
     fetch(`/api/persons?${params}`)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(data => {
         setResults(data.persons || []);
         setTotal(data.total || 0);
         setCurrentPage(1);
       })
-      .catch(() => setResults([]))
+      .catch(() => {
+        setResults([]);
+        setTotal(0);
+        setSearchError(true);
+      })
       .finally(() => setLoading(false));
     fetchArchiveHits(initialQ);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -486,7 +499,23 @@ export default function SearchPage() {
               {query ? ` pour « ${query} »` : ''}
             </p>
 
-            {results.length === 0 && !loading ? (
+            {searchError && !loading ? (
+              <div
+                role="alert"
+                style={{
+                  background: '#fffdf9',
+                  border: '1px solid #e9e2d2',
+                  borderRadius: 16,
+                  padding: '48px 24px',
+                  textAlign: 'center',
+                  color: '#8a8474',
+                  fontSize: 14,
+                }}
+              >
+                <p style={{ margin: '0 0 16px' }}>La recherche a échoué — vérifiez votre connexion puis réessayez.</p>
+                <button className="primary-action" onClick={() => search(currentPage)}>Réessayer</button>
+              </div>
+            ) : results.length === 0 && !loading ? (
               <div
                 style={{
                   background: '#fffdf9',
