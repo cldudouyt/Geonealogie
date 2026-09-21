@@ -170,7 +170,7 @@ function parseCoord(str: string | undefined): number | undefined {
 }
 
 /** Reads LATI/LONG off a GEDCOM MAP node, logging (instead of silently dropping) any malformed coordinate data. */
-function coordsFromMap(getMap: () => any, personId: string, context: string): { lat?: number; lon?: number } {
+function coordsFromMap(getMap: () => { get: (tag: string) => unknown } | undefined, personId: string, context: string): { lat?: number; lon?: number } {
   try {
     const map = getMap();
     return { lat: parseCoord(getVal(map?.get('LATI'))), lon: parseCoord(getVal(map?.get('LONG'))) };
@@ -182,7 +182,9 @@ function coordsFromMap(getMap: () => any, personId: string, context: string): { 
 
 async function buildStore(): Promise<GedcomStore> {
 
-  const gedcomPath = path.resolve(process.cwd(), 'Dudouyt Heredis 2014-Export.ged');
+  const gedcomPath = process.env.GEDCOM_PATH
+    ? path.resolve(process.env.GEDCOM_PATH)
+    : path.resolve(process.cwd(), 'Dudouyt Heredis 2014-Export.ged');
   const fileBuffer = fs.readFileSync(gedcomPath);
   const arrayBuffer = fileBuffer.buffer.slice(
     fileBuffer.byteOffset,

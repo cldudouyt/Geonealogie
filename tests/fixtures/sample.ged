@@ -1,0 +1,109 @@
+0 HEAD
+1 SOUR Geonealogie Test Fixture
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 PLAC
+2 FORM Town, Area code, County, Region, Country, Subdivision
+0 @I1@ INDI
+1 NAME Jean, Charles/DUDOUYT/
+2 GIVN Jean, Charles
+2 SURN DUDOUYT
+1 SEX M
+1 FAMS @F1@
+1 BIRT
+2 DATE 10 JUN 1900
+2 PLAC Nantes,44000,Loire-Atlantique,Pays-de-la-Loire,FRANCE,
+3 MAP
+4 LATI N47.218370
+4 LONG W1.553620
+1 DEAT
+2 DATE 5 MAY 1980
+2 PLAC Nantes,44000,Loire-Atlantique,Pays-de-la-Loire,FRANCE,
+0 @I2@ INDI
+1 NAME Marie, Louise/MARTIN/
+2 GIVN Marie, Louise
+2 SURN MARTIN
+1 SEX F
+1 FAMS @F1@
+1 BIRT
+2 DATE 3 MAR 1905
+2 PLAC Rennes,35000,Ille-et-Vilaine,Bretagne,FRANCE,
+0 @I3@ INDI
+1 NAME Pierre, Jean/DUDOUYT/
+2 GIVN Pierre, Jean
+2 SURN DUDOUYT
+1 SEX M
+1 FAMC @F1@
+1 FAMS @F2@
+1 BIRT
+2 DATE 15 JUL 1930
+2 PLAC Nantes,44000,Loire-Atlantique,Pays-de-la-Loire,FRANCE,
+0 @I4@ INDI
+1 NAME Anne, Sophie/BERNARD/
+2 GIVN Anne, Sophie
+2 SURN BERNARD
+1 SEX F
+1 FAMS @F2@
+1 BIRT
+2 DATE 20 AUG 1932
+2 PLAC Angers,49000,Maine-et-Loire,Pays-de-la-Loire,FRANCE,
+0 @I5@ INDI
+1 NAME Paul, Henri/DUDOUYT/
+2 GIVN Paul, Henri
+2 SURN DUDOUYT
+1 SEX M
+1 FAMC @F2@
+1 BIRT
+2 DATE 1 JAN 1960
+2 PLAC Nantes,44000,Loire-Atlantique,Pays-de-la-Loire,FRANCE,
+3 MAP
+4 LATI N47.218370
+4 LONG W1.553620
+0 @I6@ INDI
+1 NAME Sylvie/DUDOUYT/
+2 GIVN Sylvie
+2 SURN DUDOUYT
+1 SEX F
+1 FAMC @F2@
+1 BIRT
+2 DATE 12 DEC 1962
+2 PLAC Nantes,44000,Loire-Atlantique,Pays-de-la-Loire,FRANCE,
+0 @I7@ INDI
+1 NAME Camille/DUDOUYT/
+2 GIVN Camille
+2 SURN DUDOUYT
+1 SEX F
+1 _FIL ADOPTED_CHILD
+1 BIRT
+2 DATE 5 FEB 1965
+2 PLAC Nantes,44000,Loire-Atlantique,Pays-de-la-Loire,FRANCE,
+1 EVEN
+2 TYPE Adopté
+2 DATE 1966
+2 NOTE Adoption simple par Pierre DUDOUYT
+0 @I8@ INDI
+1 NAME Éléonore/DUPONT/
+2 GIVN Éléonore
+2 SURN DUPONT
+1 SEX F
+1 BIRT
+2 DATE 1 JAN 1970
+2 PLAC Nantes,44000,Loire-Atlantique,Pays-de-la-Loire,FRANCE,
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+1 MARR
+2 DATE 1 JUN 1925
+2 PLAC Nantes,44000,Loire-Atlantique,Pays-de-la-Loire,FRANCE,
+0 @F2@ FAM
+1 HUSB @I3@
+1 WIFE @I4@
+1 CHIL @I5@
+1 CHIL @I6@
+1 MARR
+2 DATE 10 SEP 1958
+2 PLAC Nantes,44000,Loire-Atlantique,Pays-de-la-Loire,FRANCE,
+0 TRLR
