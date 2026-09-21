@@ -91,6 +91,8 @@ import type { JourneyStop } from '@/components/migration/MigrationSection';
 import DocumentsSection from '@/components/DocumentsSection';
 import { getDocumentsForPerson } from '@/lib/documents-store';
 import ResearchPanel from '@/components/ResearchPanel';
+import NarrativeSection from '@/components/NarrativeSection';
+import { getNarrative } from '@/lib/narratives-store';
 
 interface PersonPageProps {
   params: Promise<{ id: string }>;
@@ -120,6 +122,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
   const documents = await getDocumentsForPerson(id);
   const spouses = await getSpouses(id);
   const siblings = await getSiblings(id);
+  const narrative = await getNarrative(id);
 
   // Resolve adoptive parents and adopted children for link display
   const adoptiveParents = person.adoptiveParentIds.length > 0
@@ -405,6 +408,9 @@ export default async function PersonPage({ params }: PersonPageProps) {
             <p className="text-sm text-[#3f4a41] leading-relaxed italic" style={{ fontFamily: 'var(--font-serif, Georgia, serif)', fontSize: '0.95rem' }}>{bio}</p>
           </div>
         )}
+
+        {/* AI-generated portrait */}
+        <NarrativeSection personId={id} initial={narrative} />
 
         {/* Timeline */}
         {timeline.length > 0 && (
