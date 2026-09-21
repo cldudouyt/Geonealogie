@@ -1,5 +1,6 @@
 import type { PersonRecord } from './gedcom-store';
 import { MERGE_FIELDS, type MergeField } from './merge-fields';
+import { parseStrictFullDate } from './gedcom/date-normalizer';
 
 export const normalizeName = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
 export const pairKey = (a: string, b: string) => JSON.stringify([a, b].sort());
@@ -7,12 +8,10 @@ export interface DuplicateCandidate { a: PersonRecord; b: PersonRecord; confiden
 export interface Kinship { parents: string[]; spouses: string[]; children: string[] }
 const sameSet = (a: string[], b: string[]) => JSON.stringify([...new Set(a)].sort()) === JSON.stringify([...new Set(b)].sort());
 const present = (v: unknown) => v !== undefined && v !== null && v !== '';
+// A complete, calendar-valid date with no ABT/BEF/AFT qualifier — parseStrictFullDate
+// already rejects those (a qualifier prefix breaks its anchored DD MON YYYY match).
 function exactDate(raw?: string) {
-  const m = raw?.trim().toUpperCase().match(/^(\d{1,2}) (JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC) (\d{4})$/);
-  if (!m) return null;
-  const month = 'JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC'.split(' ').indexOf(m[2]);
-  const date = new Date(0); date.setUTCFullYear(Number(m[3]), month, Number(m[1]));
-  return date.getUTCMonth() === month && date.getUTCDate() === Number(m[1]) ? `${m[3]}-${month}-${Number(m[1])}` : null;
+  return raw ? parseStrictFullDate(raw)?.iso ?? null : null;
 }
 export function analyzeDuplicates(persons: PersonRecord[], kin: Record<string, Kinship>, ignored: string[] = []) {
   const groups = new Map<string, PersonRecord[]>();
