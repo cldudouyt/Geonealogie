@@ -3,6 +3,8 @@ import { PersonalJourney } from './PersonalJourney';
 import { loadOverrides } from '@/lib/overrides-store';
 import Link from 'next/link';
 import SurnameGrid from './SurnameGrid';
+import OnThisDay from './OnThisDay';
+import MigrationHighlight from './MigrationHighlight';
 
 interface SurnameGroup {
   surname: string;
@@ -64,6 +66,14 @@ async function getStats() {
     .sort(([a], [b]) => a - b)
     .map(([century, count]) => ({ label: `${century + 1}–${century + 100}`, count }));
 
+  // Parcours de vie ayant traversé une frontière (naissance et décès dans des pays différents)
+  let crossBorderJourneys = 0;
+  for (const p of persons) {
+    const birthCountry = p.birthPlaceFull?.split(',')[4]?.trim().toUpperCase();
+    const deathCountry = p.deathPlaceFull?.split(',')[4]?.trim().toUpperCase();
+    if (birthCountry && deathCountry && birthCountry !== deathCountry) crossBorderJourneys++;
+  }
+
   const overrides = await loadOverrides();
   const recentPersons = persons.filter(p => overrides.updatedAt?.[p.id])
     .sort((a, b) => (overrides.updatedAt?.[b.id] ?? '').localeCompare(overrides.updatedAt?.[a.id] ?? '')).slice(0, 3);
@@ -74,6 +84,7 @@ async function getStats() {
     minYear,
     maxYear,
     totalCountries: countries.size || null,
+    crossBorderJourneys,
     centuries,
     recentPersons,
   };
@@ -213,6 +224,19 @@ export default async function Dashboard() {
       </div>
 
       <div className="dashboard-journey">{story && <section className="story-card">{story.photoUrl && <img className="story-photo" src={story.photoUrl} alt={`Portrait de ${story.displayName}`} />}<div><p className="eyebrow">Une vie à découvrir</p><h2>{story.displayName}</h2><p>{story.notes?.slice(0, 220) || `${story.displayName} (${story.birthYear}–${story.deathYear}). ${story.occupations.join(', ')}. Découvrez les événements et les lieux renseignés dans sa fiche.`}{(story.notes?.length ?? 0) > 220 ? '…' : ''}</p><Link className="secondary-action" href={`/person/${story.id}`}>Découvrir son histoire et ses documents →</Link></div></section>}</div>
+
+      {/* ── Ce jour-là / Parcours migratoires ── */}
+      <div className="dashboard-content" style={{ maxWidth: '1080px', margin: '0 auto', padding: '0 48px 30px' }}>
+        <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
+          <OnThisDay />
+          <MigrationHighlight
+            totalCountries={stats.totalCountries}
+            crossBorderJourneys={stats.crossBorderJourneys}
+            minYear={stats.minYear}
+          />
+        </div>
+      </div>
+
       {/* ── Section principale ── */}
       <div className="dashboard-content"
         style={{
