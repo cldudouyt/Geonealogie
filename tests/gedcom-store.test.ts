@@ -114,3 +114,12 @@ test('searchPersons matches by substring, is accent-insensitive, and tolerates t
 
   assert.deepEqual(await searchPersons(''), []);
 });
+
+test('searchPersons falls back to a French phonetic key beyond Levenshtein tolerance', async () => {
+  const { searchPersons } = await import('../src/lib/gedcom-store');
+
+  // "Filipe" vs "Philippe": edit distance 3, past the tolerance for a 6-char
+  // query — only the ph→f / doubled-consonant phonetic key unifies them.
+  const results = await searchPersons('Filipe');
+  assert.ok(results.some(p => p.givenNames.includes('Philippe')));
+});

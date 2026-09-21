@@ -1009,6 +1009,22 @@ function normalize(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
 }
 
+/**
+ * Coarse phonetic key for French names — collapses a handful of well-known
+ * transcription variants (silent "h", y/i, doubled consonants, one trailing
+ * silent consonant) so e.g. "Mathieu"/"Matieu" or "Dudouyt"/"Dudouit" collapse
+ * to the same key. Only used as a last-resort search tier: it's coarse enough
+ * that two unrelated names can collide, which is acceptable for a low-ranked
+ * fallback but not for an exact match.
+ */
+function frenchPhoneticKey(s: string): string {
+  let key = normalize(s).replace(/[^a-z]/g, '');
+  key = key.replace(/th/g, 't').replace(/ph/g, 'f').replace(/qu/g, 'k').replace(/y/g, 'i');
+  key = key.replace(/(.)\1+/g, '$1');
+  if (key.length > 3) key = key.replace(/[dtspz]$/, '');
+  return key;
+}
+
 export async function searchPersons(query: string, limit = 20): Promise<PersonRecord[]> {
   const q = normalize(query.trim());
   if (!q) return [];
@@ -1038,7 +1054,12 @@ export async function searchPersons(query: string, limit = 20): Promise<PersonRe
         const minDist = Math.min(surnameDist, givenDist);
         const tolerance = q.length <= 3 ? 0 : q.length <= 5 ? 1 : 2;
         if (minDist <= tolerance) score = Math.max(1, 3 - minDist);
-        else continue;
+        else {
+          // Last resort: same French phonetic key (e.g. "Dudouit" ~ "Dudouyt")
+          const qKey = frenchPhoneticKey(q);
+          if (qKey.length >= 3 && (frenchPhoneticKey(surname) === qKey || frenchPhoneticKey(given) === qKey)) score = 2;
+          else continue;
+        }
       }
     }
 

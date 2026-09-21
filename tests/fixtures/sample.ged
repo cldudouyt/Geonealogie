@@ -91,6 +91,14 @@
 1 BIRT
 2 DATE 1 JAN 1970
 2 PLAC Nantes,44000,Loire-Atlantique,Pays-de-la-Loire,FRANCE,
+0 @I9@ INDI
+1 NAME Philippe/LEROUX/
+2 GIVN Philippe
+2 SURN LEROUX
+1 SEX M
+1 BIRT
+2 DATE 1 JAN 1940
+2 PLAC Nantes,44000,Loire-Atlantique,Pays-de-la-Loire,FRANCE,
 0 @F1@ FAM
 1 HUSB @I1@
 1 WIFE @I2@
