@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "test:experience": "node tests/experience.mjs"
+    "test:experience": "node tests/experience.mjs",
+    "test:duplicates": "node tests/duplicate-experience.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
