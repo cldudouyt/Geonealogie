@@ -9,6 +9,7 @@ import { cleanRtf } from './gedcom/rtf-cleaner';
 import { normalizeDate, extractYear } from './gedcom/date-normalizer';
 import { loadOverrides, clearOverridesCache, type NewPerson } from './overrides-store';
 import { applyGeoCache } from './geocoder';
+import type { TreeData, TreeNode, TreeLink } from './types/tree';
 
 export interface LifeEvent {
   type: string;
@@ -840,7 +841,7 @@ export async function getSiblings(id: string): Promise<PersonRecord[]> {
     .filter(Boolean) as PersonRecord[];
 }
 
-export async function getTreeCentered(rootId: string, generations = 2): Promise<{ rootId: string; nodes: any[]; links: any[] }> {
+export async function getTreeCentered(rootId: string, generations = 2): Promise<TreeData> {
   const s = await getStore();
   const depth = Math.min(Math.max(Math.round(generations) || 2, 1), 8);
   const nodeIds = new Set<string>();
@@ -905,10 +906,10 @@ export async function getTreeCentered(rootId: string, generations = 2): Promise<
     }
   }
 
-  const nodes = Array.from(nodeIds)
+  const nodes: TreeNode[] = Array.from(nodeIds)
     .map(id => s.persons.get(id))
-    .filter(Boolean)
-    .map((p: any) => ({
+    .filter((p): p is PersonRecord => Boolean(p))
+    .map(p => ({
       id: p.id,
       displayName: p.displayName,
       sex: p.sex,
@@ -919,10 +920,10 @@ export async function getTreeCentered(rootId: string, generations = 2): Promise<
       isAdopted: p.isAdopted,
     }));
 
-  const links: any[] = [];
+  const links: TreeLink[] = [];
   const linkSet = new Set<string>();
 
-  const addLink = (source: string, target: string, type: string) => {
+  const addLink = (source: string, target: string, type: TreeLink['type']) => {
     const key = `${source}-${target}-${type}`;
     const rkey = `${target}-${source}-${type}`;
     if (!linkSet.has(key) && !linkSet.has(rkey)) {
