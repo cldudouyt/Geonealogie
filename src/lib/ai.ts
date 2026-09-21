@@ -28,7 +28,10 @@ export async function generateText(
   const response = await genAI.models.generateContent({
     model,
     contents: userMessage,
-    config: { systemInstruction: systemPrompt, maxOutputTokens },
+    // Thinking is on by default and its tokens count against maxOutputTokens —
+    // for these short, non-reasoning tasks it was silently eating the whole
+    // budget and truncating the visible text. Not needed here.
+    config: { systemInstruction: systemPrompt, maxOutputTokens, thinkingConfig: { thinkingBudget: 0 } },
   });
   return (response.text ?? "").trim();
 }
@@ -69,7 +72,7 @@ export async function streamAgentResponse(
   return genAI.models.generateContentStream({
     model,
     contents: userMessage,
-    config: { systemInstruction: systemPrompt, maxOutputTokens: 4096 },
+    config: { systemInstruction: systemPrompt, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: 0 } },
   });
 }
 
