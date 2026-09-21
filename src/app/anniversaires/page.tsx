@@ -1,26 +1,11 @@
 import Link from 'next/link';
-import { getAllPersons, getStore } from '@/lib/gedcom-store';
-import type { PersonRecord } from '@/lib/gedcom-store';
+import { getAllPersons, getStore, isPresumedAlive } from '@/lib/gedcom-store';
+import { parseDayMonth } from '@/lib/gedcom/date-normalizer';
 import { Badge } from '@/components/ui/Badge';
 
 export const metadata = { title: 'Anniversaires — Géonéalogie' };
 
 const MONTHS_FR = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-const MONTHS_GEDCOM: Record<string, number> = {
-  JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,OCT:10,NOV:11,DEC:12
-};
-
-const LIVING_MAX_AGE = 100;
-
-function parseDayMonth(raw?: string): { day: number; month: number } | null {
-  if (!raw) return null;
-  const m = raw.match(/\b(\d{1,2})\s+([A-Z]{3})\b/);
-  if (!m) return null;
-  const day = parseInt(m[1]);
-  const month = MONTHS_GEDCOM[m[2]];
-  if (!month || day < 1 || day > 31) return null;
-  return { day, month };
-}
 
 function nextOccurrence(day: number, month: number, today: Date): { daysUntil: number; targetYear: number } {
   const thisYear = today.getFullYear();
@@ -36,13 +21,6 @@ function extractYear(raw?: string): string | undefined {
   if (!raw) return undefined;
   const m = raw.match(/\b(\d{4})\b/);
   return m?.[1];
-}
-
-function isPresumedAlive(p: PersonRecord | undefined, currentYear: number): boolean {
-  if (!p) return false;
-  if (p.deathDateRaw || p.deathDate || p.deathYear) return false;
-  const birthYear = p.birthYear ? parseInt(p.birthYear) : NaN;
-  return !isNaN(birthYear) && currentYear - birthYear < LIVING_MAX_AGE;
 }
 
 export default async function AnniversairesPage({

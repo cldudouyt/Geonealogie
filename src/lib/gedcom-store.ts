@@ -753,6 +753,16 @@ export function clearStore(): void {
   clearOverridesCache();
 }
 
+const LIVING_MAX_AGE = 100;
+
+/** Heuristic used to avoid surfacing exact birthdates for people who are likely still alive. */
+export function isPresumedAlive(p: PersonRecord | undefined, currentYear = new Date().getFullYear()): boolean {
+  if (!p) return false;
+  if (p.deathDateRaw || p.deathDate || p.deathYear) return false;
+  const birthYear = p.birthYear ? parseInt(p.birthYear) : NaN;
+  return !isNaN(birthYear) && currentYear - birthYear < LIVING_MAX_AGE;
+}
+
 export async function getDefaultPersonId(): Promise<string> {
   const s = await getStore();
   const norm = (v: string) => v.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');

@@ -70,3 +70,18 @@ export function extractYear(rawDate: string | undefined): string | undefined {
   const match = rawDate.match(/(\d{4})/);
   return match ? match[1] : undefined;
 }
+
+/**
+ * Extracts day+month from anywhere in a raw GEDCOM date, ignoring qualifiers
+ * like ABT/BEF/AFT — used for recurring-date features (birthdays, "on this
+ * day") where an approximate date is still useful, unlike parseStrictFullDate.
+ */
+export function parseDayMonth(raw: string | undefined): { day: number; month: number } | null {
+  if (!raw) return null;
+  const m = raw.match(/\b(\d{1,2})\s+([A-Z]{3})\b/);
+  if (!m) return null;
+  const day = parseInt(m[1], 10);
+  const monthStr = MONTHS[m[2]];
+  if (!monthStr || day < 1 || day > 31) return null;
+  return { day, month: Number(monthStr) };
+}
