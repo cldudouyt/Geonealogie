@@ -26,6 +26,8 @@ src/
     doublons/           — Détection de doublons
     admin/              — Géocodage et administration
     feedback/           — Suggestions reçues
+    history/            — Historique des opérations + restauration (admin)
+    stats/              — Statistiques détaillées
     api/                — Routes API Next.js
       persons/          — CRUD personnes (GEDCOM + overrides)
       tree/             — Arbre pour D3
@@ -33,15 +35,28 @@ src/
       geocode/          — Géocodage Nominatim
       research/         — Panneau recherche
       export/           — Export GEDCOM/CSV/JSON
-      ai/               — Agents IA (Claude) ← nouveau
+      ai/               — Agents IA (Claude)
+      admin/            — Actions admin (géocodage, feedback)
+      blob-upload/       — Upload de documents/avatars vers Vercel Blob
+      journey/          — Parcours migratoire
+      relation/         — Chemin de parenté
+      logout/           — Fin de session
   components/           — Composants React partagés
   lib/
-    db.ts               — Client Postgres Neon (kv_state + suggestions)
-    gedcom-store.ts     — Parsing GEDCOM (source de données principale)
-    overrides-store.ts  — Édits manuels (Postgres, fallback fichier)
-    documents-store.ts  — Métadonnées documents (Postgres, fichiers sur Blob)
-    ai.ts               — Client Anthropic + runAgentsInParallel
-    types/              — Types TypeScript
+    db.ts                  — Client Postgres Neon (kv_state + suggestions)
+    gedcom-store.ts        — Parsing GEDCOM (source de données principale)
+    overrides-store.ts     — Édits manuels (Postgres, fallback fichier)
+    documents-store.ts     — Métadonnées documents (Postgres, fichiers sur Blob)
+    state-store.ts         — Lecture/écriture versionnée générique (kv_state)
+    auth.ts                — Authentification, rôles, sessions signées
+    duplicate-analysis.ts  — Détection et éligibilité de fusion des doublons
+    ai.ts                  — Client Anthropic + runAgentsInParallel
+    types/                 — Types TypeScript
+scripts/
+  dedupe-gedcom.ts       — Nettoyage des blocs INDI/FAM dupliqués par le bug d'export Heredis
+  geocode.mjs            — Géocodage en masse des lieux du GEDCOM via Nominatim
+  import-gedcom.ts, sync-overrides-to-neo4j.mjs, docker-compose.yml
+                         — legacy (ancienne archi Neo4j), ne reflètent plus le fonctionnement actuel
 ```
 
 ## Design System (référence : Géonéalogie.dc.html)
@@ -119,18 +134,42 @@ const results = await runAgentsInParallel([
 `claude-sonnet-4-6` — configurable via `DEFAULT_MODEL` dans `src/lib/ai.ts`
 
 ## Données
-- Fichier GEDCOM source : `Dudouyt Heredis 2014-Export.ged`
-- Overrides manuels stockés dans Postgres Neon (via `overrides-store.ts`, table `kv_state`)
+- Fichier GEDCOM source : `Dudouyt Heredis 2014-Export.ged`, parsé en mémoire au démarrage (pas de rechargement à chaud — redémarrer après modification du fichier)
+- Overrides manuels stockés dans Postgres Neon (via `overrides-store.ts`, table `kv_state`), avec contrôle de version (`kvReadVersion`/`kvCompareSet`) pour éviter les écrasements concurrents
 - Photos : Vercel Blob (`BLOB_READ_WRITE_TOKEN`)
 - Géocodage : API Nominatim (OpenStreetMap)
 
+## Authentification et rôles
+Mot de passe partagé (`AUTH_PASSWORD`) + sessions signées (`AUTH_SECRET`). Des accès nommés supplémentaires se déclarent via `AUTH_USERS_JSON` (tableau `{ name, role, password }`).
+
+| Rôle | Droits |
+|------|--------|
+| `reader` | Consulter, explorer, rechercher, exporter le GEDCOM |
+| `contributor` | + édition de fiches, sources, documents, suggestions |
+| `admin` | + doublons, diagnostics, géocodage, historique/restauration |
+
+Logique dans `src/lib/auth.ts`. Détails (expiration, invalidation, fusion de doublons en lot) : voir `docs/experience-familiale.md`.
+
 ## Variables d'environnement
 ```
-DATABASE_URL=postgres://...    ← Postgres Neon (injecté par Vercel) ; absent = fallback fichier
+DATABASE_URL=postgres://...    ← Postgres Neon (injecté par Vercel) ; absent = fallback fichier data/*.json
 ANTHROPIC_API_KEY=sk-ant-...   ← obligatoire pour les features IA
 BLOB_READ_WRITE_TOKEN=...
 AUTH_PASSWORD=...
 AUTH_SECRET=...
+AUTH_USERS_JSON=...            ← optionnel, accès nommés (voir "Authentification et rôles")
+GITHUB_TOKEN=...               ← optionnel, création d'issues depuis les suggestions (scope repo)
+GEO_DATA_DIR=...               ← optionnel, répertoire du fallback fichier (tests)
+GEDCOM_PATH=...                ← optionnel, fichier GEDCOM alternatif (défaut : fichier à la racine ; tests)
+```
+
+## Tests
+```bash
+npm test              # tests unitaires (tests/*.test.ts, node --test)
+npm run typecheck
+npm run build
+npm run test:experience   # parcours end-to-end Playwright (build de prod, données jetables)
+npm run test:duplicates   # parcours de fusion de doublons
 ```
 
 ## Conventions de code
