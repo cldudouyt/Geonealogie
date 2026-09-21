@@ -8,6 +8,7 @@ export interface DocumentMeta {
   personId: string;
   url: string;         // blob CDN URL or /documents/personId/filename
   access?: 'private';  // set on Blob uploads since the privacy fix; undefined = legacy public blob or local file
+  legacyPublicUrl?: string;
   originalName: string;
   title?: string;
   mimeType: string;
@@ -21,7 +22,7 @@ const DB_KEY = 'documents';
 // ─── Storage detection ─────────────────────────────────────────────────────
 
 function shouldUseBlob(): boolean {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_PRIVATE_READ_WRITE_TOKEN);
 }
 
 // ─── File storage ──────────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ export async function uploadToStorage(
     const { put } = await import('@vercel/blob');
     const blob = await put(`documents/${personId}/${filename}`, buffer, {
       access,
+      token: access === 'private' ? process.env.BLOB_PRIVATE_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN : process.env.BLOB_READ_WRITE_TOKEN,
       contentType: mimeType,
     });
     return blob.url;
@@ -53,7 +55,7 @@ export async function deleteFromStorage(url: string, personId: string): Promise<
   if (shouldUseBlob()) {
     try {
       const { del } = await import('@vercel/blob');
-      await del(url);
+      await del(url, { token: url.includes('.private.blob.vercel-storage.com') ? process.env.BLOB_PRIVATE_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN : process.env.BLOB_READ_WRITE_TOKEN });
     } catch {
       // Not critical if already gone
     }

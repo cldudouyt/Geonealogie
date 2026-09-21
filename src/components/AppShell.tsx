@@ -18,7 +18,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <a href="#main-content" className="skip-link">Aller au contenu</a>
     <Suspense fallback={null}><ExplorationTracker /></Suspense>
     <aside className="desktop-navigation"><NavRail /></aside>
-    <div className="app-main"><GlobalHeader /><div id="main-content" tabIndex={-1} ref={scrollerRef} className="app-scroller">{children}</div></div>
+    <div className="app-main">{pathname !== '/' && <GlobalHeader />}<div id="main-content" tabIndex={-1} ref={scrollerRef} className="app-scroller">{children}</div></div>
     <nav aria-label="Navigation principale mobile" className="mobile-navigation">
       {[['/', 'Accueil'], ['/tree', 'Arbre'], ['/search', 'Recherche']].map(([href, label]) => <Link key={href} href={href} aria-current={pathname === href ? 'page' : undefined}>{label}</Link>)}
       <button ref={moreButton} aria-expanded={menuOpen} aria-controls="mobile-menu" onClick={() => { dialog.current?.showModal(); setMenuOpen(true); }}>Plus</button>

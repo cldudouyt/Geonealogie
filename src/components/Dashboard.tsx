@@ -122,6 +122,7 @@ export default async function Dashboard() {
       {/* ── Hero ── */}
       <div className="dashboard-hero" style={{ padding: '52px 48px 44px', maxWidth: '1080px', margin: '0 auto' }}>
         <div className="dashboard-intro">
+        <form action="/search" className="home-search"><label htmlFor="home-search">Retrouver une personne</label><div className="action-row"><input id="home-search" name="q" type="search" placeholder="Nom, prénom ou lieu" /><button className="primary-action" type="submit">Rechercher</button></div></form>
         {/* Tag */}
         <span
           style={{

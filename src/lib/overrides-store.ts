@@ -149,3 +149,27 @@ export async function mergePersonBatch(operations: MergeOperation[], actor: stri
     }
   });
 }
+
+export async function restorePersonHistory(entryId: string, personId: string, actor: string, expectedRevision: number): Promise<void> {
+  await changeOverrides(actor, 'Restauration d’une ancienne version de fiche', [personId], state => {
+    if ((state.revision ?? 0) !== expectedRevision) throw new Error('Les données ont changé. Rechargez l’historique.');
+    const entry = state.history?.find(e => e.id === entryId && e.personIds.includes(personId));
+    if (!entry) throw new Error('Version introuvable.');
+    if (entry.label.includes('Fusion') || entry.label.includes('Ajout')) throw new Error('Cette opération modifie les liens de famille. Utilisez l’annulation globale si elle est la dernière opération.');
+    for (const aliases of [state.mergedPersons, entry.before.mergedPersons]) {
+      if (Object.entries(aliases ?? {}).some(([a, b]) => a === personId || b === personId)) throw new Error('Une fusion concerne cette fiche ; restauration individuelle impossible.');
+    }
+    const oldCustom = entry.before.newPersons.find(p => p.id === personId);
+    const currentCustom = state.newPersons.find(p => p.id === personId);
+    if (Boolean(oldCustom) !== Boolean(currentCustom)) throw new Error('La structure de cette fiche a changé.');
+    if (oldCustom && currentCustom) {
+      if (JSON.stringify([oldCustom.relations, oldCustom.relType, oldCustom.relPersonId]) !== JSON.stringify([currentCustom.relations, currentCustom.relType, currentCustom.relPersonId])) throw new Error('Les liens familiaux ont changé.');
+      const index = state.newPersons.findIndex(p => p.id === personId);
+      state.newPersons[index] = structuredClone(oldCustom);
+    }
+    if (entry.before.persons[personId]) state.persons[personId] = structuredClone(entry.before.persons[personId]);
+    else delete state.persons[personId];
+    state.deletedPersonIds = (state.deletedPersonIds ?? []).filter(id => id !== personId);
+    if (entry.before.deletedPersonIds?.includes(personId)) state.deletedPersonIds.push(personId);
+  });
+}

@@ -103,14 +103,14 @@ const NAV_GROUPS = [
   {
     label: 'Qualité des données',
     items: [
-      { href: '/anomalies', label: 'Anomalies', icon: <AlertIcon /> },
+      { href: '/anomalies', label: 'À vérifier', icon: <AlertIcon /> },
       { href: '/doublons', label: 'Doublons', icon: <DoublonsIcon /> },
     ],
   },
   {
     label: 'Administration',
     items: [
-      { href: '/admin/geocode', label: 'Géocodage', icon: <GeoIcon /> },
+      { href: '/admin', label: 'Administration', icon: <GeoIcon /> },
       { href: '/feedback', label: 'Suggestions reçues', icon: <FeedbackIcon /> },
       { href: '/history', label: 'Historique', icon: <TimelineIcon /> },
     ],
