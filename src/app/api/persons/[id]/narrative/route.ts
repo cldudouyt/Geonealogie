@@ -4,7 +4,7 @@ import {
   formatPlaceFull, isPresumedAlive,
 } from '@/lib/gedcom-store';
 import { saveNarrative } from '@/lib/narratives-store';
-import { anthropic, DEFAULT_MODEL } from '@/lib/ai';
+import { generateText } from '@/lib/ai';
 
 const SYSTEM_PROMPT = `Tu écris un portrait biographique court, en français, pour une application généalogique familiale privée.
 
@@ -52,13 +52,7 @@ export async function POST(
 
   let text: string;
   try {
-    const message = await anthropic.messages.create({
-      model: DEFAULT_MODEL,
-      max_tokens: 500,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: JSON.stringify(payload) }],
-    });
-    text = message.content[0].type === 'text' ? message.content[0].text.trim() : '';
+    text = await generateText(SYSTEM_PROMPT, JSON.stringify(payload), 500);
   } catch (error) {
     return NextResponse.json({ error: 'Génération indisponible : ' + (error as Error).message }, { status: 502 });
   }

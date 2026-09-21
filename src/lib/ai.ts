@@ -1,10 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 
-export const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+export const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-export const DEFAULT_MODEL = "claude-sonnet-4-6";
+export const DEFAULT_MODEL = "gemini-flash-latest";
 
 export type AgentTask = {
   name: string;
@@ -19,7 +17,24 @@ export type AgentResult = {
 };
 
 /**
- * Lance plusieurs agents Claude en parallèle et retourne leurs résultats.
+ * Un seul appel à Gemini : instructions système + message utilisateur → texte.
+ */
+export async function generateText(
+  systemPrompt: string,
+  userMessage: string,
+  maxOutputTokens = 4096,
+  model = DEFAULT_MODEL
+): Promise<string> {
+  const response = await genAI.models.generateContent({
+    model,
+    contents: userMessage,
+    config: { systemInstruction: systemPrompt, maxOutputTokens },
+  });
+  return (response.text ?? "").trim();
+}
+
+/**
+ * Lance plusieurs agents Gemini en parallèle et retourne leurs résultats.
  * Chaque agent reçoit son propre system prompt et message utilisateur.
  */
 export async function runAgentsInParallel(
@@ -28,14 +43,7 @@ export async function runAgentsInParallel(
 ): Promise<AgentResult[]> {
   const results = await Promise.allSettled(
     tasks.map(async (task): Promise<AgentResult> => {
-      const message = await anthropic.messages.create({
-        model,
-        max_tokens: 4096,
-        system: task.systemPrompt,
-        messages: [{ role: "user", content: task.userMessage }],
-      });
-      const content =
-        message.content[0].type === "text" ? message.content[0].text : "";
+      const content = await generateText(task.systemPrompt, task.userMessage, 4096, model);
       return { name: task.name, content };
     })
   );
@@ -51,18 +59,17 @@ export async function runAgentsInParallel(
 }
 
 /**
- * Stream une réponse Claude pour les cas interactifs (UI streaming).
+ * Stream une réponse Gemini pour les cas interactifs (UI streaming).
  */
 export async function streamAgentResponse(
   systemPrompt: string,
   userMessage: string,
   model = DEFAULT_MODEL
 ) {
-  return anthropic.messages.stream({
+  return genAI.models.generateContentStream({
     model,
-    max_tokens: 4096,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userMessage }],
+    contents: userMessage,
+    config: { systemInstruction: systemPrompt, maxOutputTokens: 4096 },
   });
 }
 

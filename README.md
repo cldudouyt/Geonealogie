@@ -2,7 +2,7 @@
 
 Application généalogique familiale pour la famille Dudouyt — arbre, carte des origines, recherche, réseau de relations, anniversaires, chemin de parenté, parcours migratoire, détection d'anomalies et de doublons.
 
-**Stack** : Next.js 16 (App Router) · Postgres (Neon, serverless) · Tailwind CSS 4 · Vercel Blob · Claude (Anthropic) pour les agents IA.
+**Stack** : Next.js 16 (App Router) · Postgres (Neon, serverless) · Tailwind CSS 4 · Vercel Blob · Gemini (Google) pour les agents IA.
 
 ## Démarrage rapide
 
@@ -32,7 +32,7 @@ Postgres (ou le fallback fichier) ne stocke que ce que les utilisateurs modifien
 | `AUTH_PASSWORD` | Mot de passe administrateur familial | oui |
 | `AUTH_SECRET` | Secret de signature des sessions (≥32 caractères aléatoires) | oui |
 | `AUTH_USERS_JSON` | Accès nommés supplémentaires (voir ci-dessous) | non |
-| `ANTHROPIC_API_KEY` | Clé API Claude, requise pour les fonctionnalités IA (`/api/ai`) | pour les features IA |
+| `GEMINI_API_KEY` | Clé API Gemini (gratuite sur aistudio.google.com), requise pour les fonctionnalités IA (`/api/ai`, portrait de fiche) | pour les features IA |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob, pour l'upload de documents/avatars | pour l'upload de médias |
 | `GITHUB_TOKEN` | Création d'issues GitHub depuis les suggestions (scope `repo`) | pour cette intégration |
 | `GEO_DATA_DIR` | Répertoire du fallback fichier (utile pour isoler des tests) | non |
@@ -68,7 +68,7 @@ src/
     documents-store.ts     Métadonnées documents (Postgres, fichiers sur Blob)
     duplicate-analysis.ts  Détection et éligibilité de fusion des doublons
     auth.ts                Authentification par mot de passe, sessions signées
-    ai.ts                  Client Anthropic + runAgentsInParallel
+    ai.ts                  Client Gemini (@google/genai) + runAgentsInParallel
 scripts/        Scripts ponctuels (dédoublonnage GEDCOM, géocodage)
 tests/          Tests unitaires (node --test) + tests de parcours (Playwright)
 specs/          Specs d'implémentation par écran, dérivées du mockup design

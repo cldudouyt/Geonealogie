@@ -50,7 +50,7 @@ src/
     state-store.ts         — Lecture/écriture versionnée générique (kv_state)
     auth.ts                — Authentification, rôles, sessions signées
     duplicate-analysis.ts  — Détection et éligibilité de fusion des doublons
-    ai.ts                  — Client Anthropic + runAgentsInParallel
+    ai.ts                  — Client Gemini (@google/genai) + runAgentsInParallel
     types/                 — Types TypeScript
 scripts/
   dedupe-gedcom.ts       — Nettoyage des blocs INDI/FAM dupliqués par le bug d'export Heredis
@@ -106,7 +106,7 @@ scripts/
 | `/admin` | Géocodage admin |
 | `/feedback` | Suggestions reçues |
 
-## Stack IA — agents en parallèle
+## Stack IA — Gemini, agents en parallèle
 
 ### Utilisation de `runAgentsInParallel`
 ```typescript
@@ -131,7 +131,7 @@ const results = await runAgentsInParallel([
 - `POST { mode: "parallel", tasks: [...] }` → `{ results: AgentResult[] }`
 
 ### Modèle par défaut
-`claude-sonnet-4-6` — configurable via `DEFAULT_MODEL` dans `src/lib/ai.ts`
+`gemini-flash-latest` (palier gratuit) — configurable via `DEFAULT_MODEL` dans `src/lib/ai.ts`. Client Gemini (`@google/genai`) exposé via `genAI` ; `generateText()` fait un seul appel système+utilisateur, `runAgentsInParallel()` et `streamAgentResponse()` sont construits dessus.
 
 ## Données
 - Fichier GEDCOM source : `Dudouyt Heredis 2014-Export.ged`, parsé en mémoire au démarrage (pas de rechargement à chaud — redémarrer après modification du fichier)
@@ -153,7 +153,7 @@ Logique dans `src/lib/auth.ts`. Détails (expiration, invalidation, fusion de do
 ## Variables d'environnement
 ```
 DATABASE_URL=postgres://...    ← Postgres Neon (injecté par Vercel) ; absent = fallback fichier data/*.json
-ANTHROPIC_API_KEY=sk-ant-...   ← obligatoire pour les features IA
+GEMINI_API_KEY=...             ← obligatoire pour les features IA (clé gratuite sur aistudio.google.com)
 BLOB_READ_WRITE_TOKEN=...
 AUTH_PASSWORD=...
 AUTH_SECRET=...
