@@ -132,3 +132,20 @@ export async function restoreLatest(entryId: string, actor: string): Promise<voi
 
   });
 }
+
+export interface MergeOperation { keepId: string; deleteId: string; edit: PersonEdit }
+export async function mergePersonBatch(operations: MergeOperation[], actor: string, expectedRevision: number): Promise<void> {
+  if (!operations.length || operations.length > 50) throw new Error('Sélectionnez entre 1 et 50 paires.');
+  const ids = operations.flatMap(p => [p.keepId, p.deleteId]);
+  if (new Set(ids).size !== ids.length) throw new Error('Une fiche ne peut apparaître qu’une fois dans le lot.');
+  await changeOverrides(actor, `Fusion en lot de ${operations.length} paires`, ids, s => {
+    if ((s.revision ?? 0) !== expectedRevision) throw new Error('Les données ont changé. Relancez l’analyse avant de fusionner.');
+    for (const id of ids) if (s.deletedPersonIds?.includes(id) || s.mergedPersons?.[id]) throw new Error('Une fiche a déjà été fusionnée ou supprimée.');
+    for (const {keepId,deleteId,edit} of operations) {
+      const custom = s.newPersons.find(p => p.id === keepId);
+      if (custom) Object.assign(custom, edit); else s.persons[keepId] = {...s.persons[keepId],...edit};
+      s.mergedPersons ??= {}; s.mergedPersons[deleteId] = keepId;
+      s.deletedPersonIds ??= []; s.deletedPersonIds.push(deleteId);
+    }
+  });
+}

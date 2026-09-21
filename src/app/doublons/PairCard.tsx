@@ -20,15 +20,16 @@ interface PairCardProps {
   b: Person;
   confidence: 'certain' | 'probable' | 'possible';
   reasons: string[];
+  blockers?: string[];
 }
 
 const CONF_STYLE: Record<PairCardProps['confidence'], { headBg: string; confCol: string; label: string }> = {
-  certain:  { headBg: '#fae6e3', confCol: '#b03a2e', label: 'CERTAIN' },
+  certain:  { headBg: '#fae6e3', confCol: '#b03a2e', label: 'FORTE CONCORDANCE' },
   probable: { headBg: '#f8eecf', confCol: '#8a6d12', label: 'PROBABLE' },
   possible: { headBg: '#e9eff5', confCol: '#3f617f', label: 'POSSIBLE' },
 };
 
-export default function PairCard({ a, b, confidence, reasons }: PairCardProps) {
+export default function PairCard({ a, b, confidence, reasons, blockers = [] }: PairCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
@@ -108,6 +109,7 @@ export default function PairCard({ a, b, confidence, reasons }: PairCardProps) {
 
       {/* Footer */}
       <div style={{ padding: '12px 18px', borderTop: '1px solid #f1ebdd', background: '#fffdf9' }}>
+        {blockers.length > 0 && <details><summary>Pourquoi une validation individuelle ?</summary><ul>{blockers.map(reason => <li key={reason}>{reason}</li>)}</ul></details>}
         {error && <p role="alert" className="error-message">{error}</p>}
         {pickMerge && preview ? <div>
           <h3>Comparer et préparer la fusion</h3><p>La fiche de gauche sera conservée. Choisissez chaque valeur à garder ; les événements, sources et documents seront réunis.</p>

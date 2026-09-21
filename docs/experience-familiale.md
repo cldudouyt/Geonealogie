@@ -57,3 +57,11 @@ npm run test:experience
 Le test de parcours démarre une instance locale de la version compilée et utilise un répertoire temporaire. Il ajoute uniquement des personnes fictives à sa copie des données. Il vérifie les accès, l’accueil mobile, le choix de référence, les onglets, les sources, l’export, l’édition, la fusion et l’annulation.
 
 Les tests de stockage couvrent les écritures parallèles, le rejet d’un formulaire périmé, l’annulation, les conflits de version et les pannes. Le test du contrôle de version utilise un adaptateur simulé ; il ne remplace pas un test sur l’instance Neon de production.
+
+## Analyse et fusion en lot des doublons
+
+La page Doublons propose « Analyser les doublons », puis une sélection explicite (50 paires maximum) et une confirmation. Aucun rapprochement n’est exécuté en arrière-plan. Les cas admissibles doivent partager le nom et tous les prénoms, une date de naissance complète valide (sans ABT/BEF/AFT), un lieu de naissance et deux identifiants de parents. Les relations conjugales et les enfants doivent concorder ; les contradictions dans les champs, l’adoption et les professions bloquent le lot. Les groupes de trois fiches ou plus compatibles demandent une comparaison individuelle. Une forte concordance ne prouve pas l’identité, notamment pour des homonymes.
+
+Les fiches ignorées restent exclues. La fiche conservée est indiquée dans l’aperçu ; les notes différentes, événements et sources sont réunis et les documents suivent les alias existants. Les données sont réanalysées côté serveur à la confirmation et une modification concurrente invalide la sélection. Les écritures sont atomiques : tout le lot est enregistré, ou rien ne l’est.
+
+Une seule entrée d’historique conserve le lot. L’annulation restaure **tout le lot**, tant qu’il est la dernière opération. Cette version ne permet pas d’annuler individuellement une fusion ancienne après de nouvelles contributions. Les fiches d’origine et les documents ne sont pas effacés physiquement.

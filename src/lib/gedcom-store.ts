@@ -790,6 +790,15 @@ export async function getAllPersons(): Promise<PersonRecord[]> {
   return Array.from((await getStore()).persons.values());
 }
 
+export async function getDuplicateKinships() {
+  const s = await getStore();
+  return Object.fromEntries(Array.from(s.persons.keys(), id => [id, {
+    parents: [...(s.childToParents.get(id) ?? [])],
+    children: [...(s.parentToChildren.get(id) ?? [])],
+    spouses: (s.spouseRelations.get(id) ?? []).map(rel => rel.spouseId),
+  }]));
+}
+
 export async function getParents(id: string): Promise<PersonRecord[]> {
   const s = await getStore();
   return (s.childToParents.get(id) || [])

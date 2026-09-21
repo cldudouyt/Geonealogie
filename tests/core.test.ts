@@ -59,7 +59,7 @@ test('versioned writes retry on concurrent updates without losing unrelated edit
     if (version !== row.version) return false;
     row = { data: structuredClone(data), version: row.version + 1 }; return true;
   };
-  await Promise.all(Array.from({length: 5}, (_, i) => mutateVersioned(read, compareSet, async () => ({}), data => { data[String(i)] = `change ${i}`; })));
+  await Promise.all(Array.from({length: 5}, (_, i) => mutateVersioned<Record<string, string>, void>(read, compareSet, async () => ({}), data => { data[String(i)] = `change ${i}`; })));
   assert.equal(row.version, 5); assert.equal(Object.keys(row.data).length, 5);
 });
 test('versioned writes propagate database outages instead of claiming success', async () => {
@@ -77,4 +77,24 @@ test('documents follow a merge and restoration without moving or losing files', 
   await mergePerson('P0', 'P1', {}, 'QA');
   assert.equal((await deleteDocumentMeta('P0', 'doc-test'))?.personId, 'P1');
   assert.equal((await getDocumentsForPerson('P0')).length, 0);
+});
+
+test('batch fusion is all-or-nothing, rejects overlap and stale data, and restores the whole lot', async () => {
+  const {mergePersonBatch} = await import('../src/lib/overrides-store');
+  for (const id of ['batch-a','batch-b','batch-c','batch-d']) await addNewPerson({id,givenNames:'Test',surname:'Lot',sex:'U'},'QA');
+  const before = await loadOverrides();
+  const ops = [{keepId:'batch-a',deleteId:'batch-b',edit:{notes:'Notes réunies'}},{keepId:'batch-c',deleteId:'batch-d',edit:{}}];
+  await assert.rejects(mergePersonBatch(ops,'QA',(before.revision ?? 0)-1),/changé/);
+  await assert.rejects(mergePersonBatch([ops[0],{...ops[1],deleteId:'batch-a'}],'QA',before.revision ?? 0),/fois/);
+  await assert.rejects(mergePersonBatch([ops[0],{...ops[1],deleteId:'P1'}],'QA',before.revision ?? 0),/supprimée/);
+  assert.deepEqual(await loadOverrides(),before);
+  await mergePersonBatch(ops,'QA',before.revision ?? 0);
+  const after=await loadOverrides();
+  assert.equal(after.history!.length,before.history!.length+1);
+  assert.equal(after.mergedPersons!['batch-b'],'batch-a'); assert.equal(after.mergedPersons!['batch-d'],'batch-c');
+  await restoreLatest(after.history!.at(-1)!.id,'QA');
+  const restored=await loadOverrides();
+  assert.deepEqual(restored.mergedPersons,before.mergedPersons);
+  assert.deepEqual(restored.newPersons,before.newPersons);
+  await assert.rejects(mergePersonBatch(ops,'QA',before.revision ?? 0),/changé/);
 });
