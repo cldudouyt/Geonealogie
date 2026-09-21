@@ -53,6 +53,7 @@ export async function POST(
       id: randomUUID(),
       personId: id,
       url: body.url,
+      access: body.url.includes('.private.blob.vercel-storage.com') ? ('private' as const) : undefined,
       originalName: body.originalName,
       title: body.title?.trim() || undefined,
       mimeType: body.mimeType,
@@ -90,12 +91,13 @@ export async function POST(
   const storedFilename = `${docId}.${rawExt || 'bin'}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const url = await uploadToStorage(id, storedFilename, buffer, file.type);
+  const url = await uploadToStorage(id, storedFilename, buffer, file.type, 'private');
 
   const doc = {
     id: docId,
     personId: id,
     url,
+    access: url.includes('.private.blob.vercel-storage.com') ? ('private' as const) : undefined,
     originalName: file.name,
     title,
     mimeType: file.type,

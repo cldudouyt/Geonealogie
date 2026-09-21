@@ -51,7 +51,7 @@ export default function DocumentsSection({
       if (USE_BLOB) {
         // Upload direct depuis le navigateur vers Vercel Blob (contourne la limite 4.5 Mo)
         const blob = await upload(file.name, file, {
-          access: 'public',
+          access: 'private',
           handleUploadUrl: '/api/blob-upload',
         });
         // Enregistrement des métadonnées uniquement (JSON)
@@ -121,7 +121,7 @@ export default function DocumentsSection({
               </span>
               <div className="flex-1 min-w-0">
                 <a
-                  href={doc.url}
+                  href={`/api/persons/${personId}/documents/${doc.id}/file`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm font-medium text-[#2f5142] hover:underline truncate block"

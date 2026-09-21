@@ -6,7 +6,8 @@ import { readState, mutateState } from './state-store';
 export interface DocumentMeta {
   id: string;
   personId: string;
-  url: string;         // public URL (blob CDN or /documents/personId/filename)
+  url: string;         // blob CDN URL or /documents/personId/filename
+  access?: 'private';  // set on Blob uploads since the privacy fix; undefined = legacy public blob or local file
   originalName: string;
   title?: string;
   mimeType: string;
@@ -30,11 +31,12 @@ export async function uploadToStorage(
   filename: string,
   buffer: Buffer,
   mimeType: string,
+  access: 'public' | 'private' = 'public',
 ): Promise<string> {
   if (shouldUseBlob()) {
     const { put } = await import('@vercel/blob');
     const blob = await put(`documents/${personId}/${filename}`, buffer, {
-      access: 'public',
+      access,
       contentType: mimeType,
     });
     return blob.url;
