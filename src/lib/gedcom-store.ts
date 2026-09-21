@@ -169,6 +169,17 @@ function parseCoord(str: string | undefined): number | undefined {
   return val * (dir === 'S' || dir === 'W' ? -1 : 1);
 }
 
+/** Reads LATI/LONG off a GEDCOM MAP node, logging (instead of silently dropping) any malformed coordinate data. */
+function coordsFromMap(getMap: () => any, personId: string, context: string): { lat?: number; lon?: number } {
+  try {
+    const map = getMap();
+    return { lat: parseCoord(getVal(map?.get('LATI'))), lon: parseCoord(getVal(map?.get('LONG'))) };
+  } catch (err) {
+    console.warn(`[gedcom-store] coordonnées ${context} illisibles pour ${personId}:`, err);
+    return {};
+  }
+}
+
 async function buildStore(): Promise<GedcomStore> {
 
   const gedcomPath = path.resolve(process.cwd(), 'Dudouyt Heredis 2014-Export.ged');
@@ -209,12 +220,7 @@ async function buildStore(): Promise<GedcomStore> {
     const birthParsed = parsePlace(birthPlaceFull);
     const birthPlace = birthParsed?.name || undefined;
 
-    let birthLat: number | undefined, birthLon: number | undefined;
-    try {
-      const map = birth?.getPlace()?.get('MAP');
-      birthLat = parseCoord(getVal(map?.get('LATI')));
-      birthLon = parseCoord(getVal(map?.get('LONG')));
-    } catch {}
+    const { lat: birthLat, lon: birthLon } = coordsFromMap(() => birth?.getPlace()?.get('MAP'), id, 'naissance');
 
     // Christening
     const chr = indi.get('CHR');
@@ -231,12 +237,7 @@ async function buildStore(): Promise<GedcomStore> {
     const deathParsed = parsePlace(deathPlaceFull);
     const deathPlace = deathParsed?.name || undefined;
 
-    let deathLat: number | undefined, deathLon: number | undefined;
-    try {
-      const dmap = death?.getPlace()?.get('MAP');
-      deathLat = parseCoord(getVal(dmap?.get('LATI')));
-      deathLon = parseCoord(getVal(dmap?.get('LONG')));
-    } catch {}
+    const { lat: deathLat, lon: deathLon } = coordsFromMap(() => death?.getPlace()?.get('MAP'), id, 'décès');
 
     // Burial
     const buri = indi.get('BURI');
@@ -266,12 +267,7 @@ async function buildStore(): Promise<GedcomStore> {
       const place = parsePlace(placeFull)?.name || undefined;
       const rawNote = node.get('NOTE')?.value()?.toString() || '';
       const note = cleanRtf(rawNote) || undefined;
-      let lat: number | undefined, lon: number | undefined;
-      try {
-        const map = node.get('PLAC')?.get('MAP');
-        lat = parseCoord(getVal(map?.get('LATI')));
-        lon = parseCoord(getVal(map?.get('LONG')));
-      } catch {}
+      const { lat, lon } = coordsFromMap(() => node.get('PLAC')?.get('MAP'), id, label);
       if (!dateRaw && !place && !note) return null;
       return { type: label, dateRaw, place, placeFull, lat, lon, note };
     }
@@ -290,12 +286,7 @@ async function buildStore(): Promise<GedcomStore> {
       const rawNote = evt.get('NOTE')?.value()?.toString() || '';
       const evtNote = cleanRtf(rawNote) || undefined;
 
-      let evtLat: number | undefined, evtLon: number | undefined;
-      try {
-        const evtMap = evt.get('PLAC')?.get('MAP');
-        evtLat = parseCoord(getVal(evtMap?.get('LATI')));
-        evtLon = parseCoord(getVal(evtMap?.get('LONG')));
-      } catch {}
+      const { lat: evtLat, lon: evtLon } = coordsFromMap(() => evt.get('PLAC')?.get('MAP'), id, type);
 
       events.push({ type, dateRaw: evtDateRaw, place: evtPlace, placeFull: evtPlaceFull || undefined, lat: evtLat, lon: evtLon, note: evtNote });
     }
