@@ -272,48 +272,53 @@ export default async function PersonPage({ params }: PersonPageProps) {
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.04\'%3E%3Cpath d=\'M0 0h40v40H0z\' fill=\'none\'/%3E%3Ccircle cx=\'20\' cy=\'20\' r=\'1\'/%3E%3C/g%3E%3C/svg%3E")', pointerEvents: 'none' }} />
 
         {/* Actions bar */}
-        <div className="relative z-10 flex items-center justify-between px-6 pt-4">
-          <Link href="/" className="flex items-center gap-1.5 text-white/75 hover:text-white text-sm transition-colors">
+        <div className="relative z-10 flex items-center justify-between px-4 pt-4 gap-2">
+          <Link href="/" className="flex items-center gap-1.5 text-white/75 hover:text-white text-sm transition-colors shrink-0">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Accueil
+            <span className="hidden sm:inline">Accueil</span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 overflow-x-auto">
             <ShareButton personId={id} />
             <Link
               href={`/person/${id}/print`}
               target="_blank"
-              className="px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 backdrop-blur-sm"
+              className="px-2.5 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1 backdrop-blur-sm shrink-0"
+              title="Télécharger PDF"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
               </svg>
-              PDF
+              <span className="hidden sm:inline">PDF</span>
             </Link>
             {canEdit && <Link
               href={`/person/${id}/edit`}
-              className="px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 backdrop-blur-sm"
+              className="px-2.5 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1 backdrop-blur-sm shrink-0"
+              title="Éditer"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
-              Éditer
+              <span className="hidden sm:inline">Éditer</span>
             </Link>}
             <Link
               href={`/feedback/new?person=${id}&name=${encodeURIComponent(person.displayName)}`}
-              className="px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 backdrop-blur-sm"
+              className="hidden sm:flex px-2.5 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors items-center gap-1 backdrop-blur-sm shrink-0"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
-              Suggérer une correction
+              Suggérer
             </Link>
             <Link
               href={`/tree?focus=${id}`}
-              className="px-3 py-1.5 bg-white text-[#1e3a2f] rounded-lg text-sm font-semibold hover:bg-white/90 transition-colors"
+              className="px-3 py-1.5 bg-white text-[#1e3a2f] rounded-lg text-sm font-semibold hover:bg-white/90 transition-colors flex items-center gap-1.5 shrink-0"
             >
-              Voir dans l&apos;arbre
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Arbre
             </Link>
           </div>
         </div>
