@@ -4,7 +4,7 @@ import { getNarrative, updateNarrative } from '@/lib/narratives-store';
 import { narrativeFacts, narrativeFingerprint } from '@/lib/narrative-facts';
 import { loadOverrides } from '@/lib/overrides-store';
 import { requireRole } from '@/lib/session';
-import { anthropic, DEFAULT_MODEL } from '@/lib/ai';
+import { generateText } from '@/lib/ai';
 
 type Context = { params: Promise<{ id: string }> };
 async function context(id: string) {
@@ -23,12 +23,11 @@ export async function POST(_req: NextRequest, { params }: Context) {
   if (previous && Date.now() - Date.parse(previous.generatedAt) < 60_000) return NextResponse.json({ error: 'Patientez une minute avant de régénérer.' }, { status: 429 });
   let text: string;
   try {
-    const message = await anthropic.messages.create({
-      model: DEFAULT_MODEL, max_tokens: 500,
-      system: 'Rédige un court portrait biographique en français. Utilise exclusivement les faits fournis. N’invente rien, ne complète aucune lacune. Adapte la longueur au nombre de faits. Texte simple sans Markdown.',
-      messages: [{ role: 'user', content: JSON.stringify(facts) }],
-    });
-    text = message.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+    text = await generateText(
+      'Rédige un court portrait biographique en français. Utilise exclusivement les faits fournis. N’invente rien, ne complète aucune lacune. Adapte la longueur au nombre de faits. Texte simple sans Markdown.',
+      JSON.stringify(facts),
+      500,
+    );
   } catch { return NextResponse.json({ error: 'Génération indisponible. Réessayez plus tard ou rédigez le portrait manuellement.' }, { status: 502 }); }
   if (!text) return NextResponse.json({ error: 'Aucun texte reçu.' }, { status: 502 });
   try {

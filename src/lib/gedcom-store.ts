@@ -745,6 +745,23 @@ async function applyOverrides(s: GedcomStore): Promise<void> {
     s.spouseRelations.delete(deleteId);
     s.persons.delete(deleteId);
   }
+
+  // ─── Deduplicate relation lists ──────────────────────────────────────────
+  // A cascading merge (A absorbs B, then B's co-parent/spouse/child is itself
+  // merged into C later) redirects an id to C in one place while another id
+  // already pointing at C survives untouched — each step is locally correct,
+  // but the two together leave literal duplicate ids in the array.
+  for (const [id, parents] of s.childToParents) {
+    if (new Set(parents).size !== parents.length) s.childToParents.set(id, [...new Set(parents)]);
+  }
+  for (const [id, children] of s.parentToChildren) {
+    if (new Set(children).size !== children.length) s.parentToChildren.set(id, [...new Set(children)]);
+  }
+  for (const [id, rels] of s.spouseRelations) {
+    const seen = new Set<string>();
+    const deduped = rels.filter(r => (seen.has(r.spouseId) ? false : (seen.add(r.spouseId), true)));
+    if (deduped.length !== rels.length) s.spouseRelations.set(id, deduped);
+  }
 }
 
 /** Call after saving overrides to force store re-initialization on next request */

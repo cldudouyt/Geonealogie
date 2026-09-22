@@ -29,7 +29,7 @@ La migration privée des documents, les photos publiques et le décalage du comm
 
 ## Vérifications
 
-- 33 tests unitaires/intégration passent : droits, stockage concurrent, fusions, restauration, GEDCOM, recherche, confidentialité des portraits, dates et CSV.
+- 34 tests unitaires/intégration passent : droits, stockage concurrent, fusions, restauration, GEDCOM, recherche, confidentialité des portraits, dates et CSV.
 - Build de production réussi ; TypeScript validé par le build. Lint ciblé des fichiers d’audit réussi.
 - Nouveaux tests navigateur : filtres conservés, navigation depuis l’en-tête et retour arrière ; suppression disque en panne (503), téléchargement suspendu (410), reprise (200), document absent (404) ; requêtes IA malformées (400), fournisseur non configuré (502), quota (429), lecteur interdit (403) ; cinq mauvais mots de passe puis refus de la tentative suivante. Comptes et données synthétiques exclusivement.
 - Lint global : 19 erreurs et 18 avertissements (notamment typages `any`, effets React et texte JSX). Ce sont des défauts de qualité de code, pas 37 bugs fonctionnels prouvés.

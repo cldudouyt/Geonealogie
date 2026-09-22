@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
   try {
     if (!await consumeLimit(limitKey('ai', session.credential), 10, 60_000, input.mode === 'parallel' ? input.tasks.length : 1)) return NextResponse.json({ error: 'Limite atteinte. Réessayez dans une minute.' }, { status: 429, headers: { 'Retry-After': '60' } });
   } catch { return NextResponse.json({ error: 'Service temporairement indisponible.' }, { status: 503 }); }
-  const signal = AbortSignal.any([req.signal, AbortSignal.timeout(45000)]);
+  const abort = new AbortController();
+  const signal = AbortSignal.any([req.signal, AbortSignal.timeout(45000), abort.signal]);
   try {
     if (input.mode === 'parallel') {
       const results = await runAgentsInParallel(input.tasks, undefined, signal);
@@ -28,14 +29,14 @@ export async function POST(req: NextRequest) {
       async pull(controller) {
         try {
           while (!first.done) {
-            const event = first.value;
+            const chunk = first.value;
             first = await iterator.next();
-            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') { controller.enqueue(encoder.encode(event.delta.text)); return; }
+            if (chunk.text) { controller.enqueue(encoder.encode(chunk.text)); return; }
           }
           controller.close();
-        } catch { stream.abort(); controller.error(new Error('Réponse IA interrompue. Réessayez.')); }
+        } catch { abort.abort(); controller.error(new Error('Réponse IA interrompue. Réessayez.')); }
       },
-      cancel() { stream.abort(); },
+      cancel() { abort.abort(); },
     }), { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } });
-  } catch { return NextResponse.json({ error: 'Le service IA est indisponible ou a dépassé le délai. Réessayez plus tard.' }, { status: 502 }); }
+  } catch { abort.abort(); return NextResponse.json({ error: 'Le service IA est indisponible ou a dépassé le délai. Réessayez plus tard.' }, { status: 502 }); }
 }

@@ -6,9 +6,9 @@ import { redirect } from 'next/navigation';
 import { authenticate, makeSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth';
 
 export async function login(
-  _prevState: { error?: string; success?: boolean } | null,
+  _prevState: { error?: string; success?: string } | null,
   formData: FormData,
-): Promise<{ error?: string; success?: boolean }> {
+): Promise<{ error?: string; success?: string }> {
   const password = formData.get('password')?.toString() || '';
 
   if (password.length > 1024) return { error: 'Mot de passe trop long.' };
@@ -32,8 +32,7 @@ export async function login(
     maxAge: SESSION_MAX_AGE,
     path: '/',
   });
-
-  return { success: true };
+  return { success: crypto.randomUUID() };
 }
 
 export async function logout(): Promise<void> {

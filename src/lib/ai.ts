@@ -1,12 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from '@google/genai';
 
-export const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-  timeout: 45000,
-  maxRetries: 0,
-});
+export const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-export const DEFAULT_MODEL = "claude-sonnet-4-6";
+export const DEFAULT_MODEL = "gemini-flash-latest";
 
 export type AgentTask = {
   name: string;
@@ -21,7 +17,28 @@ export type AgentResult = {
 };
 
 /**
- * Lance plusieurs agents Claude en parallèle et retourne leurs résultats.
+ * Un seul appel à Gemini : instructions système + message utilisateur → texte.
+ */
+export async function generateText(
+  systemPrompt: string,
+  userMessage: string,
+  maxOutputTokens = 4096,
+  model = DEFAULT_MODEL,
+  signal?: AbortSignal,
+): Promise<string> {
+  const response = await genAI.models.generateContent({
+    model,
+    contents: userMessage,
+    // Thinking is on by default and its tokens count against maxOutputTokens —
+    // for these short, non-reasoning tasks it was silently eating the whole
+    // budget and truncating the visible text. Not needed here.
+    config: { systemInstruction: systemPrompt, maxOutputTokens, thinkingConfig: { thinkingBudget: 0 }, abortSignal: signal, httpOptions: { timeout: 45_000 } },
+  });
+  return (response.text ?? "").trim();
+}
+
+/**
+ * Lance plusieurs agents Gemini en parallèle et retourne leurs résultats.
  * Chaque agent reçoit son propre system prompt et message utilisateur.
  */
 export async function runAgentsInParallel(
@@ -31,14 +48,7 @@ export async function runAgentsInParallel(
 ): Promise<AgentResult[]> {
   const results = await Promise.allSettled(
     tasks.map(async (task): Promise<AgentResult> => {
-      const message = await anthropic.messages.create({
-        model,
-        max_tokens: 4096,
-        system: task.systemPrompt,
-        messages: [{ role: "user", content: task.userMessage }],
-      }, { signal });
-      const content =
-        message.content[0].type === "text" ? message.content[0].text : "";
+      const content = await generateText(task.systemPrompt, task.userMessage, 4096, model, signal);
       return { name: task.name, content };
     })
   );
@@ -54,7 +64,7 @@ export async function runAgentsInParallel(
 }
 
 /**
- * Stream une réponse Claude pour les cas interactifs (UI streaming).
+ * Stream une réponse Gemini pour les cas interactifs (UI streaming).
  */
 export async function streamAgentResponse(
   systemPrompt: string,
@@ -62,12 +72,11 @@ export async function streamAgentResponse(
   model = DEFAULT_MODEL,
   signal?: AbortSignal
 ) {
-  return anthropic.messages.stream({
+  return genAI.models.generateContentStream({
     model,
-    max_tokens: 4096,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userMessage }],
-  }, { signal });
+    contents: userMessage,
+    config: { systemInstruction: systemPrompt, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: 0 }, abortSignal: signal, httpOptions: { timeout: 45_000 } },
+  });
 }
 
 export const GENEALOGY_SYSTEM_PROMPT = `Tu es un assistant généalogique expert pour la famille Dudouyt.
