@@ -280,43 +280,38 @@ export default async function PersonPage({ params }: PersonPageProps) {
             <span className="hidden sm:inline">Accueil</span>
           </Link>
           <div className="flex items-center gap-1.5">
-            {/* Secondary actions — desktop only */}
-            <div className="hidden sm:flex items-center gap-1.5">
-              <ShareButton personId={id} />
-              <Link
-                href={`/person/${id}/print`}
-                target="_blank"
-                className="px-2.5 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1 backdrop-blur-sm"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-                </svg>
-                PDF
-              </Link>
-              {canEdit && <Link
-                href={`/person/${id}/edit`}
-                className="px-2.5 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1 backdrop-blur-sm"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                Éditer
-              </Link>}
-              <Link
-                href={`/feedback/new?person=${id}&name=${encodeURIComponent(person.displayName)}`}
-                className="px-2.5 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1 backdrop-blur-sm"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                Suggérer
-              </Link>
-            </div>
-            {/* Share — mobile only */}
-            <div className="sm:hidden">
-              <ShareButton personId={id} />
-            </div>
-            {/* Arbre — always visible */}
+            <ShareButton personId={id} />
+            <Link
+              href={`/person/${id}/print`}
+              target="_blank"
+              className="p-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center backdrop-blur-sm"
+              title="Télécharger PDF"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              </svg>
+              <span className="hidden sm:inline ml-1">PDF</span>
+            </Link>
+            {canEdit && <Link
+              href={`/person/${id}/edit`}
+              className="p-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center backdrop-blur-sm"
+              title="Éditer la fiche"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              <span className="hidden sm:inline ml-1">Éditer</span>
+            </Link>}
+            <Link
+              href={`/feedback/new?person=${id}&name=${encodeURIComponent(person.displayName)}`}
+              className="p-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-colors flex items-center backdrop-blur-sm"
+              title="Suggérer une correction"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span className="hidden sm:inline ml-1">Suggérer</span>
+            </Link>
             <Link
               href={`/tree?focus=${id}`}
               className="px-3 py-1.5 bg-white text-[#1e3a2f] rounded-lg text-sm font-semibold hover:bg-white/90 transition-colors flex items-center gap-1.5"
