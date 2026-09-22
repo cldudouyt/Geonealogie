@@ -70,6 +70,8 @@ export default function GlobalHeader() {
       return;
     }
     const q = query.trim();
+    ++searchVersion.current;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     setOpen(false);
     router.push(q ? `/search?q=${encodeURIComponent(q)}` : '/search');
   };

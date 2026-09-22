@@ -2,6 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
+  timeout: 45000,
+  maxRetries: 0,
 });
 
 export const DEFAULT_MODEL = "claude-sonnet-4-6";
@@ -24,7 +26,8 @@ export type AgentResult = {
  */
 export async function runAgentsInParallel(
   tasks: AgentTask[],
-  model = DEFAULT_MODEL
+  model = DEFAULT_MODEL,
+  signal?: AbortSignal
 ): Promise<AgentResult[]> {
   const results = await Promise.allSettled(
     tasks.map(async (task): Promise<AgentResult> => {
@@ -33,7 +36,7 @@ export async function runAgentsInParallel(
         max_tokens: 4096,
         system: task.systemPrompt,
         messages: [{ role: "user", content: task.userMessage }],
-      });
+      }, { signal });
       const content =
         message.content[0].type === "text" ? message.content[0].text : "";
       return { name: task.name, content };
@@ -45,7 +48,7 @@ export async function runAgentsInParallel(
     return {
       name: tasks[i].name,
       content: "",
-      error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+      error: 'Service IA indisponible ou délai dépassé.',
     };
   });
 }
@@ -56,14 +59,15 @@ export async function runAgentsInParallel(
 export async function streamAgentResponse(
   systemPrompt: string,
   userMessage: string,
-  model = DEFAULT_MODEL
+  model = DEFAULT_MODEL,
+  signal?: AbortSignal
 ) {
   return anthropic.messages.stream({
     model,
     max_tokens: 4096,
     system: systemPrompt,
     messages: [{ role: "user", content: userMessage }],
-  });
+  }, { signal });
 }
 
 export const GENEALOGY_SYSTEM_PROMPT = `Tu es un assistant généalogique expert pour la famille Dudouyt.

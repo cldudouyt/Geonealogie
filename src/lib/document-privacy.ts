@@ -9,6 +9,7 @@ export async function migrateDocument(id: string) {
   const all = await readState<Record<string, DocumentMeta[]>>('documents', {});
   const doc = Object.values(all).flat().find(d => d.id === id);
   if (!doc) throw new Error('Document introuvable.');
+  if (doc.deletionPending) throw new Error('Suppression en attente. Terminez-la depuis la fiche.');
   if (doc.legacyPublicUrl) {
     await del(doc.legacyPublicUrl);
     await mutateState<Record<string, DocumentMeta[]>, void>('documents', {}, state => {
@@ -34,7 +35,7 @@ export async function migrateDocument(id: string) {
   if (!copied.equals(Buffer.concat(chunks))) throw new Error('Le contenu de la copie diffère de l’original.');
   await mutateState<Record<string, DocumentMeta[]>, void>('documents', {}, state => {
     const current = Object.values(state).flat().find(d => d.id === id);
-    if (!current || current.url !== doc.url) throw new Error('Document modifié entre-temps. Rechargez la page.');
+    if (!current || current.deletionPending || current.url !== doc.url) throw new Error('Document modifié entre-temps. Rechargez la page.');
     current.url = blob.url; current.access = 'private'; current.legacyPublicUrl = doc.url;
   });
   await migrateDocument(id);

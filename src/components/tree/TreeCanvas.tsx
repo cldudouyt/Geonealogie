@@ -82,7 +82,7 @@ export default function TreeCanvas({
     <div className="relative w-full h-full">
       <svg
         ref={svgRef}
-        id="main-content"
+        id="tree-canvas"
         tabIndex={0}
         role="application"
         aria-label="Arbre généalogique. Utilisez les flèches pour naviguer, + / - pour zoomer, Entrée pour ouvrir une fiche, Origine pour recentrer."

@@ -101,7 +101,11 @@ export default function DocumentsSection({
         method: 'DELETE',
       });
       if (res.ok) setDocs(prev => prev.filter(d => d.id !== docId));
-      else setError('Erreur lors de la suppression');
+      else {
+        const data = await res.json();
+        setError(data.error || 'Erreur lors de la suppression');
+        if (data.deletionPending) setDocs(prev => prev.map(d => d.id === docId ? { ...d, deletionPending: true } : d));
+      }
     } catch {
       setError('Erreur réseau');
     }
@@ -120,14 +124,14 @@ export default function DocumentsSection({
                 {MIME_ICON[doc.mimeType] ?? '📎'}
               </span>
               <div className="flex-1 min-w-0">
-                <a
+                {doc.deletionPending ? <p className="text-sm">{doc.title || doc.originalName} — suppression en attente</p> : <a
                   href={`/api/persons/${personId}/documents/${doc.id}/file`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm font-medium text-[#2f5142] hover:underline truncate block"
                 >
                   {doc.title || doc.originalName}
-                </a>
+                </a>}
                 <p className="text-xs text-[#9aa89b] mt-0.5">
                   {doc.title && doc.originalName !== doc.title && `${doc.originalName} · `}
                   {formatSize(doc.size)} · {new Date(doc.uploadedAt).toLocaleDateString('fr-FR')}
@@ -136,7 +140,8 @@ export default function DocumentsSection({
               {canEdit && <button
                 onClick={() => handleDelete(doc.id, doc.title || doc.originalName)}
                 className="shrink-0 p-1.5 text-[#9aa89b] hover:text-[#b91c1c] transition-colors rounded"
-                title="Supprimer ce document"
+                aria-label={doc.deletionPending ? "Réessayer la suppression" : "Supprimer ce document"}
+                title={doc.deletionPending ? "Réessayer la suppression" : "Supprimer ce document"}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

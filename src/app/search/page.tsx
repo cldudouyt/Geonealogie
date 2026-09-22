@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useId } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import type { PersonSummary } from '@/lib/types';
@@ -258,12 +258,14 @@ function InputField({
   min?: number;
   max?: number;
 }) {
+  const id = useId();
   return (
     <div>
-      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1c1f1c', marginBottom: 6 }}>
+      <label htmlFor={id} style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1c1f1c', marginBottom: 6 }}>
         {label}
       </label>
       <input
+        id={id}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -285,24 +287,29 @@ function InputField({
 }
 
 export default function SearchPage() {
+  const params = useSearchParams();
+  return <SearchForm key={params.toString()} initialParams={params.toString()} />;
+}
+
+function SearchForm({ initialParams }: { initialParams: string }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = new URLSearchParams(initialParams);
   const initialQ = searchParams.get('q') || '';
 
   const [query, setQuery] = useState(initialQ);
-  const [surname, setSurname] = useState('');
-  const [place, setPlace] = useState('');
-  const [occupation, setOccupation] = useState('');
-  const [sex, setSex] = useState('');
-  const [birthFrom, setBirthFrom] = useState('');
-  const [birthTo, setBirthTo] = useState('');
+  const [surname, setSurname] = useState(searchParams.get('surname') || '');
+  const [place, setPlace] = useState(searchParams.get('place') || '');
+  const [occupation, setOccupation] = useState(searchParams.get('occupation') || '');
+  const [sex, setSex] = useState(searchParams.get('sex') || '');
+  const [birthFrom, setBirthFrom] = useState(searchParams.get('birthFrom') || '');
+  const [birthTo, setBirthTo] = useState(searchParams.get('birthTo') || '');
   const [results, setResults] = useState<PersonSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [searchError, setSearchError] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(['surname','place','occupation','sex','birthFrom','birthTo'].some(key => searchParams.has(key)));
   const [archiveHits, setArchiveHits] = useState<ArchiveHits>({});
   const [archiveLoading, setArchiveLoading] = useState(false);
   const limit = 20;
@@ -378,20 +385,23 @@ export default function SearchPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    search(1);
-    fetchArchiveHits(query);
-    if (query) {
-      router.replace(`/search?q=${encodeURIComponent(query)}`, { scroll: false });
+    const next = new URLSearchParams(initialParams);
+    for (const [key, value] of Object.entries({ q: query.trim(), surname, place, occupation, sex, birthFrom, birthTo })) {
+      if (value) next.set(key, value); else next.delete(key);
     }
+    next.delete('page');
+    if (next.toString() === initialParams) { search(1); fetchArchiveHits(query); }
+    else router.push(`/search${next.size ? '?' + next.toString() : ''}`, { scroll: false });
   };
 
   useEffect(() => {
-    if (!initialQ) return;
+    if (!['q','surname','place','occupation','sex','birthFrom','birthTo'].some(key => searchParams.get(key))) return;
     const version = ++requestVersion.current;
     setSearched(true);
     setLoading(true);
     setSearchError(false);
-    const params = new URLSearchParams({ q: initialQ, page: '1', limit: String(limit) });
+    const params = new URLSearchParams(initialParams);
+    params.set('page', '1'); params.set('limit', String(limit));
     fetch(`/api/persons?${params}`)
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -411,6 +421,9 @@ export default function SearchPage() {
       })
       .finally(() => { if (version === requestVersion.current) setLoading(false); });
     fetchArchiveHits(initialQ);
+    // These refs are request counters, not DOM nodes: invalidate all in-flight responses.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { ++requestVersion.current; ++archiveVersion.current; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
