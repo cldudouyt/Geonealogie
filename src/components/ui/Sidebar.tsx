@@ -55,22 +55,22 @@ export default function Sidebar({ personId, onClose, onFocus, onNavigate }: Side
   const borderColor = sex === 'M' ? 'border-male' : sex === 'F' ? 'border-female' : 'border-neutral';
 
   return (
-    <div className="fixed top-14 right-0 bottom-0 w-[var(--sidebar-width)] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 z-40 overflow-y-auto shadow-lg transition-transform duration-300">
+    <div className="fixed top-14 right-0 bottom-0 w-[var(--sidebar-width)] sidebar-root z-40 overflow-y-auto shadow-lg transition-transform duration-300">
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-3 right-3 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        className="absolute top-3 right-3 sidebar-btn-close"
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
 
       {loading ? (
         <div className="p-6 space-y-4">
-          <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-          <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3 animate-pulse" />
-          <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2 animate-pulse" />
+          <div className="sidebar-skeleton h-8" />
+          <div className="sidebar-skeleton h-4 w-2/3" />
+          <div className="sidebar-skeleton h-4 w-1/2" />
         </div>
       ) : person ? (
         <div className="p-6">
@@ -78,17 +78,17 @@ export default function Sidebar({ personId, onClose, onFocus, onNavigate }: Side
           <div className={`border-l-4 ${borderColor} pl-4 mb-6`}>
             <div className="flex items-center gap-3 mb-1">
               <Monogram name={person.displayName} sex={person.sex} size="sm" />
-              <h2 className="text-xl font-bold">{person.displayName}</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--ink-900)', margin: 0 }}>{person.displayName}</h2>
             </div>
-            <p className="text-sm text-slate-500 mt-1">
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--ink-500)', marginTop: '4px' }}>
               {person.birthYear && `${person.birthDateRaw || person.birthYear}`}
-              {person.deathYear && ` - ${person.deathDateRaw || person.deathYear}`}
+              {person.deathYear && ` — ${person.deathDateRaw || person.deathYear}`}
             </p>
             {person.birthPlaceFull && (
-              <p className="text-sm text-slate-500">{person.birthPlaceFull}</p>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--ink-500)' }}>{person.birthPlaceFull}</p>
             )}
             {person.occupation && (
-              <p className="text-sm text-primary-light font-medium mt-1">{person.occupation}</p>
+              <p style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--green-600)', marginTop: '4px' }}>{person.occupation}</p>
             )}
           </div>
 
@@ -96,13 +96,17 @@ export default function Sidebar({ personId, onClose, onFocus, onNavigate }: Side
           <div className="flex gap-2 mb-6">
             <button
               onClick={() => onFocus(personId)}
-              className="flex-1 px-3 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-light transition-colors"
+              style={{ flex: 1, padding: '9px 12px', background: 'var(--green-700)', color: 'var(--paper-card)', borderRadius: 'var(--r-md)', fontSize: 'var(--text-sm)', fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'background var(--ease)' }}
+              onMouseOver={e => (e.currentTarget.style.background = 'var(--green-600)')}
+              onMouseOut={e => (e.currentTarget.style.background = 'var(--green-700)')}
             >
               Centrer l'arbre
             </button>
             <button
               onClick={() => onNavigate(personId)}
-              className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              style={{ flex: 1, padding: '9px 12px', background: 'var(--paper-card)', color: 'var(--green-700)', border: '1px solid var(--line-strong)', borderRadius: 'var(--r-md)', fontSize: 'var(--text-sm)', fontWeight: 600, cursor: 'pointer', transition: 'background var(--ease)' }}
+              onMouseOver={e => (e.currentTarget.style.background = 'var(--paper-body)')}
+              onMouseOut={e => (e.currentTarget.style.background = 'var(--paper-card)')}
             >
               Voir la fiche
             </button>
@@ -124,13 +128,13 @@ export default function Sidebar({ personId, onClose, onFocus, onNavigate }: Side
                 <div key={s.familyId}>
                   <PersonLink person={s.person} onClick={() => onFocus(s.person.id)} />
                   {s.marriageDate && (
-                    <p className="text-xs text-slate-400 ml-8">
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-label)', marginLeft: '24px', marginTop: '2px' }}>
                       Mariage : {s.marriageDateRaw || s.marriageDate}
-                      {s.marriagePlace && ` - ${s.marriagePlace}`}
+                      {s.marriagePlace && ` · ${s.marriagePlace}`}
                     </p>
                   )}
                   {s.divorceDateRaw && (
-                    <p className="text-xs text-slate-400 ml-8">
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-label)', marginLeft: '24px', marginTop: '2px' }}>
                       Divorce : {s.divorceDateRaw}
                     </p>
                   )}
@@ -172,8 +176,8 @@ export default function Sidebar({ personId, onClose, onFocus, onNavigate }: Side
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-5">
-      <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{title}</h3>
-      <div className="space-y-1">{children}</div>
+      <h3 className="sidebar-section-title mb-2">{title}</h3>
+      <div>{children}</div>
     </div>
   );
 }
@@ -181,14 +185,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function PersonLink({ person, onClick }: { person: PersonSummary; onClick: () => void }) {
   const dot = person.sex === 'M' ? 'bg-male' : person.sex === 'F' ? 'bg-female' : 'bg-neutral';
   return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
-    >
+    <button onClick={onClick} className="sidebar-person-link">
       <span className={`w-2 h-2 rounded-full ${dot} shrink-0`} />
-      <span className="text-sm group-hover:text-primary transition-colors">{person.displayName}</span>
+      <span className="sidebar-person-name">{person.displayName}</span>
       {person.birthDate && (
-        <span className="text-xs text-slate-400 ml-auto">{person.birthDate?.substring(0, 4)}</span>
+        <span className="sidebar-person-year">{person.birthDate?.substring(0, 4)}</span>
       )}
     </button>
   );
@@ -197,16 +198,16 @@ function PersonLink({ person, onClick }: { person: PersonSummary; onClick: () =>
 function ExpandableText({ text, limit }: { text: string; limit: number }) {
   const [expanded, setExpanded] = useState(false);
   if (text.length <= limit) {
-    return <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">{text}</p>;
+    return <p style={{ fontSize: 'var(--text-sm)', color: 'var(--ink-600)', whiteSpace: 'pre-wrap', lineHeight: 'var(--lh-body)' }}>{text}</p>;
   }
   return (
     <div>
-      <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">
+      <p style={{ fontSize: 'var(--text-sm)', color: 'var(--ink-600)', whiteSpace: 'pre-wrap', lineHeight: 'var(--lh-body)' }}>
         {expanded ? text : text.substring(0, limit) + '…'}
       </p>
       <button
         onClick={() => setExpanded(e => !e)}
-        className="text-xs text-primary hover:text-primary-light mt-1 transition-colors"
+        style={{ fontSize: 'var(--text-xs)', color: 'var(--green-600)', marginTop: '4px', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
       >
         {expanded ? 'Voir moins' : 'Voir plus'}
       </button>
