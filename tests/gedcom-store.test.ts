@@ -123,3 +123,28 @@ test('searchPersons falls back to a French phonetic key beyond Levenshtein toler
   const results = await searchPersons('Filipe');
   assert.ok(results.some(p => p.givenNames.includes('Philippe')));
 });
+
+test('merging two parents already linked to the same child keeps unique reciprocal links', async () => {
+  const { addNewPerson, mergePerson, loadOverrides, restoreLatest } = await import('../src/lib/overrides-store');
+  const { getParents, getChildren, getStore, clearStore } = await import('../src/lib/gedcom-store');
+  await addNewPerson({ id: 'duplicate-parent', givenNames: 'Parent', surname: 'Duplicate', sex: 'F', relations: [{ relType: 'parent', relPersonId: 'I3' }] });
+  await mergePerson('I2', 'duplicate-parent');
+  clearStore();
+  assert.deepEqual((await getParents('I3')).map(p => p.id).sort(), ['I1', 'I2']);
+  assert.deepEqual((await getStore()).childToParents.get('I3')?.sort(), ['I1', 'I2']);
+  assert.equal((await getChildren('I2')).filter(p => p.id === 'I3').length, 1);
+  await restoreLatest((await loadOverrides()).history!.at(-1)!.id, 'QA');
+  clearStore();
+  assert.equal((await getParents('I3')).length, 3);
+});
+
+test('merging children already linked to the same parent keeps unique child links', async () => {
+  const { addNewPerson, mergePerson } = await import('../src/lib/overrides-store');
+  const { getChildren, getStore, clearStore } = await import('../src/lib/gedcom-store');
+  await addNewPerson({ id: 'duplicate-child', givenNames: 'Child', surname: 'Duplicate', sex: 'U', relations: [{ relType: 'child', relPersonId: 'I3' }] });
+  await mergePerson('I5', 'duplicate-child');
+  clearStore();
+  assert.equal((await getChildren('I3')).filter(p => p.id === 'I5').length, 1);
+  const ids = (await getStore()).parentToChildren.get('I3')!;
+  assert.equal(ids.length, new Set(ids).size);
+});

@@ -23,13 +23,13 @@ export function parseStrictFullDate(raw: string): { year: number; month: number;
   const date = new Date(0);
   date.setUTCFullYear(year, monthIdx, day);
   if (date.getUTCMonth() !== monthIdx || date.getUTCDate() !== day) return null;
-  return { year, month: monthIdx + 1, day, iso: `${year}-${monthStr}-${String(day).padStart(2, '0')}` };
+  return { year, month: monthIdx + 1, day, iso: `${String(year).padStart(4, '0')}-${monthStr}-${String(day).padStart(2, '0')}` };
 }
 
 export function normalizeDate(rawDate: string | undefined): string | undefined {
   if (!rawDate) return undefined;
 
-  let cleaned = rawDate.trim();
+  let cleaned = rawDate.trim().toUpperCase();
 
   // Handle "FROM date1 TO date2" and "BET date1 AND date2" — take the first date
   if (cleaned.startsWith('FROM ')) {
@@ -53,7 +53,7 @@ export function normalizeDate(rawDate: string | undefined): string | undefined {
   const monthYearMatch = cleaned.match(/^([A-Z]{3})\s+(\d{4})$/);
   if (monthYearMatch) {
     const [, month, year] = monthYearMatch;
-    return `${year}-${MONTHS[month]}`;
+    return MONTHS[month] ? `${year}-${MONTHS[month]}` : undefined;
   }
 
   // Year only: "1850"
@@ -71,17 +71,11 @@ export function extractYear(rawDate: string | undefined): string | undefined {
   return match ? match[1] : undefined;
 }
 
-/**
- * Extracts day+month from anywhere in a raw GEDCOM date, ignoring qualifiers
- * like ABT/BEF/AFT — used for recurring-date features (birthdays, "on this
- * day") where an approximate date is still useful, unlike parseStrictFullDate.
- */
+/** Recurring events require an exact, calendar-valid day, not a date bound or range. */
 export function parseDayMonth(raw: string | undefined): { day: number; month: number } | null {
   if (!raw) return null;
-  const m = raw.match(/\b(\d{1,2})\s+([A-Z]{3})\b/);
+  const m = raw.trim().toUpperCase().match(/^(\d{1,2})\s+([A-Z]{3})(?:\s+(\d{4}))?$/);
   if (!m) return null;
-  const day = parseInt(m[1], 10);
-  const monthStr = MONTHS[m[2]];
-  if (!monthStr || day < 1 || day > 31) return null;
-  return { day, month: Number(monthStr) };
+  const exact = parseStrictFullDate(`${m[1]} ${m[2]} ${m[3] || '2000'}`);
+  return exact ? { day: exact.day, month: exact.month } : null;
 }

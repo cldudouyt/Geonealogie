@@ -43,7 +43,7 @@ try {
   const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'Télécharger la sauvegarde avec fichiers' }).click(); const archiveFile = await (await download).path(); const archive = JSON.parse(await readFile(archiveFile, 'utf8'));
   assert.equal(archive.format, 'geonealogie-backup-v2'); assert.equal(archive.assets.length, 1); assert.equal(Buffer.from(archive.assets[0].data.split(',')[1], 'base64').toString(), 'Archive QA exact bytes');
   await page.getByText('Récupérer les fichiers d’une sauvegarde', { exact: true }).click(); await page.getByLabel('Sauvegarde à vérifier').setInputFiles(archiveFile); await page.getByText(/Archive vérifiée : 1 fichier/).waitFor();
-  for (const route of ['/admin','/admin/privacy','/anomalies','/']) { await page.goto(base + route); await mobile(); }
+  for (const route of ['/admin','/admin/privacy','/anomalies','/','/tree','/map','/network','/anniversaires','/relation','/timeline','/stats','/doublons','/feedback','/feedback/new','/person/new','/admin/geocode','/admin/feedback']) { const response = await page.goto(base + route); assert.equal(response.status(), 200, route); await page.waitForLoadState('networkidle'); await mobile(); console.log('PASS route', route); }
   await mkdir('/tmp/geonealogie-screens', { recursive: true }); await page.screenshot({ path: '/tmp/geonealogie-screens/home-reliability-mobile.png', fullPage: true });
   await context.clearCookies(); await login('qa-reader');
   for (const route of ['/admin','/history','/api/export/backup','/api/admin/backup-photo?id=qa-person']) assert.equal((await context.request.get(base + route)).status(), 403);

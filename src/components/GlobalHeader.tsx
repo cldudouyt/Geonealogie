@@ -21,10 +21,11 @@ export default function GlobalHeader() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const searchVersion = useRef(0);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const search = useCallback(async (q: string) => {
+  const search = useCallback(async (q: string, version: number) => {
     if (q.trim().length < 2) {
       setResults([]);
       setOpen(false);
@@ -32,23 +33,30 @@ export default function GlobalHeader() {
     }
     try {
       const res = await fetch(`/api/persons?autocomplete=true&q=${encodeURIComponent(q)}&limit=8`);
+      if (!res.ok) throw new Error('Recherche indisponible');
       const data = await res.json();
+      if (version !== searchVersion.current) return;
       const persons: SearchResult[] = data.persons || [];
       setResults(persons);
       setOpen(persons.length > 0);
       setActiveIndex(-1);
     } catch {
+      if (version !== searchVersion.current) return;
+      setOpen(false);
       setResults([]);
     }
   }, []);
 
   const handleChange = (value: string) => {
     setQuery(value);
+    const version = ++searchVersion.current;
+    setOpen(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => search(value), 250);
+    debounceRef.current = setTimeout(() => search(value, version), 250);
   };
 
   const goToPerson = (id: string) => {
+    ++searchVersion.current;
     setOpen(false);
     setQuery('');
     setResults([]);

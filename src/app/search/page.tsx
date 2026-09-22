@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import type { PersonSummary } from '@/lib/types';
@@ -306,9 +306,12 @@ export default function SearchPage() {
   const [archiveHits, setArchiveHits] = useState<ArchiveHits>({});
   const [archiveLoading, setArchiveLoading] = useState(false);
   const limit = 20;
+  const requestVersion = useRef(0);
+  const archiveVersion = useRef(0);
 
   const search = useCallback(
     async (pageNum: number = 1) => {
+      const version = ++requestVersion.current;
       setLoading(true);
       setSearched(true);
       setSearchError(false);
@@ -328,23 +331,27 @@ export default function SearchPage() {
         const res = await fetch(`/api/persons?${params}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        if (version !== requestVersion.current) return;
         setResults(data.persons || []);
         setTotal(data.total || 0);
         setCurrentPage(pageNum);
       } catch {
+        if (version !== requestVersion.current) return;
         setResults([]);
         setTotal(0);
         setSearchError(true);
       } finally {
-        setLoading(false);
+        if (version === requestVersion.current) setLoading(false);
       }
     },
     [query, surname, place, occupation, sex, birthFrom, birthTo]
   );
 
   const fetchArchiveHits = useCallback(async (q: string) => {
+    const version = ++archiveVersion.current;
     if (!q.trim()) {
       setArchiveHits({});
+      setArchiveLoading(false);
       return;
     }
     setArchiveLoading(true);
@@ -364,6 +371,7 @@ export default function SearchPage() {
         }
       })
     );
+    if (version !== archiveVersion.current) return;
     setArchiveHits(hits);
     setArchiveLoading(false);
   }, []);
@@ -379,6 +387,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (!initialQ) return;
+    const version = ++requestVersion.current;
     setSearched(true);
     setLoading(true);
     setSearchError(false);
@@ -389,16 +398,18 @@ export default function SearchPage() {
         return r.json();
       })
       .then(data => {
+        if (version !== requestVersion.current) return;
         setResults(data.persons || []);
         setTotal(data.total || 0);
         setCurrentPage(1);
       })
       .catch(() => {
+        if (version !== requestVersion.current) return;
         setResults([]);
         setTotal(0);
         setSearchError(true);
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (version === requestVersion.current) setLoading(false); });
     fetchArchiveHits(initialQ);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

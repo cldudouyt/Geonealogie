@@ -685,7 +685,7 @@ async function applyOverrides(s: GedcomStore): Promise<void> {
       const idx = childParents.indexOf(deleteId);
       if (idx !== -1) childParents[idx] = keepId;
       else if (!childParents.includes(keepId)) childParents.push(keepId);
-      s.childToParents.set(childId, childParents);
+      s.childToParents.set(childId, [...new Set(childParents)]);
     }
     s.parentToChildren.set(keepId, keepChildren);
     s.parentToChildren.delete(deleteId);
@@ -699,7 +699,7 @@ async function applyOverrides(s: GedcomStore): Promise<void> {
       const idx = parentChildren.indexOf(deleteId);
       if (idx !== -1) parentChildren[idx] = keepId;
       else if (!parentChildren.includes(keepId)) parentChildren.push(keepId);
-      s.parentToChildren.set(parentId, parentChildren);
+      s.parentToChildren.set(parentId, [...new Set(parentChildren)]);
     }
     s.childToParents.set(keepId, keepParents);
     s.childToParents.delete(deleteId);

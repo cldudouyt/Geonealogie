@@ -10,8 +10,9 @@ export async function GET(request: NextRequest) {
   const sex = searchParams.get('sex') || '';
   const birthFrom = searchParams.get('birthFrom') ? parseInt(searchParams.get('birthFrom')!, 10) : null;
   const birthTo = searchParams.get('birthTo') ? parseInt(searchParams.get('birthTo')!, 10) : null;
-  const page = parseInt(searchParams.get('page') || '1', 10);
-  const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100);
+  const page = Number(searchParams.get('page') || '1');
+  const limit = Math.min(Number(searchParams.get('limit') || '20'), 100);
+  if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(limit) || limit < 1 || (birthFrom !== null && !Number.isFinite(birthFrom)) || (birthTo !== null && !Number.isFinite(birthTo)) || (birthFrom !== null && birthTo !== null && birthFrom > birthTo)) return NextResponse.json({ error: 'Pagination ou intervalle de dates invalide.' }, { status: 400 });
   const autocomplete = searchParams.get('autocomplete') === 'true';
   const allMarkers = searchParams.get('allMarkers') === 'true';
   const skip = (page - 1) * limit;
@@ -42,13 +43,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ persons: await searchPersons(q, limit) });
     }
 
-    if (q) {
-      const results = await searchPersons(q, 500);
-      return NextResponse.json({ persons: results.slice(skip, skip + limit), total: results.length, page, limit });
-    }
 
     const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
-    let results = await getAllPersons();
+    let results = q ? await searchPersons(q, Number.MAX_SAFE_INTEGER) : await getAllPersons();
     if (surname) { const sn = norm(surname); results = results.filter(p => norm(p.surname).includes(sn)); }
     if (place) { const pl = norm(place); results = results.filter(p => (p.birthPlaceFull && norm(p.birthPlaceFull).includes(pl)) || (p.deathPlaceFull && norm(p.deathPlaceFull).includes(pl))); }
     if (occupation) { const oc = norm(occupation); results = results.filter(p => p.occupation ? norm(p.occupation).includes(oc) : false); }
@@ -56,7 +53,7 @@ export async function GET(request: NextRequest) {
     if (birthFrom !== null) results = results.filter(p => p.birthYear && parseInt(p.birthYear) >= birthFrom);
     if (birthTo !== null) results = results.filter(p => p.birthYear && parseInt(p.birthYear) <= birthTo);
 
-    results = results.sort((a, b) => a.surname.localeCompare(b.surname) || a.givenNames.localeCompare(b.givenNames));
+    if (!q) results = results.sort((a, b) => a.surname.localeCompare(b.surname) || a.givenNames.localeCompare(b.givenNames));
     return NextResponse.json({ persons: results.slice(skip, skip + limit), total: results.length, page, limit });
   } catch (error) {
     console.error('Search error:', error);
