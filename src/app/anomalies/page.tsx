@@ -72,7 +72,7 @@ export default async function AnomaliesPage({ searchParams }: { searchParams: Pr
         .filter(o => o.id !== p.id)
         .map(o => o.displayName + (o.birthYear ? ` (${o.birthYear})` : ''))
         .join(', ');
-      push(p.id, p.displayName, 'warn', `Homonyme de : ${others}`);
+      push(p.id, p.displayName, 'err', `Homonyme de : ${others}`);
     }
   }
 

@@ -1,5 +1,8 @@
 import { hasDb, listSuggestions, type SuggestionRow } from '@/lib/db';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/session';
+import { permits } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Suggestions reçues — Géonéalogie' };
@@ -34,6 +37,11 @@ function formatDate(raw: string): string {
 }
 
 export default async function FeedbackPage() {
+  const session = await getSession();
+  if (!session || !permits(session.role, 'admin')) {
+    redirect('/');
+  }
+
   let suggestions: SuggestionRow[] = [];
   try {
     if (hasDb()) suggestions = await listSuggestions();
