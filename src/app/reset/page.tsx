@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { requestReset, applyReset } from './actions';
 
 const cardStyle: React.CSSProperties = {
@@ -54,7 +55,9 @@ function ErrorBox({ msg }: { msg: string }) {
   );
 }
 
-export default function ResetPage() {
+function ResetPageInner() {
+  const searchParams = useSearchParams();
+  const prefilledEmail = searchParams.get('email') || '';
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [token, setToken] = useState('');
   const [maskedEmail, setMaskedEmail] = useState('');
@@ -107,11 +110,11 @@ export default function ResetPage() {
             fontSize: 24, fontWeight: 500, color: '#1c1f1c',
             letterSpacing: '-0.02em', margin: '0 0 6px',
           }}>
-            Mot de passe oublié
+            {prefilledEmail ? 'Créer votre mot de passe' : 'Mot de passe oublié'}
           </h1>
           <p style={{ fontSize: 13, color: '#8a8474', margin: 0 }}>
             {step === 'email'
-              ? 'Saisissez votre email pour recevoir un code.'
+              ? (prefilledEmail ? 'Votre compte est activé. Cliquez pour recevoir votre code.' : 'Saisissez votre email pour recevoir un code.')
               : `Code envoyé à ${maskedEmail}`}
           </p>
         </div>
@@ -125,6 +128,7 @@ export default function ResetPage() {
               <input
                 id="reset-email" name="email" type="email" required autoFocus
                 autoComplete="email" placeholder="marie@exemple.fr"
+                defaultValue={prefilledEmail}
                 style={inputStyle} onFocus={focus} onBlur={blur}
               />
             </div>
@@ -197,5 +201,13 @@ export default function ResetPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ResetPage() {
+  return (
+    <Suspense>
+      <ResetPageInner />
+    </Suspense>
   );
 }

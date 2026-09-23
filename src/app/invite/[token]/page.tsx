@@ -1,13 +1,9 @@
-import { getInvitation } from '@/lib/db';
-import InviteForm from './InviteForm';
+import { getInvitation, saveDbUser, markInvitationUsed } from '@/lib/db';
+import { hashPassword } from '@/lib/auth';
+import type { Role } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
-
-const ROLE_LABELS: Record<string, string> = {
-  reader: 'Lecteur',
-  contributor: 'Contributeur',
-  admin: 'Administrateur',
-};
 
 function ErrorCard({ title, body }: { title: string; body: string }) {
   return (
@@ -41,17 +37,28 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
   const { token } = await params;
   const inv = await getInvitation(token).catch(() => null);
 
-  if (!inv) return <ErrorCard title="Invitation invalide" body="Ce lien n'existe pas, a déjà été utilisé ou a expiré." />;
-  if (inv.usedAt) return <ErrorCard title="Déjà utilisée" body="Cette invitation a déjà été utilisée. Connectez-vous ou utilisez « Mot de passe oublié »." />;
+  if (!inv) return <ErrorCard title="Invitation invalide" body="Ce lien n'existe pas ou a expiré." />;
+  if (inv.usedAt) return <ErrorCard title="Déjà utilisée" body="Ce lien a déjà été utilisé. Connectez-vous ou utilisez « Mot de passe oublié »." />;
   if (new Date(inv.expiresAt) < new Date()) return <ErrorCard title="Invitation expirée" body="Ce lien a expiré. Demandez un nouveau lien à l'administrateur." />;
 
-  return (
-    <InviteForm
-      token={token}
-      roleLabel={ROLE_LABELS[inv.role] ?? inv.role}
-      suggestedName={inv.suggestedName}
-      createdBy={inv.createdBy}
-      email={inv.email}
-    />
-  );
+  // Auto-create the account — name from suggestedName or email prefix
+  const name = inv.suggestedName || inv.email.split('@')[0];
+  const userId = crypto.randomUUID();
+  const salt = crypto.randomUUID();
+  const passwordHash = await hashPassword(crypto.randomUUID(), salt);
+
+  await saveDbUser({
+    id: userId,
+    name,
+    email: inv.email,
+    role: inv.role as Role,
+    passwordHash,
+    salt,
+    createdAt: new Date().toISOString(),
+    invitationToken: token,
+  });
+  await markInvitationUsed(token, name);
+
+  // Redirect directly to reset page with email pre-filled
+  redirect(`/reset?email=${encodeURIComponent(inv.email)}`);
 }
