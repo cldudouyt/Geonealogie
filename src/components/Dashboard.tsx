@@ -109,15 +109,7 @@ export default async function Dashboard() {
   const centuryMax = stats.centuries.length ? Math.max(...stats.centuries.map(c => c.count)) : 1;
 
   return (
-    <div className="dashboard" style={{ background: '#f4f1ea', minHeight: '100vh' }}>
-      <style>{`
-        .dash-nav-card { background: #fffdf9; border-color: #e7e0d0; transition: border-color .15s, box-shadow .15s; }
-        .dash-nav-card:hover { border-color: #c9a86a; box-shadow: 0 4px 16px rgba(201,168,106,.12); }
-        .dash-recent-link { transition: background .15s; }
-        .dash-recent-link:hover { background: #f3efe5; }
-        .dash-surname-card { background: #fffdf9; border-color: #e9e2d2; transition: border-color .15s; }
-        .dash-surname-card:hover { border-color: #c9a86a; }
-      `}</style>
+    <div className="dashboard" style={{ background: 'var(--paper-body)', minHeight: '100vh' }}>
 
       {/* ── Hero ── */}
       <div className="dashboard-hero" style={{ padding: '52px 48px 44px', maxWidth: '1080px', margin: '0 auto' }}>
@@ -127,14 +119,14 @@ export default async function Dashboard() {
         <span
           style={{
             display: 'inline-block',
-            fontSize: '11px',
+            fontSize: 'var(--text-xs)',
             fontFamily: 'var(--font-sans)',
-            fontWeight: 600,
-            padding: '4px 14px',
-            borderRadius: '999px',
-            border: '1px solid #2f5142',
-            color: '#2f5142',
-            letterSpacing: '.08em',
+            fontWeight: 700,
+            padding: '5px 14px',
+            borderRadius: 'var(--r-pill)',
+            border: '1px solid var(--green-600)',
+            color: 'var(--green-600)',
+            letterSpacing: '.1em',
             textTransform: 'uppercase',
             marginBottom: '20px',
           }}
@@ -148,9 +140,9 @@ export default async function Dashboard() {
             fontFamily: 'var(--font-serif)',
             fontSize: 'clamp(40px, 5vw, 58px)',
             fontWeight: 500,
-            color: '#1c1f1c',
-            letterSpacing: '-0.02em',
-            lineHeight: 1.15,
+            color: 'var(--ink-900)',
+            letterSpacing: 'var(--track-tight)',
+            lineHeight: 'var(--lh-tight)',
             margin: '0 0 14px',
           }}
         >
@@ -160,10 +152,11 @@ export default async function Dashboard() {
         {/* Sous-titre */}
         <p
           style={{
-            fontSize: '15px',
-            color: '#6c7064',
+            fontSize: 'var(--text-base)',
+            color: 'var(--ink-secondary)',
             marginBottom: '40px',
             maxWidth: '560px',
+            lineHeight: 'var(--lh-body)',
           }}
         >
           Explorez l&apos;arbre de la famille Dudouyt — des percepteurs de la Manche aux Mercader de Barcelone et Santiago de Cuba.
@@ -171,7 +164,7 @@ export default async function Dashboard() {
 
         </div><PersonalJourney />
         {/* Stats en colonnes */}
-        <div className="dashboard-stats" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'stretch', gap: 0 }}>
+        <div className="dashboard-stats" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'stretch', gap: 0, paddingTop: '24px', borderTop: '1px solid var(--line)' }}>
           {[
             { value: stats.totalPersons, label: 'Personnes' },
             { value: stats.totalFamilies, label: 'Familles' },
@@ -188,7 +181,7 @@ export default async function Dashboard() {
                     alignSelf: 'stretch',
                     width: '1px',
                     margin: '0 28px',
-                    background: '#e0d8c6',
+                    background: 'var(--line-strong)',
                   }}
                 />
               )}
@@ -196,10 +189,10 @@ export default async function Dashboard() {
                 <div
                   style={{
                     fontFamily: 'var(--font-serif)',
-                    fontSize: '36px',
+                    fontSize: '38px',
                     fontWeight: 500,
-                    color: '#1c1f1c',
-                    letterSpacing: '-0.02em',
+                    color: 'var(--ink-900)',
+                    letterSpacing: 'var(--track-tight)',
                     lineHeight: 1,
                   }}
                 >
@@ -208,11 +201,11 @@ export default async function Dashboard() {
                 <div
                   style={{
                     fontFamily: 'var(--font-sans)',
-                    fontSize: '11px',
-                    color: '#6c7064',
+                    fontSize: 'var(--text-xs)',
+                    color: 'var(--ink-secondary)',
                     textTransform: 'uppercase',
-                    letterSpacing: '.12em',
-                    fontWeight: 600,
+                    letterSpacing: 'var(--track-label)',
+                    fontWeight: 700,
                     marginTop: '6px',
                   }}
                 >
@@ -303,33 +296,33 @@ export default async function Dashboard() {
                 alignItems: 'center',
                 gap: '16px',
                 padding: '20px',
-                borderRadius: '16px',
+                borderRadius: 'var(--r-card)',
                 border: '1px solid',
                 textDecoration: 'none',
               }}
             >
               <div
                 style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '12px',
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '14px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
-                  background: '#eef2ec',
-                  color: '#2f5142',
+                  background: 'var(--ok-bg)',
+                  color: 'var(--green-600)',
                 }}
               >
                 {card.iconPath}
               </div>
-              <div>
+              <div style={{ flex: 1 }}>
                 <p
                   style={{
                     fontFamily: 'var(--font-sans)',
-                    fontSize: '14px',
+                    fontSize: 'var(--text-sm)',
                     fontWeight: 600,
-                    color: '#1c1f1c',
+                    color: 'var(--ink-900)',
                     margin: 0,
                   }}
                 >
@@ -338,14 +331,17 @@ export default async function Dashboard() {
                 <p
                   style={{
                     fontFamily: 'var(--font-sans)',
-                    fontSize: '12px',
-                    color: '#6c7064',
-                    margin: '2px 0 0',
+                    fontSize: 'var(--text-xs)',
+                    color: 'var(--ink-secondary)',
+                    margin: '3px 0 0',
                   }}
                 >
                   {card.subtitle}
                 </p>
               </div>
+              <svg width="14" height="14" viewBox="0 0 14 14" style={{ flexShrink: 0, color: 'var(--ink-400)', opacity: 0.7 }}>
+                <path d="M4 2l6 5-6 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </a>
           ))}
         </div>
@@ -362,9 +358,9 @@ export default async function Dashboard() {
           {/* Colonne gauche — Noms de famille */}
           <div
             style={{
-              background: '#fffdf9',
-              border: '1px solid #e7e0d0',
-              borderRadius: '16px',
+              background: 'var(--paper-card)',
+              border: '1px solid var(--line)',
+              borderRadius: 'var(--r-card)',
               padding: '24px',
             }}
           >
@@ -381,7 +377,7 @@ export default async function Dashboard() {
                   fontFamily: 'var(--font-serif)',
                   fontSize: '23px',
                   fontWeight: 500,
-                  color: '#1c1f1c',
+                  color: 'var(--ink-900)',
                   margin: 0,
                 }}
               >
@@ -390,8 +386,8 @@ export default async function Dashboard() {
               <span
                 style={{
                   fontFamily: 'var(--font-sans)',
-                  fontSize: '13px',
-                  color: '#6c7064',
+                  fontSize: 'var(--text-sm)',
+                  color: 'var(--ink-secondary)',
                 }}
               >
                 {surnameGroups.length} lignées
@@ -407,9 +403,9 @@ export default async function Dashboard() {
             {stats.centuries.length > 0 && (
               <div
                 style={{
-                  background: '#fffdf9',
-                  border: '1px solid #e7e0d0',
-                  borderRadius: '16px',
+                  background: 'var(--paper-card)',
+                  border: '1px solid var(--line)',
+                  borderRadius: 'var(--r-card)',
                   padding: '24px',
                 }}
               >
@@ -426,7 +422,7 @@ export default async function Dashboard() {
                       fontFamily: 'var(--font-serif)',
                       fontSize: '18px',
                       fontWeight: 500,
-                      color: '#1c1f1c',
+                      color: 'var(--ink-900)',
                       margin: 0,
                     }}
                   >
@@ -436,9 +432,9 @@ export default async function Dashboard() {
                     href="/stats"
                     style={{
                       fontFamily: 'var(--font-sans)',
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      color: '#2f5142',
+                      fontSize: 'var(--text-xs)',
+                      fontWeight: 700,
+                      color: 'var(--green-600)',
                       textDecoration: 'none',
                     }}
                   >
@@ -453,8 +449,8 @@ export default async function Dashboard() {
                           width: '74px',
                           flexShrink: 0,
                           textAlign: 'right',
-                          fontSize: '12px',
-                          color: '#6c7064',
+                          fontSize: 'var(--text-xs)',
+                          color: 'var(--ink-secondary)',
                           fontFamily: 'var(--font-sans)',
                         }}
                       >
@@ -463,18 +459,18 @@ export default async function Dashboard() {
                       <div
                         style={{
                           flex: 1,
-                          height: '7px',
-                          borderRadius: '999px',
+                          height: '9px',
+                          borderRadius: 'var(--r-pill)',
                           overflow: 'hidden',
-                          background: '#ece5d5',
+                          background: 'var(--line-soft)',
                         }}
                       >
                         <div
                           style={{
                             width: `${(c.count / centuryMax) * 100}%`,
                             height: '100%',
-                            borderRadius: '999px',
-                            background: 'linear-gradient(90deg, #2f5142, #4a7058)',
+                            borderRadius: 'var(--r-pill)',
+                            background: 'linear-gradient(90deg, var(--green-600), var(--green-400))',
                           }}
                         />
                       </div>
@@ -483,9 +479,9 @@ export default async function Dashboard() {
                           width: '28px',
                           flexShrink: 0,
                           textAlign: 'right',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          color: '#6c7064',
+                          fontSize: 'var(--text-xs)',
+                          fontWeight: 700,
+                          color: 'var(--ink-secondary)',
                           fontFamily: 'var(--font-sans)',
                         }}
                       >
@@ -501,9 +497,9 @@ export default async function Dashboard() {
             {stats.recentPersons.length > 0 && (
               <div
                 style={{
-                  background: '#fffdf9',
-                  border: '1px solid #e7e0d0',
-                  borderRadius: '16px',
+                  background: 'var(--paper-card)',
+                  border: '1px solid var(--line)',
+                  borderRadius: 'var(--r-card)',
                   padding: '24px',
                 }}
               >
@@ -512,7 +508,7 @@ export default async function Dashboard() {
                     fontFamily: 'var(--font-serif)',
                     fontSize: '18px',
                     fontWeight: 500,
-                    color: '#1c1f1c',
+                    color: 'var(--ink-900)',
                     margin: '0 0 16px',
                   }}
                 >
@@ -534,21 +530,21 @@ export default async function Dashboard() {
                           alignItems: 'center',
                           gap: '12px',
                           padding: '10px 12px',
-                          borderRadius: '10px',
+                          borderRadius: 'var(--r-md)',
                           textDecoration: 'none',
                         }}
                       >
                         <div
                           style={{
-                            width: '34px',
-                            height: '34px',
+                            width: '36px',
+                            height: '36px',
                             borderRadius: '50%',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0,
-                            fontSize: '13px',
-                            fontWeight: 600,
+                            fontSize: 'var(--text-sm)',
+                            fontWeight: 700,
                             background: tint,
                             color: ink,
                             fontFamily: 'var(--font-sans)',
@@ -559,9 +555,9 @@ export default async function Dashboard() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p
                             style={{
-                              fontSize: '13.5px',
+                              fontSize: 'var(--text-sm)',
                               fontWeight: 600,
-                              color: '#1c1f1c',
+                              color: 'var(--ink-900)',
                               fontFamily: 'var(--font-sans)',
                               margin: 0,
                               overflow: 'hidden',
@@ -574,8 +570,8 @@ export default async function Dashboard() {
                           {meta && (
                             <p
                               style={{
-                                fontSize: '11.5px',
-                                color: '#6c7064',
+                                fontSize: 'var(--text-xs)',
+                                color: 'var(--ink-secondary)',
                                 fontFamily: 'var(--font-sans)',
                                 margin: '2px 0 0',
                               }}

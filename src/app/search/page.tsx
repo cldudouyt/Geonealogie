@@ -230,12 +230,12 @@ function ArchiveCard({
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  height: 40,
+  height: 44,
   padding: '0 14px',
   border: '1px solid #e0d8c6',
   borderRadius: 11,
   background: '#fffdf9',
-  fontSize: 14,
+  fontSize: 16,
   color: '#1c1f1c',
   outline: 'none',
   boxSizing: 'border-box',
@@ -462,7 +462,7 @@ function SearchForm({ initialParams }: { initialParams: string }) {
           }}
         >
           {/* Search bar — always visible */}
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div className="search-bar-row">
             <div style={{ position: 'relative', flex: 1 }}>
               <svg style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9a9384" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
               <input
@@ -475,23 +475,25 @@ function SearchForm({ initialParams }: { initialParams: string }) {
                 onBlur={(e) => { e.target.style.borderColor = '#e0d8c6'; e.target.style.boxShadow = 'none'; }}
               />
             </div>
-            <Button type="submit" variant="primary" disabled={loading} style={{ height: 40 }}>
-              {loading ? 'Recherche…' : 'Rechercher'}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setShowAdvanced(v => !v)}
-              style={{ height: 40 }}
-              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>}
-            >
-              {showAdvanced ? 'Réduire' : 'Filtres'}
-            </Button>
+            <div className="search-bar-actions">
+              <Button type="submit" variant="primary" disabled={loading} style={{ height: 44, flex: 1 }}>
+                {loading ? 'Recherche…' : 'Rechercher'}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowAdvanced(v => !v)}
+                style={{ height: 44 }}
+                icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>}
+              >
+                {showAdvanced ? 'Réduire' : 'Filtres'}
+              </Button>
+            </div>
           </div>
 
           {/* Advanced filters — collapsible */}
           {showAdvanced && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0ece2' }}>
+            <div className="search-filters-grid" style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0ece2' }}>
               <InputField label="Nom de famille" value={surname} onChange={setSurname} placeholder="DUDOUYT" />
               <InputField label="Lieu" value={place} onChange={setPlace} placeholder="Paris, Bretagne…" />
               <InputField label="Profession" value={occupation} onChange={setOccupation} placeholder="Cultivateur, notaire…" />
@@ -645,13 +647,7 @@ function SearchForm({ initialParams }: { initialParams: string }) {
             >
               Archives externes
             </h2>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: 13,
-              }}
-            >
+            <div className="archives-grid">
               {ARCHIVES.map((archive) => (
                 <ArchiveCard
                   key={archive.key}
@@ -670,6 +666,42 @@ function SearchForm({ initialParams }: { initialParams: string }) {
         @keyframes geo-fade {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: none; }
+        }
+        .search-bar-row {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+        }
+        .search-bar-actions {
+          display: flex;
+          gap: 8px;
+          flex-shrink: 0;
+        }
+        .search-filters-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 14px;
+        }
+        .archives-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 13px;
+        }
+        @media (max-width: 640px) {
+          .search-bar-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+          }
+          .search-bar-actions {
+            flex-shrink: unset;
+          }
+          .search-filters-grid {
+            grid-template-columns: 1fr;
+          }
+          .archives-grid {
+            grid-template-columns: 1fr 1fr;
+          }
         }
       `}</style>
     </div>
