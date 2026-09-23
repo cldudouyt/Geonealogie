@@ -218,6 +218,7 @@ export async function updateDbUserPassword(email: string, passwordHash: string, 
 export interface ResetToken {
   token: string;
   email: string;
+  otp: string;
   createdAt: string;
   expiresAt: string;
   usedAt?: string;

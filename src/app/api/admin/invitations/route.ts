@@ -49,7 +49,9 @@ export async function POST(req: Request) {
         <strong>${session.name}</strong> vous invite à rejoindre l'espace familial Géonéalogie
         en tant que <strong>${roleLabels[role]}</strong>.
       </p>
-      ${suggestedName ? `<p style="color:#4a4f46;line-height:1.6;margin:0 0 20px">Votre accès sera au nom de : <strong>${suggestedName}</strong></p>` : ''}
+      <p style="color:#4a4f46;line-height:1.6;margin:0 0 20px">
+        Vous vous connecterez avec cette adresse email : <strong>${email}</strong>
+      </p>
       <a href="${inviteUrl}" style="display:inline-block;background:#1e3a2f;color:#f1ede2;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px">
         Accepter l'invitation
       </a>
