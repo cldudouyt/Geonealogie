@@ -29,45 +29,43 @@ export async function verifyPassword(password: string, hash: string, salt: strin
   return equal(await hashPassword(password, salt), hash);
 }
 
-interface EnvAccount { name: string; role: Role; password: string }
+interface EnvAccount { name: string; role: Role; password: string; email?: string }
 function envAccounts(): EnvAccount[] {
   const configured: unknown = JSON.parse(process.env.AUTH_USERS_JSON || '[]');
   if (!Array.isArray(configured)) throw new Error('Configuration des accès invalide.');
-  const result: EnvAccount[] = configured.filter((a): a is EnvAccount => a && typeof a.name === 'string' && typeof a.password === 'string' && a.password.length > 0 && ['reader','contributor','admin'].includes(a.role));
-  if (process.env.AUTH_PASSWORD) result.push({ name: 'Administration familiale', role: 'admin', password: process.env.AUTH_PASSWORD });
+  const result: EnvAccount[] = (configured as unknown[]).filter(
+    (a): a is EnvAccount => !!a && typeof (a as EnvAccount).name === 'string' && typeof (a as EnvAccount).password === 'string' && (a as EnvAccount).password.length > 0 && ['reader','contributor','admin'].includes((a as EnvAccount).role)
+  );
+  if (process.env.AUTH_PASSWORD) {
+    result.push({
+      name: 'Administration familiale',
+      role: 'admin',
+      password: process.env.AUTH_PASSWORD,
+      email: process.env.AUTH_ADMIN_EMAIL,
+    });
+  }
   return result;
 }
 
 export interface AuthAccount { name: string; role: Role; id?: string }
 
-export async function authenticate(password: string, email?: string): Promise<AuthAccount | null> {
-  if (email) {
-    // Email provided: only check DB users with that email (env accounts have no email)
-    try {
-      const { hasDb, listDbUsers } = await import('./db');
-      if (hasDb()) {
-        const dbUsers = await listDbUsers();
-        const user = dbUsers.find(u => u.email?.toLowerCase() === email.toLowerCase());
-        if (user && await verifyPassword(password, user.passwordHash, user.salt)) {
-          return { name: user.name, role: user.role, id: user.id };
-        }
-      }
-    } catch { /* ignore DB errors */ }
-    return null;
-  }
-  // No email: try env accounts, then all DB accounts
+export async function authenticate(password: string, email: string): Promise<AuthAccount | null> {
+  const lEmail = email.toLowerCase();
+  // Check env accounts with matching email
   const digest = await signature(password);
   for (const account of envAccounts()) {
-    if (equal(digest, await signature(account.password))) return { name: account.name, role: account.role };
+    if (account.email?.toLowerCase() === lEmail && equal(digest, await signature(account.password))) {
+      return { name: account.name, role: account.role };
+    }
   }
+  // Check DB accounts
   try {
     const { hasDb, listDbUsers } = await import('./db');
     if (hasDb()) {
       const dbUsers = await listDbUsers();
-      for (const u of dbUsers) {
-        if (await verifyPassword(password, u.passwordHash, u.salt)) {
-          return { name: u.name, role: u.role, id: u.id };
-        }
+      const user = dbUsers.find(u => u.email?.toLowerCase() === lEmail);
+      if (user && await verifyPassword(password, user.passwordHash, user.salt)) {
+        return { name: user.name, role: user.role, id: user.id };
       }
     }
   } catch { /* ignore DB errors during auth */ }

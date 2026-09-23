@@ -10,7 +10,8 @@ export async function login(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const password = formData.get('password')?.toString() || '';
-  const email = formData.get('email')?.toString().trim() || undefined;
+  const email = formData.get('email')?.toString().trim() || '';
+  if (!email) return { error: 'Email requis.' };
 
   if (password.length > 1024) return { error: 'Mot de passe trop long.' };
   let account;
@@ -23,7 +24,7 @@ export async function login(
     account = await authenticate(password, email);
     if (account) await resetLimit(key);
   } catch { return { error: 'Connexion momentanément indisponible. Réessayez plus tard.' }; }
-  if (!account) return { error: 'Mot de passe incorrect ou accès non configuré.' };
+  if (!account) return { error: 'Email ou mot de passe incorrect.' };
   const token = await makeSessionToken(account);
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, {

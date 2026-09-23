@@ -113,12 +113,13 @@ export default function LoginPage() {
               htmlFor="email"
               style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#3a4038', marginBottom: 6 }}
             >
-              Votre email <span style={{ fontWeight: 400, color: '#8a8474' }}>(facultatif)</span>
+              Votre email
             </label>
             <input
               id="email"
               type="email"
               name="email"
+              required
               autoFocus
               autoComplete="email"
               placeholder="marie@exemple.fr"
