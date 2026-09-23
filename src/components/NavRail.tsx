@@ -72,6 +72,11 @@ const FeedbackIcon = () => (
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
   </svg>
 );
+const PlusIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round">
+    <circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>
+  </svg>
+);
 const LogoutIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -98,6 +103,12 @@ const NAV_GROUPS = [
       { href: '/relation', label: 'Chemin de parenté', icon: <RelationIcon /> },
       { href: '/timeline', label: 'Parcours migratoire', icon: <TimelineIcon /> },
       { href: '/stats', label: 'Statistiques', icon: <StatsIcon /> },
+    ],
+  },
+  {
+    label: 'Contribuer',
+    items: [
+      { href: '/person/new', label: 'Ajouter un membre', icon: <PlusIcon /> },
     ],
   },
   {
@@ -171,7 +182,11 @@ export default function NavRail() {
       {/* Nav groups */}
       <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
         <div style={{ height: '100%', padding: '0 8px', overflowY: 'auto' }}>
-        {NAV_GROUPS.filter(group => session.isAdmin || !['Administration', 'Qualité des données'].includes(group.label)).map((group) => (
+        {NAV_GROUPS.filter(group => {
+          if (['Administration', 'Qualité des données'].includes(group.label)) return session.isAdmin;
+          if (group.label === 'Contribuer') return session.canEdit;
+          return true;
+        }).map((group) => (
           <div key={group.label} style={{ marginBottom: 20 }}>
             <div style={{
               fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase',
