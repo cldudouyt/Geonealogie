@@ -71,20 +71,20 @@ export default async function OnThisDay() {
   const dateLabel = today.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
 
   return (
-    <div style={{ background: '#fffdf9', border: '1px solid #e7e0d0', borderRadius: 16, padding: 24 }}>
+    <div style={{ background: 'var(--paper-card)', border: '1px solid var(--line)', borderRadius: 16, padding: 24 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 18, fontWeight: 500, color: '#1c1f1c', margin: 0 }}>
+        <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 18, fontWeight: 500, color: 'var(--ink-900)', margin: 0 }}>
           Ce jour-là
         </h2>
-        <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: '#6c7064', textTransform: 'capitalize' }}>
+        <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--ink-secondary)', textTransform: 'capitalize' }}>
           {dateLabel}
         </span>
       </div>
 
       {top.length === 0 ? (
-        <p style={{ fontSize: 13, color: '#8a8474', margin: 0, lineHeight: 1.6 }}>
+        <p style={{ fontSize: 13, color: 'var(--ink-500)', margin: 0, lineHeight: 1.6 }}>
           Rien de précis dans les archives pour aujourd&apos;hui.{' '}
-          <Link href="/anniversaires" style={{ color: '#2f5142', fontWeight: 600, textDecoration: 'none' }}>
+          <Link href="/anniversaires" style={{ color: 'var(--green-600)', fontWeight: 600, textDecoration: 'none' }}>
             Voir les anniversaires du mois →
           </Link>
         </p>
@@ -106,11 +106,11 @@ export default async function OnThisDay() {
                 href={`/person/${e.personId}`}
                 style={{
                   display: 'flex', alignItems: 'baseline', gap: 8,
-                  fontSize: 13.5, color: '#3f4a41', textDecoration: 'none', lineHeight: 1.5,
+                  fontSize: 13.5, color: 'var(--ink-600)', textDecoration: 'none', lineHeight: 1.5,
                 }}
               >
-                <span style={{ fontWeight: 600, color: '#1c1f1c' }}>{who}</span>
-                <span style={{ color: '#6c7064' }}>{verb} en {e.year} — {ago}</span>
+                <span style={{ fontWeight: 600, color: 'var(--ink-900)' }}>{who}</span>
+                <span style={{ color: 'var(--ink-secondary)' }}>{verb} en {e.year} — {ago}</span>
               </Link>
             );
           })}

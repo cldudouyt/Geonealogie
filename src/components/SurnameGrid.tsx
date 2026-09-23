@@ -40,9 +40,9 @@ export default function SurnameGrid({ groups, initialLimit = 40 }: SurnameGridPr
             key={g.surname}
             href={`/tree?focus=${g.focusId}`}
             className="group flex items-center gap-3 px-4 py-3 rounded-[13px] border transition-all"
-            style={{ background: '#fffdf9', borderColor: '#e9e2d2' }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = '#c9a86a'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = '#e9e2d2'; }}
+            style={{ background: 'var(--paper-body)', borderColor: 'var(--line)' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--gold-500)'; (e.currentTarget as HTMLElement).style.background = 'var(--paper-page)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--line)'; (e.currentTarget as HTMLElement).style.background = 'var(--paper-body)'; }}
           >
             <div
               className="w-10 h-10 rounded-[10px] flex items-center justify-center text-white font-semibold text-sm shrink-0"
@@ -53,19 +53,19 @@ export default function SurnameGrid({ groups, initialLimit = 40 }: SurnameGridPr
             <div className="flex-1 min-w-0">
               <p
                 className="font-semibold text-[14.5px] truncate"
-                style={{ color: '#1c1f1c', fontFamily: 'var(--font-sans)' }}
+                style={{ color: 'var(--ink-900)', fontFamily: 'var(--font-sans)' }}
               >
                 {g.surname}
               </p>
               {g.sampleNames.length > 0 && (
-                <p className="text-[12px] truncate mt-0.5" style={{ color: '#8a8474', fontFamily: 'var(--font-sans)' }}>
+                <p className="text-[12px] truncate mt-0.5" style={{ color: 'var(--ink-500)', fontFamily: 'var(--font-sans)' }}>
                   {g.sampleNames.join(', ')}
                 </p>
               )}
             </div>
             <span
               className="text-[12px] font-semibold px-2.5 py-1 rounded-full shrink-0"
-              style={{ background: '#eef2ec', color: '#2f5142' }}
+              style={{ background: 'var(--ok-bg)', color: 'var(--ok-fg)' }}
             >
               {g.count}
             </span>
@@ -78,7 +78,7 @@ export default function SurnameGrid({ groups, initialLimit = 40 }: SurnameGridPr
           <button
             onClick={() => setShowAll(v => !v)}
             className="text-[13px] font-medium inline-flex items-center gap-1 transition-colors"
-            style={{ color: '#2f5142', fontFamily: 'var(--font-sans)' }}
+            style={{ color: 'var(--green-600)', fontFamily: 'var(--font-sans)' }}
           >
             {showAll ? (
               <>
