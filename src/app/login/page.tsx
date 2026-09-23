@@ -110,18 +110,18 @@ export default function LoginPage() {
         <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label
-              htmlFor="name"
+              htmlFor="email"
               style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#3a4038', marginBottom: 6 }}
             >
-              Votre prénom <span style={{ fontWeight: 400, color: '#8a8474' }}>(facultatif)</span>
+              Votre email <span style={{ fontWeight: 400, color: '#8a8474' }}>(facultatif)</span>
             </label>
             <input
-              id="name"
-              type="text"
-              name="name"
+              id="email"
+              type="email"
+              name="email"
               autoFocus
-              autoComplete="name"
-              placeholder="ex. Marie"
+              autoComplete="email"
+              placeholder="marie@exemple.fr"
               style={{
                 width: '100%', height: 44, borderRadius: 11,
                 border: '1.5px solid #e0d8c6', background: '#fffdf9',
@@ -174,6 +174,12 @@ export default function LoginPage() {
           {state?.error && (
             <p style={{ fontSize: 13, color: '#b91c1c', margin: 0 }}>{state.error}</p>
           )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <a href="/reset" style={{ fontSize: 12.5, color: '#2f5142', textDecoration: 'none' }}>
+              Mot de passe oublié ?
+            </a>
+          </div>
 
           <button
             type="submit"

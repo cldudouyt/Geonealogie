@@ -147,6 +147,7 @@ export interface InvitationRecord {
 export interface DbUser {
   id: string;
   name: string;
+  email?: string;
   role: InviteRole;
   passwordHash: string;
   salt: string;
@@ -201,6 +202,46 @@ export async function saveDbUser(user: DbUser): Promise<void> {
 export async function deleteDbUser(id: string): Promise<void> {
   const users = await listDbUsers();
   await kvSet(DB_USERS_KEY, users.filter(u => u.id !== id));
+}
+
+export async function updateDbUserPassword(email: string, passwordHash: string, salt: string): Promise<boolean> {
+  const users = await listDbUsers();
+  const idx = users.findIndex(u => u.email?.toLowerCase() === email.toLowerCase());
+  if (idx < 0) return false;
+  users[idx] = { ...users[idx], passwordHash, salt };
+  await kvSet(DB_USERS_KEY, users);
+  return true;
+}
+
+/* ── Password reset tokens (stored in kv_state) ──────────────────────── */
+
+export interface ResetToken {
+  token: string;
+  email: string;
+  createdAt: string;
+  expiresAt: string;
+  usedAt?: string;
+}
+
+const RESET_TOKENS_KEY = 'reset-tokens';
+
+export async function saveResetToken(rt: ResetToken): Promise<void> {
+  const data = await kvGet<Record<string, ResetToken>>(RESET_TOKENS_KEY) ?? {};
+  data[rt.token] = rt;
+  await kvSet(RESET_TOKENS_KEY, data);
+}
+
+export async function getResetToken(token: string): Promise<ResetToken | null> {
+  const data = await kvGet<Record<string, ResetToken>>(RESET_TOKENS_KEY);
+  return data?.[token] ?? null;
+}
+
+export async function markResetTokenUsed(token: string): Promise<void> {
+  const data = await kvGet<Record<string, ResetToken>>(RESET_TOKENS_KEY) ?? {};
+  if (data[token]) {
+    data[token] = { ...data[token], usedAt: new Date().toISOString() };
+    await kvSet(RESET_TOKENS_KEY, data);
+  }
 }
 
 export async function kvReadVersion<T>(id: string): Promise<{ data: T; version: number } | null> {

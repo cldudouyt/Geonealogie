@@ -35,6 +35,7 @@ export async function claimInvitation(
   await saveDbUser({
     id: userId,
     name,
+    email: inv.email,
     role: inv.role as Role,
     passwordHash,
     salt,

@@ -1,6 +1,7 @@
 import { requireRole, getSession } from '@/lib/session';
 import { listInvitations, saveInvitation, deleteInvitation, type InviteRole } from '@/lib/db';
 import { hasDb } from '@/lib/db';
+import { sendEmail, appBaseUrl } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,45 +36,29 @@ export async function POST(req: Request) {
 
   await saveInvitation(inv);
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000';
+  const baseUrl = appBaseUrl();
   const inviteUrl = `${baseUrl}/invite/${token}`;
 
-  // Send email via Resend if configured
-  if (process.env.RESEND_API_KEY) {
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-    const roleLabels: Record<InviteRole, string> = { reader: 'Lecteur', contributor: 'Contributeur', admin: 'Administrateur' };
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: `Géonéalogie <${fromEmail}>`,
-        to: [email],
-        subject: `${session.name} vous invite à rejoindre Géonéalogie`,
-        html: `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 20px">
-            <h1 style="font-size:24px;color:#1c1f1c;margin:0 0 12px">Invitation à Géonéalogie</h1>
-            <p style="color:#4a4f46;line-height:1.6;margin:0 0 20px">
-              <strong>${session.name}</strong> vous invite à rejoindre l'espace familial Géonéalogie
-              en tant que <strong>${roleLabels[role]}</strong>.
-            </p>
-            ${suggestedName ? `<p style="color:#4a4f46;line-height:1.6;margin:0 0 20px">Votre accès sera au nom de : <strong>${suggestedName}</strong></p>` : ''}
-            <a href="${inviteUrl}" style="display:inline-block;background:#1e3a2f;color:#f1ede2;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px">
-              Accepter l'invitation
-            </a>
-            <p style="color:#9a9080;font-size:12px;margin:20px 0 0">
-              Ce lien est valable 7 jours et ne peut être utilisé qu'une seule fois.<br>
-              Si vous n'attendiez pas cette invitation, ignorez ce message.
-            </p>
-          </div>
-        `,
-      }),
-    }).catch(() => { /* email failure is non-blocking */ });
-  }
+  const roleLabels: Record<InviteRole, string> = { reader: 'Lecteur', contributor: 'Contributeur', admin: 'Administrateur' };
+  await sendEmail(
+    email,
+    `${session.name} vous invite à rejoindre Géonéalogie`,
+    `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 20px">
+      <h1 style="font-size:24px;color:#1c1f1c;margin:0 0 12px">Invitation à Géonéalogie</h1>
+      <p style="color:#4a4f46;line-height:1.6;margin:0 0 20px">
+        <strong>${session.name}</strong> vous invite à rejoindre l'espace familial Géonéalogie
+        en tant que <strong>${roleLabels[role]}</strong>.
+      </p>
+      ${suggestedName ? `<p style="color:#4a4f46;line-height:1.6;margin:0 0 20px">Votre accès sera au nom de : <strong>${suggestedName}</strong></p>` : ''}
+      <a href="${inviteUrl}" style="display:inline-block;background:#1e3a2f;color:#f1ede2;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px">
+        Accepter l'invitation
+      </a>
+      <p style="color:#9a9080;font-size:12px;margin:20px 0 0">
+        Ce lien est valable 7 jours et ne peut être utilisé qu'une seule fois.<br>
+        Si vous n'attendiez pas cette invitation, ignorez ce message.
+      </p>
+    </div>`,
+  );
 
   return Response.json({ token, inviteUrl });
 }
