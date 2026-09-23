@@ -195,12 +195,6 @@ export default function LoginPage() {
             <p style={{ fontSize: 13, color: '#b91c1c', margin: 0 }}>{state.error}</p>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <a href="/reset" style={{ fontSize: 12.5, color: '#2f5142', textDecoration: 'none' }}>
-              Mot de passe oublié ?
-            </a>
-          </div>
-
           <button
             type="submit"
             disabled={pending || !hydrated}
@@ -227,6 +221,12 @@ export default function LoginPage() {
             {pending ? 'Connexion…' : 'Se connecter'}
           </button>
         </form>
+
+        <div style={{ textAlign: 'center', marginTop: 16 }}>
+          <a href="/reset" style={{ fontSize: 13, color: '#2f5142', textDecoration: 'none' }}>
+            Mot de passe oublié ?
+          </a>
+        </div>
       </div>
     </div>
   );
