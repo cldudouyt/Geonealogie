@@ -1,7 +1,7 @@
 export const SESSION_COOKIE = 'geo_session';
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 export type Role = 'reader' | 'contributor' | 'admin';
-export interface Session { name: string; role: Role; expires: number; credential: string }
+export interface Session { name: string; role: Role; expires: number; credential: string; id?: string }
 export const ROLE_LABELS: Record<Role, string> = { reader: 'Lecteur', contributor: 'Contributeur', admin: 'Administrateur' };
 
 async function signature(message: string): Promise<string> {
@@ -76,7 +76,7 @@ export async function makeSessionToken(account: AuthAccount): Promise<string> {
   // Credential anchor: for env accounts use HMAC(password); for DB accounts use HMAC(userId)
   const credentialSource = account.id ?? envAccounts().find(a => a.name === account.name)?.password;
   if (!credentialSource) throw new Error('Connexion non configurée.');
-  const session: Session = { name: account.name, role: account.role, expires: Date.now() + SESSION_MAX_AGE * 1000, credential: await signature(credentialSource) };
+  const session: Session = { name: account.name, role: account.role, expires: Date.now() + SESSION_MAX_AGE * 1000, credential: await signature(credentialSource), ...(account.id ? { id: account.id } : {}) };
   const payload = encodeURIComponent(JSON.stringify(session));
   return `${payload}.${await signature(payload)}`;
 }

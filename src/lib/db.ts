@@ -153,6 +153,7 @@ export interface DbUser {
   salt: string;
   createdAt: string;
   invitationToken?: string;
+  personId?: string;
 }
 
 const INVITATIONS_KEY = 'invitations';
@@ -202,6 +203,15 @@ export async function saveDbUser(user: DbUser): Promise<void> {
 export async function deleteDbUser(id: string): Promise<void> {
   const users = await listDbUsers();
   await kvSet(DB_USERS_KEY, users.filter(u => u.id !== id));
+}
+
+export async function updateDbUserPersonId(userId: string, personId: string): Promise<boolean> {
+  const users = await listDbUsers();
+  const idx = users.findIndex(u => u.id === userId);
+  if (idx < 0) return false;
+  users[idx] = { ...users[idx], personId };
+  await kvSet(DB_USERS_KEY, users);
+  return true;
 }
 
 export async function updateDbUserPassword(email: string, passwordHash: string, salt: string): Promise<boolean> {

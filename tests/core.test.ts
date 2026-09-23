@@ -8,14 +8,14 @@ import { authenticate, makeSessionToken, readSessionToken, permits } from '../sr
 import { saveDocumentMeta, getDocumentsForPerson, deleteDocumentMeta } from '../src/lib/documents-store';
 import { readState, mutateVersioned } from '../src/lib/state-store';
 let dir: string;
-before(async () => { dir = await mkdtemp(path.join(os.tmpdir(), 'geo-tests-')); process.env.GEO_DATA_DIR = dir; delete process.env.DATABASE_URL; delete process.env.POSTGRES_URL; delete process.env.VERCEL; process.env.AUTH_SECRET = 'test-only-secret'; process.env.AUTH_PASSWORD = 'test-admin'; process.env.AUTH_USERS_JSON = JSON.stringify([{ name: 'Family reader', role: 'reader', password: 'test-reader' }]); });
+before(async () => { dir = await mkdtemp(path.join(os.tmpdir(), 'geo-tests-')); process.env.GEO_DATA_DIR = dir; delete process.env.DATABASE_URL; delete process.env.POSTGRES_URL; delete process.env.VERCEL; process.env.AUTH_SECRET = 'test-only-secret'; process.env.AUTH_PASSWORD = 'test-admin'; process.env.AUTH_ADMIN_EMAIL = 'admin@test.local'; process.env.AUTH_USERS_JSON = JSON.stringify([{ name: 'Family reader', role: 'reader', password: 'test-reader', email: 'reader@test.local' }]); });
 after(async () => { await rm(dir, { recursive: true, force: true }); });
 test('role-bound sessions reject tampering, revoked credentials and expired tokens', async () => {
-  const account = await authenticate('test-reader'); assert.ok(account);
+  const account = await authenticate('test-reader', 'reader@test.local'); assert.ok(account);
   const token = await makeSessionToken(account);
   assert.equal((await readSessionToken(token))?.role, 'reader');
   assert.equal(await readSessionToken(token + 'x'), null);
-  assert.equal(await authenticate('wrong'), null);
+  assert.equal(await authenticate('wrong', 'reader@test.local'), null);
   assert.equal(permits('reader', 'contributor'), false); assert.equal(permits('admin', 'contributor'), true);
   const realNow = Date.now; Date.now = () => realNow() + 31 * 86400000;
   try { assert.equal(await readSessionToken(token), null); } finally { Date.now = realNow; }

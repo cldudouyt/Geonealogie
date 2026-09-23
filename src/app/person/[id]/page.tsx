@@ -126,11 +126,19 @@ export default async function PersonPage({ params }: PersonPageProps) {
   const siblings = await getSiblings(id);
   const narrative = await getNarrative(id);
 
-  // Lien de parenté avec la personne de référence
+  // Lien de parenté avec la personne de référence (priorité : personId du compte, sinon racine GEDCOM)
   let relationLabel: string | null = null;
   let relationDefaultId: string | null = null;
   try {
-    const defaultId = await getDefaultPersonId();
+    let defaultId = await getDefaultPersonId();
+    if (session?.id) {
+      const { listDbUsers, hasDb } = await import('@/lib/db');
+      if (hasDb()) {
+        const users = await listDbUsers();
+        const userPersonId = users.find(u => u.id === session.id)?.personId;
+        if (userPersonId && userPersonId !== id) defaultId = userPersonId;
+      }
+    }
     if (defaultId && defaultId !== id) {
       const rawPath = await findRelationshipPath(defaultId, id);
       if (rawPath && rawPath.length > 1) {

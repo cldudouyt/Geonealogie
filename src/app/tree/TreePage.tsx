@@ -191,12 +191,12 @@ function Legend() {
 }
 
 /* ── Main page component ─────────────────────────────────────── */
-export default function TreePage({ defaultFocusId }: { defaultFocusId: string }) {
+export default function TreePage({ defaultFocusId, userPersonId }: { defaultFocusId: string; userPersonId?: string | null }) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const reference = useReference();
-  const focusId = searchParams.get('focus') ?? reference?.id ?? defaultFocusId;
+  const focusId = searchParams.get('focus') ?? reference?.id ?? userPersonId ?? defaultFocusId;
   const viewParam = searchParams.get('view') as ViewMode | null;
   const view: ViewMode = TABS.some(t => t.id === viewParam) ? viewParam! : 'vertical';
   const genParam = parseInt(searchParams.get('gen') ?? '', 10);
@@ -444,8 +444,8 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                 <button
                   onClick={() => {
-                    onFocus(reference?.id ?? defaultFocusId, reference?.name ?? defaultName);
-                    setTrail([{ id: reference?.id ?? defaultFocusId, name: reference?.name ?? defaultName }]);
+                    onFocus(reference?.id ?? userPersonId ?? defaultFocusId, reference?.name ?? defaultName);
+                    setTrail([{ id: reference?.id ?? userPersonId ?? defaultFocusId, name: reference?.name ?? defaultName }]);
                   }}
                   style={{
                     height: 36, padding: '0 14px', borderRadius: 10, border: '1px solid #e0d8c6',
