@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE, readSessionToken, permits } from '@/lib/auth';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (pathname === '/login') return NextResponse.next();
+  if (pathname === '/login' || pathname.startsWith('/reset') || pathname.startsWith('/invite/')) return NextResponse.next();
   const session = await readSessionToken(request.cookies.get(SESSION_COOKIE)?.value || '');
   if (!session) {
     if (pathname.startsWith('/api/')) return NextResponse.json({ error: 'Connexion requise.' }, { status: 401 });
