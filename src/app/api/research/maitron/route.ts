@@ -21,21 +21,32 @@ export async function GET(req: NextRequest) {
 
     const html = await res.text();
 
-    // Extract the results list section
-    const listMatch = html.match(/resultats-liste[^>]*>([\s\S]*?)<\/ul>/);
-    if (!listMatch) return NextResponse.json({ results: [] });
-
-    const listHtml = listMatch[1];
-
-    // Parse each <li><a href="..."><strong>...</strong><br/><span class="excerpt">...</span></a></li>
     const results: MaitronResult[] = [];
-    const itemRegex = /<li>\s*<a href="([^"]+)">\s*<strong>([\s\S]*?)<\/strong>[\s\S]*?<span class="excerpt">([\s\S]*?)<\/span>/g;
-    let match;
-    while ((match = itemRegex.exec(listHtml)) !== null) {
-      const url = match[1];
-      const title = match[2].replace(/&nbsp;/g, ' ').replace(/<[^>]+>/g, '').trim();
-      const excerpt = match[3].replace(/&nbsp;/g, ' ').replace(/<[^>]+>/g, '').replace(/&#\d+;/g, '').trim();
-      results.push({ url, title, excerpt });
+
+    // Strategy 1: structured list block
+    const listMatch = html.match(/resultats-liste[^>]*>([\s\S]*?)<\/ul>/);
+    if (listMatch) {
+      const listHtml = listMatch[1];
+      const itemRegex = /<li>\s*<a href="([^"]+)">\s*<strong>([\s\S]*?)<\/strong>[\s\S]*?<span class="excerpt">([\s\S]*?)<\/span>/g;
+      let m;
+      while ((m = itemRegex.exec(listHtml)) !== null) {
+        results.push({
+          url: m[1].startsWith('http') ? m[1] : `https://maitron.fr${m[1]}`,
+          title: m[2].replace(/&nbsp;/g, ' ').replace(/<[^>]+>/g, '').trim(),
+          excerpt: m[3].replace(/&nbsp;/g, ' ').replace(/<[^>]+>/g, '').replace(/&#\d+;/g, '').trim(),
+        });
+      }
+    }
+
+    // Strategy 2: any link to /spip.php?article or individual notice
+    if (results.length === 0) {
+      const anyLink = /<a[^>]+href="(https?:\/\/maitron\.fr\/[^"]*(?:article|notice)[^"]*)"[^>]*>\s*([^<]{5,80})/g;
+      let m2;
+      while ((m2 = anyLink.exec(html)) !== null && results.length < 5) {
+        const url = m2[1];
+        const title = m2[2].replace(/&nbsp;/g, ' ').trim();
+        if (!results.find(r => r.url === url)) results.push({ url, title, excerpt: '' });
+      }
     }
 
     return NextResponse.json({ results, searchUrl });

@@ -30,16 +30,18 @@ const EXTERNAL_SOURCES = [
       `https://www.geneanet.org/fonds/individus/?size=10&nom=${encodeURIComponent(surname)}&prenom=${encodeURIComponent(given)}&go=1`,
   },
   {
-    label: 'Google Scholar',
-    description: 'Publications académiques',
-    color: '#0369a1',
-    url: (q: string) => `https://scholar.google.fr/scholar?q=${encodeURIComponent(q)}`,
+    label: 'FamilySearch',
+    description: 'Registres généalogiques mondiaux',
+    color: '#1d4ed8',
+    url: (_q: string, surname: string, given: string) =>
+      `https://www.familysearch.org/fr/search/record/results?q.givenName=${encodeURIComponent(given)}&q.surname=${encodeURIComponent(surname)}`,
   },
   {
-    label: 'LinkedIn',
-    description: 'Profil professionnel',
-    color: '#0a66c2',
-    url: (q: string) => `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(q)}`,
+    label: 'Filae',
+    description: 'Archives civiles françaises',
+    color: '#7c3aed',
+    url: (_q: string, surname: string, given: string) =>
+      `https://www.filae.com/v4/genealogie/search.html?firstname=${encodeURIComponent(given)}&lastname=${encodeURIComponent(surname)}`,
   },
   {
     label: 'Geni',
@@ -48,10 +50,16 @@ const EXTERNAL_SOURCES = [
     url: (q: string) => `https://www.geni.com/search?names=${encodeURIComponent(q)}`,
   },
   {
-    label: 'FamilySearch',
-    description: 'Registres généalogiques mondiaux',
-    color: '#1d4ed8',
-    url: (q: string) => `https://www.familysearch.org/fr/search/record/results?q.givenName=${encodeURIComponent(q)}`,
+    label: 'Archives nationales',
+    description: 'Fonds publics français',
+    color: '#92400e',
+    url: (q: string) => `https://www.siv.archives-nationales.culture.gouv.fr/siv/rechercheSimple/${encodeURIComponent(q)}`,
+  },
+  {
+    label: 'Google Scholar',
+    description: 'Publications académiques',
+    color: '#0369a1',
+    url: (q: string) => `https://scholar.google.fr/scholar?q=${encodeURIComponent(q)}`,
   },
 ];
 
@@ -140,33 +148,40 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
   const fullName = `${firstName} ${surname}`.trim();
   const nameWithDates = `${fullName}${birthYear ? ` ${birthYear}` : ''}${deathYear ? `-${deathYear}` : ''}`;
 
+  const safeJson = async (url: string) => {
+    try { const r = await fetch(url); return r.ok ? await r.json() : {}; } catch { return {}; }
+  };
+
   const runSearch = async () => {
     setLoading(true);
-    const [frWiki, enWiki, maitronData, wikidataData, viafData, bnfData] = await Promise.all([
-      searchWikipedia('fr', fullName),
-      searchWikipedia('en', fullName),
-      fetch(`/api/research/maitron?q=${encodeURIComponent(fullName)}`).then(r => r.json()),
-      fetch(`/api/research/wikidata?q=${encodeURIComponent(fullName)}`).then(r => r.json()),
-      fetch(`/api/research/viaf?q=${encodeURIComponent(fullName)}`).then(r => r.json()),
-      fetch(`/api/research/bnf?q=${encodeURIComponent(fullName)}`).then(r => r.json()),
-    ]);
+    try {
+      const [frWiki, enWiki, maitronData, wikidataData, viafData, bnfData] = await Promise.all([
+        searchWikipedia('fr', fullName).catch(() => [] as WikiResult[]),
+        searchWikipedia('en', fullName).catch(() => [] as WikiResult[]),
+        safeJson(`/api/research/maitron?q=${encodeURIComponent(fullName)}`),
+        safeJson(`/api/research/wikidata?q=${encodeURIComponent(fullName)}`),
+        safeJson(`/api/research/viaf?q=${encodeURIComponent(fullName)}`),
+        safeJson(`/api/research/bnf?q=${encodeURIComponent(fullName)}`),
+      ]);
 
-    const combined: { lang: string; result: WikiResult }[] = [
-      ...frWiki.map(r => ({ lang: 'fr', result: r })),
-      ...enWiki.map(r => ({ lang: 'en', result: r })),
-    ];
-    const seen = new Set<string>();
-    setWikiResults(combined.filter(({ result }) => {
-      if (seen.has(result.title)) return false;
-      seen.add(result.title);
-      return true;
-    }));
-    setMaitronResults(maitronData.results ?? []);
-    setWikidataResults(wikidataData.results ?? []);
-    setViafResults(viafData.results ?? []);
-    setBnfResults(bnfData.results ?? []);
-    setSearched(true);
-    setLoading(false);
+      const combined: { lang: string; result: WikiResult }[] = [
+        ...frWiki.map((r: WikiResult) => ({ lang: 'fr', result: r })),
+        ...enWiki.map((r: WikiResult) => ({ lang: 'en', result: r })),
+      ];
+      const seen = new Set<string>();
+      setWikiResults(combined.filter(({ result }) => {
+        if (seen.has(result.title)) return false;
+        seen.add(result.title);
+        return true;
+      }));
+      setMaitronResults(maitronData.results ?? []);
+      setWikidataResults(wikidataData.results ?? []);
+      setViafResults(viafData.results ?? []);
+      setBnfResults(bnfData.results ?? []);
+    } finally {
+      setSearched(true);
+      setLoading(false);
+    }
   };
 
   const toggle = () => {
