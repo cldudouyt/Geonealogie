@@ -10,6 +10,7 @@ export async function login(
   formData: FormData,
 ): Promise<{ error?: string; success?: string }> {
   const password = formData.get('password')?.toString() || '';
+  const name = formData.get('name')?.toString().trim() || undefined;
 
   if (password.length > 1024) return { error: 'Mot de passe trop long.' };
   let account;
@@ -19,7 +20,7 @@ export async function login(
     const address = requestHeaders.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
     key = limitKey('login', address);
     if (!await consumeLimit(key, 5, 15 * 60_000)) return { error: 'Trop de tentatives. Réessayez dans 15 minutes.' };
-    account = await authenticate(password);
+    account = await authenticate(password, name);
     if (account) await resetLimit(key);
   } catch { return { error: 'Connexion momentanément indisponible. Réessayez plus tard.' }; }
   if (!account) return { error: 'Mot de passe incorrect ou accès non configuré.' };

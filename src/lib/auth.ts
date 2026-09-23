@@ -40,10 +40,14 @@ function envAccounts(): EnvAccount[] {
 
 export interface AuthAccount { name: string; role: Role; id?: string }
 
-export async function authenticate(password: string): Promise<AuthAccount | null> {
-  // Check env-var accounts first
+export async function authenticate(password: string, name?: string): Promise<AuthAccount | null> {
   const digest = await signature(password);
-  for (const account of envAccounts()) {
+  const allEnv = envAccounts();
+  // If name provided, try name-filtered accounts first, then fall back to all
+  const envCandidates = name
+    ? allEnv.filter(a => a.name.toLowerCase().includes(name.toLowerCase()))
+    : allEnv;
+  for (const account of envCandidates) {
     if (equal(digest, await signature(account.password))) return { name: account.name, role: account.role };
   }
   // Check DB accounts
@@ -51,13 +55,18 @@ export async function authenticate(password: string): Promise<AuthAccount | null
     const { hasDb, listDbUsers } = await import('./db');
     if (hasDb()) {
       const dbUsers = await listDbUsers();
-      for (const u of dbUsers) {
+      const dbCandidates = name
+        ? dbUsers.filter(u => u.name.toLowerCase().includes(name.toLowerCase()))
+        : dbUsers;
+      for (const u of dbCandidates) {
         if (await verifyPassword(password, u.passwordHash, u.salt)) {
           return { name: u.name, role: u.role, id: u.id };
         }
       }
     }
   } catch { /* ignore DB errors during auth */ }
+  // If name was provided but no match found, retry without name filter as fallback
+  if (name) return authenticate(password);
   return null;
 }
 

@@ -110,14 +110,39 @@ export default function LoginPage() {
         <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label
-              htmlFor="password"
+              htmlFor="name"
+              style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#3a4038', marginBottom: 6 }}
+            >
+              Votre prénom <span style={{ fontWeight: 400, color: '#8a8474' }}>(facultatif)</span>
+            </label>
+            <input
+              id="name"
+              type="text"
+              name="name"
+              autoFocus
+              autoComplete="name"
+              placeholder="ex. Marie"
               style={{
-                display: 'block',
-                fontSize: 13,
-                fontWeight: 700,
-                color: '#3a4038',
-                marginBottom: 6,
+                width: '100%', height: 44, borderRadius: 11,
+                border: '1.5px solid #e0d8c6', background: '#fffdf9',
+                padding: '0 14px', fontSize: 15, color: '#1c1f1c',
+                outline: 'none', boxSizing: 'border-box',
+                transition: 'border-color .15s, box-shadow .15s',
               }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#2f5142';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(47,81,66,.12)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#e0d8c6';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="password"
+              style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#3a4038', marginBottom: 6 }}
             >
               Mot de passe
             </label>
@@ -126,20 +151,13 @@ export default function LoginPage() {
               type="password"
               name="password"
               required
-              autoFocus
               autoComplete="current-password"
               placeholder="••••••••"
               style={{
-                width: '100%',
-                height: 44,
-                borderRadius: 11,
-                border: '1.5px solid #e0d8c6',
-                background: '#fffdf9',
-                padding: '0 14px',
-                fontSize: 15,
-                color: '#1c1f1c',
-                outline: 'none',
-                boxSizing: 'border-box',
+                width: '100%', height: 44, borderRadius: 11,
+                border: '1.5px solid #e0d8c6', background: '#fffdf9',
+                padding: '0 14px', fontSize: 15, color: '#1c1f1c',
+                outline: 'none', boxSizing: 'border-box',
                 transition: 'border-color .15s, box-shadow .15s',
               }}
               onFocus={(e) => {
