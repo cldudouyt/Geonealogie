@@ -1,16 +1,27 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { consumeLimit, resetLimit, limitKey } from '@/lib/request-limits';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { authenticate, makeSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth';
 
 export async function login(
-  _prevState: { error?: string; success?: boolean } | null,
+  _prevState: { error?: string; success?: string } | null,
   formData: FormData,
-): Promise<{ error?: string; success?: boolean }> {
+): Promise<{ error?: string; success?: string }> {
   const password = formData.get('password')?.toString() || '';
 
-  const account = await authenticate(password);
+  if (password.length > 1024) return { error: 'Mot de passe trop long.' };
+  let account;
+  let key: string;
+  try {
+    const requestHeaders = await headers();
+    const address = requestHeaders.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
+    key = limitKey('login', address);
+    if (!await consumeLimit(key, 5, 15 * 60_000)) return { error: 'Trop de tentatives. Réessayez dans 15 minutes.' };
+    account = await authenticate(password);
+    if (account) await resetLimit(key);
+  } catch { return { error: 'Connexion momentanément indisponible. Réessayez plus tard.' }; }
   if (!account) return { error: 'Mot de passe incorrect ou accès non configuré.' };
   const token = await makeSessionToken(account);
   const cookieStore = await cookies();
@@ -21,8 +32,7 @@ export async function login(
     maxAge: SESSION_MAX_AGE,
     path: '/',
   });
-
-  return { success: true };
+  return { success: crypto.randomUUID() };
 }
 
 export async function logout(): Promise<void> {

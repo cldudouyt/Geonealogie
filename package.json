@@ -10,7 +10,8 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "test:experience": "node tests/experience.mjs",
-    "test:duplicates": "node tests/duplicate-experience.mjs"
+    "test:duplicates": "node tests/duplicate-experience.mjs",
+    "test:reliability": "node tests/reliability-experience.mjs"
   },
   "dependencies": {
     "@fontsource-variable/hanken-grotesk": "^5.3.0",

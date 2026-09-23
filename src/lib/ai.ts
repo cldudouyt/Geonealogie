@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from '@google/genai';
 
 export const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -23,7 +23,8 @@ export async function generateText(
   systemPrompt: string,
   userMessage: string,
   maxOutputTokens = 4096,
-  model = DEFAULT_MODEL
+  model = DEFAULT_MODEL,
+  signal?: AbortSignal,
 ): Promise<string> {
   const response = await genAI.models.generateContent({
     model,
@@ -31,7 +32,7 @@ export async function generateText(
     // Thinking is on by default and its tokens count against maxOutputTokens —
     // for these short, non-reasoning tasks it was silently eating the whole
     // budget and truncating the visible text. Not needed here.
-    config: { systemInstruction: systemPrompt, maxOutputTokens, thinkingConfig: { thinkingBudget: 0 } },
+    config: { systemInstruction: systemPrompt, maxOutputTokens, thinkingConfig: { thinkingBudget: 0 }, abortSignal: signal, httpOptions: { timeout: 45_000 } },
   });
   return (response.text ?? "").trim();
 }
@@ -42,11 +43,12 @@ export async function generateText(
  */
 export async function runAgentsInParallel(
   tasks: AgentTask[],
-  model = DEFAULT_MODEL
+  model = DEFAULT_MODEL,
+  signal?: AbortSignal
 ): Promise<AgentResult[]> {
   const results = await Promise.allSettled(
     tasks.map(async (task): Promise<AgentResult> => {
-      const content = await generateText(task.systemPrompt, task.userMessage, 4096, model);
+      const content = await generateText(task.systemPrompt, task.userMessage, 4096, model, signal);
       return { name: task.name, content };
     })
   );
@@ -56,7 +58,7 @@ export async function runAgentsInParallel(
     return {
       name: tasks[i].name,
       content: "",
-      error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+      error: 'Service IA indisponible ou délai dépassé.',
     };
   });
 }
@@ -67,12 +69,13 @@ export async function runAgentsInParallel(
 export async function streamAgentResponse(
   systemPrompt: string,
   userMessage: string,
-  model = DEFAULT_MODEL
+  model = DEFAULT_MODEL,
+  signal?: AbortSignal
 ) {
   return genAI.models.generateContentStream({
     model,
     contents: userMessage,
-    config: { systemInstruction: systemPrompt, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: 0 } },
+    config: { systemInstruction: systemPrompt, maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: 0 }, abortSignal: signal, httpOptions: { timeout: 45_000 } },
   });
 }
 

@@ -49,6 +49,14 @@ export async function POST(
     if (!body.url || !body.originalName || !body.mimeType || !body.size) {
       return NextResponse.json({ error: 'Champs manquants' }, { status: 400 });
     }
+    try {
+      const url = new URL(body.url);
+      if (url.protocol !== 'https:' || !/^[a-z0-9-]+\.private\.blob\.vercel-storage\.com$/.test(url.hostname)) throw new Error('URL privée requise.');
+      const { head } = await import('@vercel/blob');
+      const stored = await head(body.url, { token: process.env.BLOB_PRIVATE_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN });
+      if (stored.size !== body.size || stored.size > MAX_SIZE || !ALLOWED_TYPES.has(stored.contentType)) throw new Error('Fichier invalide.');
+      body.mimeType = stored.contentType;
+    } catch { return NextResponse.json({ error: 'Le fichier privé n’a pas pu être vérifié.' }, { status: 400 }); }
     const doc = {
       id: randomUUID(),
       personId: id,

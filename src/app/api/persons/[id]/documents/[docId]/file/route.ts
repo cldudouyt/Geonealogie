@@ -12,9 +12,11 @@ export async function GET(
     return NextResponse.json({ error: 'Document introuvable' }, { status: 404 });
   }
 
+  if (doc.deletionPending) return NextResponse.json({ error: 'Suppression en attente.' }, { status: 410 });
+
   if (doc.access === 'private') {
     const { get } = await import('@vercel/blob');
-    const result = await get(doc.url, { access: 'private' });
+    const result = await get(doc.url, { access: 'private', token: process.env.BLOB_PRIVATE_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN });
     if (!result || result.statusCode !== 200) {
       return NextResponse.json({ error: 'Document introuvable' }, { status: 404 });
     }

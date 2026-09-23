@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Suspense } from 'react';
 import localFont from 'next/font/local';
 import './globals.css';
 import { getSession } from '@/lib/session';
@@ -27,15 +28,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
+async function SessionShell({ children }: { children: React.ReactNode }) {
   const session = await getSession();
+  return <SessionProvider value={{ name: session?.name ?? 'Famille', role: session?.role ?? 'reader' }}><AppShell>{children}</AppShell></SessionProvider>;
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
       <body
         className={`${hanken.variable} ${newsreader.variable}`}
         style={{ margin: 0, background: '#e9e4d8' }}
       >
-        <SessionProvider value={{ name: session?.name ?? 'Famille', role: session?.role ?? 'reader' }}><AppShell>{children}</AppShell></SessionProvider>
+        {/* Keep async session resolution inside an explicit streaming boundary. */}
+        <Suspense fallback={<p role="status">Chargement de votre espace familial…</p>}><SessionShell>{children}</SessionShell></Suspense>
       </body>
     </html>
   );

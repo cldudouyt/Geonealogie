@@ -1,14 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAllPersons } from '@/lib/gedcom-store';
 
-function esc(val: string | undefined): string {
-  if (!val) return '';
-  // Escape double-quotes and wrap if needed
-  if (val.includes('"') || val.includes(',') || val.includes('\n')) {
-    return `"${val.replace(/"/g, '""')}"`;
-  }
-  return val;
-}
+import { csvCell as esc } from '@/lib/csv';
 
 export async function GET() {
   const persons = await getAllPersons();

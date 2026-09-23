@@ -8,6 +8,8 @@ export interface DocumentMeta {
   personId: string;
   url: string;         // blob CDN URL or /documents/personId/filename
   access?: 'private';  // set on Blob uploads since the privacy fix; undefined = legacy public blob or local file
+  legacyPublicUrl?: string;
+  deletionPending?: boolean;
   originalName: string;
   title?: string;
   mimeType: string;
@@ -21,7 +23,7 @@ const DB_KEY = 'documents';
 // ─── Storage detection ─────────────────────────────────────────────────────
 
 function shouldUseBlob(): boolean {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_PRIVATE_READ_WRITE_TOKEN);
 }
 
 // ─── File storage ──────────────────────────────────────────────────────────
@@ -37,6 +39,7 @@ export async function uploadToStorage(
     const { put } = await import('@vercel/blob');
     const blob = await put(`documents/${personId}/${filename}`, buffer, {
       access,
+      token: access === 'private' ? process.env.BLOB_PRIVATE_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN : process.env.BLOB_READ_WRITE_TOKEN,
       contentType: mimeType,
     });
     return blob.url;
@@ -50,25 +53,15 @@ export async function uploadToStorage(
 }
 
 export async function deleteFromStorage(url: string, personId: string): Promise<void> {
-  if (shouldUseBlob()) {
-    try {
-      const { del } = await import('@vercel/blob');
-      await del(url);
-    } catch {
-      // Not critical if already gone
-    }
+  if (url.startsWith('https://')) {
+    const { del } = await import('@vercel/blob');
+    await del(url, { token: url.includes('.private.blob.vercel-storage.com') ? process.env.BLOB_PRIVATE_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN : process.env.BLOB_READ_WRITE_TOKEN });
     return;
   }
-
-  // Local filesystem: derive filename from URL
   const filename = url.split('/').pop();
-  if (filename) {
-    try {
-      fs.unlinkSync(path.join(DOCS_DIR, personId, filename));
-    } catch {
-      // Not critical if already gone
-    }
-  }
+  if (!filename || path.basename(personId) !== personId || !url.startsWith(`/documents/${personId}/`)) throw new Error('Emplacement de fichier invalide.');
+  try { await fs.promises.unlink(path.join(DOCS_DIR, personId, filename)); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
 }
 
 // ─── Metadata storage ──────────────────────────────────────────────────────
@@ -92,4 +85,24 @@ export async function deleteDocumentMeta(personId: string, docId: string): Promi
     all[personId] = (all[personId] ?? []).filter(d => d.id !== docId);
     return doc ?? null;
   });
+}
+
+export async function deleteDocument(personId: string, docId: string, removeFile = deleteFromStorage): Promise<boolean> {
+  const visible = (await getDocumentsForPerson(personId)).find(d => d.id === docId);
+  if (!visible) return false;
+  const pending = await mutateState<Record<string, DocumentMeta[]>, DocumentMeta | null>(DB_KEY, {}, all => {
+    const doc = all[visible.personId]?.find(d => d.id === docId);
+    if (!doc) return null;
+    doc.deletionPending = true;
+    return structuredClone(doc);
+  });
+  if (!pending) return false;
+  await removeFile(pending.url, pending.personId);
+  if (pending.legacyPublicUrl) await removeFile(pending.legacyPublicUrl, pending.personId);
+  await mutateState<Record<string, DocumentMeta[]>, void>(DB_KEY, {}, all => {
+    const doc = all[pending.personId]?.find(d => d.id === docId);
+    if (doc && (doc.url !== pending.url || doc.legacyPublicUrl !== pending.legacyPublicUrl)) throw new Error('Document modifié pendant la suppression.');
+    all[pending.personId] = (all[pending.personId] ?? []).filter(d => d.id !== docId);
+  });
+  return true;
 }

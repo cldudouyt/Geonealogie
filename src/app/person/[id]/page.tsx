@@ -91,6 +91,7 @@ import type { JourneyStop } from '@/components/migration/MigrationSection';
 import DocumentsSection from '@/components/DocumentsSection';
 import { getDocumentsForPerson } from '@/lib/documents-store';
 import ResearchPanel from '@/components/ResearchPanel';
+import { narrativeFingerprint } from '@/lib/narrative-facts';
 import NarrativeSection from '@/components/NarrativeSection';
 import { getNarrative } from '@/lib/narratives-store';
 
@@ -416,7 +417,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
         )}
 
         {/* AI-generated portrait */}
-        <NarrativeSection personId={id} initial={narrative} />
+        <NarrativeSection key={id} personId={id} initial={narrative} fingerprint={narrativeFingerprint(person, sources)} />
 
         {/* Timeline */}
         {timeline.length > 0 && (

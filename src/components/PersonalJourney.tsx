@@ -21,7 +21,7 @@ export function PersonalJourney() {
   const last = typeof value === 'string' && /^\/(tree|person\/|map|timeline)/.test(value) ? value : null;
   return <section className="journey-card" aria-labelledby="journey-title">
     <div><p className="eyebrow">Votre histoire commence ici</p><h2 id="journey-title">{reference ? `À partir de ${reference.name}` : 'Retrouvez votre place dans la famille'}</h2><p>Choisissez votre fiche pour explorer vos ancêtres et comprendre vos liens de parenté.</p></div>
-    <div className="action-row"><Link className="primary-action" href={reference ? `/tree?focus=${encodeURIComponent(reference.id)}` : '/search?choose=me'}>{reference ? 'Explorer mes ancêtres' : 'Me retrouver dans l’arbre'}</Link>{last && <Link className="secondary-action" href={last}>Reprendre mon exploration</Link>}{reference && <Link href="/search?choose=me">Changer de personne</Link>}</div>
+    <div className="action-row">{last && <Link className="primary-action" href={last}>Reprendre mon exploration</Link>}<Link className="secondary-action" href={reference ? `/tree?focus=${encodeURIComponent(reference.id)}` : '/search?choose=me'}>{reference ? 'Explorer mes ancêtres' : 'Me retrouver dans l’arbre'}</Link>{reference && <Link href="/search?choose=me">Changer de personne</Link>}</div>
     <p className="helper-text">Votre point de départ est mémorisé sur cet appareil.</p>
   </section>;
 }

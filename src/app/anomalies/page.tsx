@@ -1,4 +1,7 @@
 import Link from 'next/link';
+import { getSession } from '@/lib/session';
+import { permits } from '@/lib/auth';
+import { loadOverrides } from '@/lib/overrides-store';
 import { getAllPersons, getStore } from '@/lib/gedcom-store';
 import type { PersonRecord } from '@/lib/gedcom-store';
 import { Badge, type BadgeTone } from '@/components/ui/Badge';
@@ -33,7 +36,11 @@ const BADGE_LABEL: Record<Anomaly['severity'], string> = {
   info: 'Info',
 };
 
-export default async function AnomaliesPage() {
+export default async function AnomaliesPage({ searchParams }: { searchParams: Promise<{ severity?: string; q?: string }> }) {
+  const filters = await searchParams;
+  const session = await getSession();
+  const canEdit = session && permits(session.role, 'contributor');
+  const overrides = await loadOverrides();
   const persons = await getAllPersons();
   const store = await getStore();
   const anomalies: Anomaly[] = [];
@@ -71,6 +78,8 @@ export default async function AnomaliesPage() {
 
   // ── Boucle principale par personne ────────────────────────────────────────
   for (const p of persons) {
+    const evidence = (overrides.newPersons.find(n => n.id === p.id) ?? overrides.persons[p.id])?.sources ?? [];
+    if (!evidence.length) push(p.id, p.displayName, 'info', 'Aucune source structurée enregistrée : ajouter une référence dans Sources.');
     const birthY = p.birthYear ? parseInt(p.birthYear) : null;
     const deathY = p.deathYear ? parseInt(p.deathYear) : null;
 
@@ -165,6 +174,7 @@ export default async function AnomaliesPage() {
   const warnings = anomalies.filter(a => a.severity === 'warn');
   const infos = anomalies.filter(a => a.severity === 'info');
 
+  const visible = anomalies.filter(a => (!filters.severity || a.severity === filters.severity) && (!filters.q || norm(a.name).includes(norm(filters.q))));
   const statsCards = [
     { label: 'Erreurs',        count: errors.length,        color: '#c0392b' },
     { label: 'Avertissements', count: warnings.length,      color: '#b8860b' },
@@ -189,18 +199,19 @@ export default async function AnomaliesPage() {
               lineHeight: 1.2,
             }}
           >
-            Rapport d&apos;anomalies
+            À vérifier
           </h1>
           <p style={{ fontSize: 13.5, color: '#8a8474', marginTop: 6, marginBottom: 0 }}>
-            Incohérences détectées automatiquement dans les données.
+            Points à vérifier dans les données : une alerte ne prouve pas une erreur.
           </p>
         </div>
 
-        {/* Grille de stats — 4 colonnes */}
+        <form className="action-row" action="/anomalies"><label>Personne <input name="q" defaultValue={filters.q} /></label><label>Priorité <select name="severity" defaultValue={filters.severity || ''}><option value="">Toutes</option><option value="err">Erreurs</option><option value="warn">À confirmer</option><option value="info">À compléter</option></select></label><button className="secondary-action">Filtrer</button>{session?.role === 'admin' && <Link href="/doublons">Examiner les doublons possibles</Link>}</form><p>{visible.length} point(s) correspondent aux filtres.</p>
+        {/* Grille de stats */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
             gap: 14,
             marginBottom: 26,
           }}
@@ -242,8 +253,9 @@ export default async function AnomaliesPage() {
           ))}
         </div>
 
+        {visible.length > 150 && <p>Les 150 premiers points sont affichés. Filtrez par personne ou priorité pour préciser la liste.</p>}
         {/* Liste des anomalies */}
-        {anomalies.length === 0 ? (
+        {visible.length === 0 ? (
           <div
             style={{
               background: '#fffdf9',
@@ -266,7 +278,7 @@ export default async function AnomaliesPage() {
               overflow: 'hidden',
             }}
           >
-            {anomalies.map((a, i) => (
+            {visible.slice(0, 150).map((a, i) => (
               <div
                 key={a.id}
                 style={{
@@ -306,7 +318,7 @@ export default async function AnomaliesPage() {
                     }}
                   >
                     {a.message}
-                  </p>
+                  </p>{canEdit && <><Link href={`/person/${a.personId}/edit`}>Corriger la fiche</Link>{' · '}</>}<Link href={`/person/${a.personId}?tab=sources`}>Vérifier les sources</Link>
                 </div>
               </div>
             ))}
