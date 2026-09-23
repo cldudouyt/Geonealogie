@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { getSession } from '@/lib/session';
 import { permits } from '@/lib/auth';
 import PersonTabs from '@/components/PersonTabs';
@@ -469,6 +470,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
       <main className="max-w-4xl mx-auto p-6">
 
 <PersonJourney id={id} name={person.displayName} />
+        <Suspense fallback={null}>
         <PersonTabs panels={[
           <>        {/* Bio narrative */}
         {bio && (
@@ -605,10 +607,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
         )}
 
 </>,
-          <>{/* Documents & photos */}
-        <DocumentsSection personId={id} initialDocs={documents} />
-        {/* Sources */}
-        <SourcesSection id={id} sources={sources} documents={documents} events={Array.from(new Set(timeline.map(e => [e.label, e.dateRaw].filter(Boolean).join(' · '))))} />
+          <><SourcesSection id={id} sources={sources} documents={documents} events={Array.from(new Set(timeline.map(e => [e.label, e.dateRaw].filter(Boolean).join(' · '))))} />
         {/* Online research */}
         <ResearchPanel
           givenNames={person.givenNames}
@@ -619,6 +618,10 @@ export default async function PersonPage({ params }: PersonPageProps) {
         />
 </>
         ]} />
+        </Suspense>
+
+        {/* Photos & documents — toujours visible, pas dans un onglet */}
+        <DocumentsSection personId={id} initialDocs={documents} />
       </main>
     </div>
   );
