@@ -1,4 +1,4 @@
-import { getInvitation, saveDbUser, markInvitationUsed } from '@/lib/db';
+import { getInvitation, saveDbUser, deleteInvitation } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
 import type { Role } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -57,7 +57,8 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
     createdAt: new Date().toISOString(),
     invitationToken: token,
   });
-  await markInvitationUsed(token, name);
+  // Supprimer l'invitation après activation — usage unique garanti
+  await deleteInvitation(token);
 
   // Redirect directly to reset page with email pre-filled
   redirect(`/reset?email=${encodeURIComponent(inv.email)}`);
