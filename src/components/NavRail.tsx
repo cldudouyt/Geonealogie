@@ -67,9 +67,21 @@ const GeoIcon = () => (
     <circle cx="12" cy="10" r="3"/><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z"/>
   </svg>
 );
+const AlbumIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round">
+    <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+  </svg>
+);
 const FeedbackIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  </svg>
+);
+const InviteIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+    <path d="M16 11l2 2 4-4"/>
   </svg>
 );
 const PlusIcon = () => (
@@ -103,6 +115,7 @@ const NAV_GROUPS = [
       { href: '/relation', label: 'Chemin de parenté', icon: <RelationIcon /> },
       { href: '/timeline', label: 'Parcours migratoire', icon: <TimelineIcon /> },
       { href: '/stats', label: 'Statistiques', icon: <StatsIcon /> },
+      { href: '/album', label: 'Album familial', icon: <AlbumIcon /> },
     ],
   },
   {
@@ -122,7 +135,8 @@ const NAV_GROUPS = [
     label: 'Administration',
     items: [
       { href: '/admin', label: 'Administration', icon: <GeoIcon /> },
-      { href: '/feedback', label: 'Suggestions reçues', icon: <FeedbackIcon /> },
+      { href: '/admin/invitations', label: 'Invitations', icon: <InviteIcon /> },
+      { href: '/feedback', label: 'Contributions reçues', icon: <FeedbackIcon /> },
       { href: '/history', label: 'Historique', icon: <TimelineIcon /> },
     ],
   },

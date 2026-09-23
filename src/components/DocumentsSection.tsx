@@ -5,6 +5,10 @@ import { useSession } from './SessionContext';
 import { upload } from '@vercel/blob/client';
 import type { DocumentMeta } from '@/lib/documents-store';
 
+function isImageMime(mimeType: string): boolean {
+  return mimeType.startsWith('image/');
+}
+
 const USE_BLOB = process.env.NEXT_PUBLIC_USE_BLOB === 'true';
 
 const MIME_ICON: Record<string, string> = {
@@ -118,14 +122,26 @@ export default function DocumentsSection({
       {/* Liste */}
       {docs.length > 0 && (
         <ul className="divide-y divide-[#f1ebdd] mb-5">
-          {docs.map(doc => (
+          {docs.map(doc => {
+            const fileUrl = `/api/persons/${personId}/documents/${doc.id}/file`;
+            const isImage = isImageMime(doc.mimeType);
+            return (
             <li key={doc.id} className="flex items-center gap-3 py-3">
-              <span className="text-xl shrink-0 select-none">
-                {MIME_ICON[doc.mimeType] ?? '📎'}
-              </span>
+              {isImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={fileUrl}
+                  alt={doc.title || doc.originalName}
+                  style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0, display: 'block', background: '#f4f1ea' }}
+                />
+              ) : (
+                <span className="text-xl shrink-0 select-none">
+                  {MIME_ICON[doc.mimeType] ?? '📎'}
+                </span>
+              )}
               <div className="flex-1 min-w-0">
                 {doc.deletionPending ? <p className="text-sm">{doc.title || doc.originalName} — suppression en attente</p> : <a
-                  href={`/api/persons/${personId}/documents/${doc.id}/file`}
+                  href={fileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm font-medium text-[#2f5142] hover:underline truncate block"
@@ -148,7 +164,7 @@ export default function DocumentsSection({
                 </svg>
               </button>}
             </li>
-          ))}
+          ); })}
         </ul>
       )}
 

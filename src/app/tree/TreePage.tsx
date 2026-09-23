@@ -202,6 +202,16 @@ export default function TreePage({ defaultFocusId }: { defaultFocusId: string })
   const genParam = parseInt(searchParams.get('gen') ?? '', 10);
   const generations = GEN_OPTIONS.includes(genParam) ? genParam : DEFAULT_GENERATIONS;
 
+  // On mobile without an explicit view param, default to list view
+  useEffect(() => {
+    if (!searchParams.get('view') && window.innerWidth < 640) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('view', 'liste');
+      router.replace(`/tree?${params.toString()}`, { scroll: false });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [fullscreen, setFullscreen] = useState(false);
   const [selected, setSelected] = useState<TreeNode | null>(null);
   const previewDialog = useRef<HTMLDialogElement>(null);

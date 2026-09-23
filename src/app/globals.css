@@ -372,6 +372,7 @@ summary { cursor:pointer; padding:12px 0; font-weight:600; color:var(--green-700
  .source-section { padding:16px; }
  .app-scroller main { padding-left:16px; padding-right:16px; }
  .tree-settings button { min-height:36px; }
+ .tree-list-gen-label { display:none; }
 }
 @media(prefers-reduced-motion:reduce) {
  *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }

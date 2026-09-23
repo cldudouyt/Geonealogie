@@ -15,6 +15,13 @@ export interface DocumentMeta {
   mimeType: string;
   size: number;
   uploadedAt: string;
+  caption?: string;
+  takenDate?: string;  // YYYY or YYYY-MM-DD
+  docType?: 'photo' | 'document';
+}
+
+export function isImageMime(mimeType: string): boolean {
+  return mimeType.startsWith('image/');
 }
 
 const DOCS_DIR  = path.join(process.cwd(), 'public', 'documents');
@@ -67,6 +74,10 @@ export async function deleteFromStorage(url: string, personId: string): Promise<
 // ─── Metadata storage ──────────────────────────────────────────────────────
 
 async function readAll(): Promise<Record<string, DocumentMeta[]>> { return readState(DB_KEY, {}); }
+export async function listAllDocuments(): Promise<DocumentMeta[]> {
+  const all = await readAll();
+  return Object.values(all).flat();
+}
 export async function getDocumentsForPerson(personId: string): Promise<DocumentMeta[]> {
   const all = await readAll();
   const aliases = (await loadOverrides()).mergedPersons ?? {};

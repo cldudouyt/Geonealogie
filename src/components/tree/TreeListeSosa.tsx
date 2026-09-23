@@ -146,8 +146,8 @@ export default function TreeListeSosa({ treeData }: TreeListeSosaProps) {
                 )}
               </div>
 
-              {/* Generation label */}
-              <div style={{
+              {/* Generation label — hidden on small screens */}
+              <div className="tree-list-gen-label" style={{
                 fontSize: 11.5,
                 color: '#9a9080',
                 flexShrink: 0,
