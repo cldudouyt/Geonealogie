@@ -38,7 +38,7 @@ function envAccounts(): EnvAccount[] {
   );
   if (process.env.AUTH_PASSWORD) {
     result.push({
-      name: 'Administration familiale',
+      name: 'Clément DUDOUYT',
       role: 'admin',
       password: process.env.AUTH_PASSWORD,
       email: process.env.AUTH_ADMIN_EMAIL,
