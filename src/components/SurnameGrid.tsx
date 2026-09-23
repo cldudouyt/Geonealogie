@@ -38,7 +38,7 @@ export default function SurnameGrid({ groups, initialLimit = 40 }: SurnameGridPr
         {displayed.map((g) => (
           <a
             key={g.surname}
-            href={`/tree?focus=${g.focusId}`}
+            href={`/search?surname=${encodeURIComponent(g.surname)}`}
             className="group flex items-center gap-3 px-4 py-3 rounded-[13px] border transition-all"
             style={{ background: 'var(--paper-body)', borderColor: 'var(--line)' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--gold-500)'; (e.currentTarget as HTMLElement).style.background = 'var(--paper-page)'; }}
