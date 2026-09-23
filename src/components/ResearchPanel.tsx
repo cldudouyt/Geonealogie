@@ -189,7 +189,7 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
     if (!searched && !open) runSearch();
   };
 
-  const maitronDirectUrl = `https://maitron.fr/recherche-avancee/?exp1_type1=and1&exp1_from1=full1&choix=2&typetri=triP&exp1=${encodeURIComponent(fullName)}&search=OK`;
+  const maitronDirectUrl = `https://maitron.fr/?s=${encodeURIComponent(fullName)}`;
   const bnfSearchUrl = `https://catalogue.bnf.fr/rechercher.do?index=TOUS3&texte=${encodeURIComponent(fullName)}`;
   const viafSearchUrl = `https://viaf.org/search#query=local.personalNames+all+"${encodeURIComponent(fullName)}"`;
   const wikidataSearchUrl = `https://www.wikidata.org/w/index.php?search=${encodeURIComponent(fullName)}&ns0=1`;
@@ -214,6 +214,21 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
 
       {open && (
         <div className="border-t border-[#f1ebdd] px-6 py-5 space-y-6">
+          {/* Bouton relancer */}
+          {searched && !loading && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => { setSearched(false); runSearch(); }}
+                className="flex items-center gap-1.5 text-xs text-[#2f5142] hover:text-[#1e3a2f] transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Actualiser
+              </button>
+            </div>
+          )}
 
           {/* Maitron */}
           <div>
