@@ -1,7 +1,7 @@
 'use client';
 import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
-const labels = ['Vie', 'Famille', 'Lieux', 'Documents'];
+const labels = ['Vie', 'Famille', 'Lieux', 'Docs'];
 export default function PersonTabs({ panels }: { panels: ReactNode[] }) {
   const params = useSearchParams();
   const [active, setActive] = useState(params.get('tab') === 'sources' ? 3 : 0);

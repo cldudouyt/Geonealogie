@@ -39,6 +39,7 @@ export default function DocumentsSection({
   const { canEdit } = useSession();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [fileName, setFileName] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -53,12 +54,10 @@ export default function DocumentsSection({
 
     try {
       if (USE_BLOB) {
-        // Upload direct depuis le navigateur vers Vercel Blob (contourne la limite 4.5 Mo)
         const blob = await upload(file.name, file, {
           access: 'private',
           handleUploadUrl: '/api/blob-upload',
         });
-        // Enregistrement des métadonnées uniquement (JSON)
         const res = await fetch(`/api/persons/${personId}/documents`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -71,26 +70,17 @@ export default function DocumentsSection({
           }),
         });
         const data = await res.json();
-        if (!res.ok) {
-          setError(data.error || 'Erreur lors de l\'enregistrement');
-          return;
-        }
+        if (!res.ok) { setError(data.error || "Erreur lors de l'enregistrement"); return; }
         setDocs(prev => [...prev, data.document]);
       } else {
-        // Mode local : envoi du fichier via FormData
         const fd = new FormData(e.currentTarget);
-        const res = await fetch(`/api/persons/${personId}/documents`, {
-          method: 'POST',
-          body: fd,
-        });
+        const res = await fetch(`/api/persons/${personId}/documents`, { method: 'POST', body: fd });
         const data = await res.json();
-        if (!res.ok) {
-          setError(data.error || 'Erreur lors du téléversement');
-          return;
-        }
+        if (!res.ok) { setError(data.error || 'Erreur lors du téléversement'); return; }
         setDocs(prev => [...prev, data.document]);
       }
       formRef.current?.reset();
+      setFileName('');
     } catch {
       setError('Erreur lors du téléversement');
     } finally {
@@ -101,11 +91,10 @@ export default function DocumentsSection({
   const handleDelete = async (docId: string, docName: string) => {
     if (!confirm(`Supprimer « ${docName} » ?`)) return;
     try {
-      const res = await fetch(`/api/persons/${personId}/documents/${docId}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) setDocs(prev => prev.filter(d => d.id !== docId));
-      else {
+      const res = await fetch(`/api/persons/${personId}/documents/${docId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setDocs(prev => prev.filter(d => d.id !== docId));
+      } else {
         const data = await res.json();
         setError(data.error || 'Erreur lors de la suppression');
         if (data.deletionPending) setDocs(prev => prev.map(d => d.id === docId ? { ...d, deletionPending: true } : d));
@@ -126,79 +115,116 @@ export default function DocumentsSection({
             const fileUrl = `/api/persons/${personId}/documents/${doc.id}/file`;
             const isImage = isImageMime(doc.mimeType);
             return (
-            <li key={doc.id} className="flex items-center gap-3 py-3">
-              {isImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={fileUrl}
-                  alt={doc.title || doc.originalName}
-                  style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0, display: 'block', background: '#f4f1ea' }}
-                />
-              ) : (
-                <span className="text-xl shrink-0 select-none">
-                  {MIME_ICON[doc.mimeType] ?? '📎'}
-                </span>
-              )}
-              <div className="flex-1 min-w-0">
-                {doc.deletionPending ? <p className="text-sm">{doc.title || doc.originalName} — suppression en attente</p> : <a
-                  href={fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium text-[#2f5142] hover:underline truncate block"
-                >
-                  {doc.title || doc.originalName}
-                </a>}
-                <p className="text-xs text-[#9aa89b] mt-0.5">
-                  {doc.title && doc.originalName !== doc.title && `${doc.originalName} · `}
-                  {formatSize(doc.size)} · {new Date(doc.uploadedAt).toLocaleDateString('fr-FR')}
-                </p>
-              </div>
-              {canEdit && <button
-                onClick={() => handleDelete(doc.id, doc.title || doc.originalName)}
-                className="shrink-0 p-1.5 text-[#9aa89b] hover:text-[#b91c1c] transition-colors rounded"
-                aria-label={doc.deletionPending ? "Réessayer la suppression" : "Supprimer ce document"}
-                title={doc.deletionPending ? "Réessayer la suppression" : "Supprimer ce document"}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>}
-            </li>
-          ); })}
+              <li key={doc.id} className="flex items-center gap-3 py-3">
+                {isImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={fileUrl}
+                    alt={doc.title || doc.originalName}
+                    style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: '#f4f1ea' }}
+                  />
+                ) : (
+                  <span className="text-xl shrink-0 select-none">{MIME_ICON[doc.mimeType] ?? '📎'}</span>
+                )}
+                <div className="flex-1 min-w-0">
+                  {doc.deletionPending
+                    ? <p className="text-sm">{doc.title || doc.originalName} — suppression en attente</p>
+                    : <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#2f5142] hover:underline truncate block">
+                        {doc.title || doc.originalName}
+                      </a>
+                  }
+                  <p className="text-xs text-[#9aa89b] mt-0.5">
+                    {doc.title && doc.originalName !== doc.title && `${doc.originalName} · `}
+                    {formatSize(doc.size)} · {new Date(doc.uploadedAt).toLocaleDateString('fr-FR')}
+                  </p>
+                </div>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(doc.id, doc.title || doc.originalName)}
+                    style={{ flexShrink: 0, padding: 10, color: '#9aa89b', borderRadius: 8, minWidth: 40, minHeight: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    aria-label={doc.deletionPending ? 'Réessayer la suppression' : 'Supprimer ce document'}
+                    title={doc.deletionPending ? 'Réessayer la suppression' : 'Supprimer ce document'}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 
-      {/* Formulaire d'ajout */}
-      {canEdit && <form ref={formRef} onSubmit={handleUpload}>
-        <p className="text-xs text-[#8a8474] mb-3">
-          Formats acceptés : PDF, images (JPG, PNG…), Word, texte · Max 10 Mo
-        </p>
-        <div className="flex flex-wrap gap-3 items-end">
+      {!canEdit && docs.length === 0 && (
+        <p style={{ fontSize: 13, color: '#9aa89b', fontStyle: 'italic', marginBottom: 8 }}>Aucun document partagé pour cette personne.</p>
+      )}
+
+      {/* Formulaire d'ajout — mobile-first, tout en colonne */}
+      {canEdit && (
+        <form ref={formRef} onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Zone de sélection fichier */}
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '14px 16px', borderRadius: 12,
+            border: fileName ? '1.5px solid #2f5142' : '1.5px dashed #c9a86a',
+            background: fileName ? '#eef2ec' : '#fffdf9',
+            cursor: 'pointer', minHeight: 52,
+            color: fileName ? '#2f5142' : '#8a8474', fontSize: 14,
+            transition: 'all .15s',
+          }}>
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ flexShrink: 0, color: fileName ? '#2f5142' : '#c9a86a' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {fileName || 'Choisir une photo ou un fichier…'}
+            </span>
+            <input
+              ref={fileRef}
+              name="file"
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.txt"
+              required
+              className="sr-only"
+              onChange={e => setFileName(e.target.files?.[0]?.name ?? '')}
+            />
+          </label>
+
+          {/* Titre */}
           <input
             ref={titleRef}
             name="title"
             type="text"
             placeholder="Titre (facultatif)"
-            className="flex-1 min-w-40 px-3 py-2 text-sm bg-[#fffdf9] text-[#1c1f1c] border border-[#e0d8c6] rounded-[11px] outline-none focus:border-[#2f5142] focus:ring-2 focus:ring-[#2f5142]/10 transition-all"
+            style={{
+              width: '100%', padding: '12px 14px', fontSize: 14,
+              background: '#fffdf9', color: '#1c1f1c',
+              border: '1px solid #e0d8c6', borderRadius: 11, outline: 'none',
+              boxSizing: 'border-box',
+            }}
           />
-          <input
-            ref={fileRef}
-            name="file"
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.txt"
-            required
-            className="text-sm text-[#8a8474] file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#eef2ec] file:text-[#2f5142] hover:file:bg-[#e3eae1] file:cursor-pointer file:transition-colors"
-          />
+
+          {/* Bouton envoi — pleine largeur, tap-friendly */}
           <button
             type="submit"
-            disabled={uploading}
-            className="px-4 py-2 bg-[#1e3a2f] text-[#f1ede2] rounded-[10px] text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity whitespace-nowrap"
+            disabled={uploading || !fileName}
+            style={{
+              width: '100%', padding: '14px', minHeight: 52,
+              background: uploading || !fileName ? '#c8c2b6' : '#1e3a2f',
+              color: '#f1ede2', borderRadius: 12,
+              fontSize: 15, fontWeight: 600,
+              cursor: uploading || !fileName ? 'default' : 'pointer',
+              transition: 'background .15s',
+            }}
           >
-            {uploading ? 'Envoi…' : 'Ajouter'}
+            {uploading ? 'Envoi en cours…' : 'Ajouter'}
           </button>
-        </div>
-        {error && <p className="text-xs text-[#b91c1c] mt-2">{error}</p>}
-      </form>}
+
+          {error && <p style={{ fontSize: 13, color: '#b91c1c' }}>{error}</p>}
+          <p style={{ fontSize: 12, color: '#9aa89b' }}>PDF, photos (JPG, PNG…), Word · Max 10 Mo</p>
+        </form>
+      )}
     </div>
   );
 }
