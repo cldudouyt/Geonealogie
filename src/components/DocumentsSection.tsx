@@ -117,7 +117,7 @@ export default function DocumentsSection({
 
   return (
     <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl p-6 mt-6">
-      <h2 className="text-lg font-semibold mb-4 text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Documents</h2>
+      <h2 className="text-lg font-semibold mb-4 text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Photos & documents</h2>
 
       {/* Liste */}
       {docs.length > 0 && (

@@ -359,16 +359,30 @@ export default async function PersonPage({ params }: PersonPageProps) {
         {/* Hero identity */}
         <div className="relative z-10 px-6 pb-8 pt-6 flex items-end gap-5">
           {/* Avatar */}
-          {person.photoUrl ? (
-            <div style={{ borderRadius: '50%', overflow: 'hidden', width: 88, height: 88, border: '3px solid rgba(255,255,255,0.5)', flexShrink: 0, boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={person.photoUrl} alt={person.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </div>
-          ) : (
-            <div style={{ borderRadius: '50%', width: 88, height: 88, background: 'rgba(255,255,255,0.18)', border: '3px solid rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 700, color: 'rgba(255,255,255,0.92)', flexShrink: 0, boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
-              {initials}
-            </div>
-          )}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            {person.photoUrl ? (
+              <div style={{ borderRadius: '50%', overflow: 'hidden', width: 88, height: 88, border: '3px solid rgba(255,255,255,0.5)', boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={person.photoUrl} alt={person.displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            ) : (
+              <div style={{ borderRadius: '50%', width: 88, height: 88, background: 'rgba(255,255,255,0.18)', border: '3px solid rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 700, color: 'rgba(255,255,255,0.92)', boxShadow: '0 4px 16px rgba(0,0,0,0.2)' }}>
+                {initials}
+              </div>
+            )}
+            {canEdit && (
+              <Link
+                href={`/person/${id}/edit`}
+                style={{ position: 'absolute', bottom: 2, right: 2, background: '#1e3a2f', borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white', color: 'white', flexShrink: 0 }}
+                title="Changer la photo"
+              >
+                <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </Link>
+            )}
+          </div>
 
           {/* Name + meta */}
           <div style={{ paddingBottom: 4 }}>
@@ -590,7 +604,10 @@ export default async function PersonPage({ params }: PersonPageProps) {
         )}
 
 </>,
-          <><SourcesSection id={id} sources={sources} documents={documents} events={Array.from(new Set(timeline.map(e => [e.label, e.dateRaw].filter(Boolean).join(' · '))))} />
+          <>{/* Documents & photos */}
+        <DocumentsSection personId={id} initialDocs={documents} />
+        {/* Sources */}
+        <SourcesSection id={id} sources={sources} documents={documents} events={Array.from(new Set(timeline.map(e => [e.label, e.dateRaw].filter(Boolean).join(' · '))))} />
         {/* Online research */}
         <ResearchPanel
           givenNames={person.givenNames}
@@ -599,9 +616,6 @@ export default async function PersonPage({ params }: PersonPageProps) {
           deathYear={person.deathYear}
           birthPlace={person.birthPlace}
         />
-
-        {/* Documents */}
-        <DocumentsSection personId={id} initialDocs={documents} />
 </>
         ]} />
       </main>
