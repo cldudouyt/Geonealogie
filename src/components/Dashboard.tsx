@@ -119,19 +119,20 @@ export default async function Dashboard() {
         <span
           style={{
             display: 'inline-block',
-            fontSize: 'var(--text-xs)',
+            fontSize: '11px',
             fontFamily: 'var(--font-sans)',
             fontWeight: 700,
-            padding: '5px 14px',
-            borderRadius: 'var(--r-pill)',
+            padding: '4px 14px',
+            borderRadius: 999,
             border: '1px solid var(--green-600)',
             color: 'var(--green-600)',
-            letterSpacing: '.1em',
+            letterSpacing: '.08em',
             textTransform: 'uppercase',
+            background: 'transparent',
             marginBottom: '20px',
           }}
         >
-          Mémoire familiale
+          MÉMOIRE FAMILIALE · DEPUIS 1799
         </span>
 
         {/* H1 */}
@@ -146,7 +147,7 @@ export default async function Dashboard() {
             margin: '0 0 14px',
           }}
         >
-          Votre famille,<br />au fil du temps.
+          Sept générations, une seule histoire.
         </h1>
 
         {/* Sous-titre */}

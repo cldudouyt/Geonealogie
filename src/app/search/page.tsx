@@ -427,7 +427,7 @@ function SearchForm({ initialParams }: { initialParams: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const showArchives = searched || !!initialQ;
+  const showArchives = true;
 
   return (
     <div style={{ minHeight: '100vh', background: '#f4f1ea' }}>
