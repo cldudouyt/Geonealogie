@@ -29,7 +29,7 @@ function toTitleCase(s: string): string {
 
 function formatGivenNames(givenNames: string): string {
   const names = givenNames.replace(/,/g, '').trim().split(/\s+/).filter(Boolean);
-  return names.join(' ');
+  return names.join(', ');
 }
 import { getPerson, getParents, getChildren, getSpouses, getSiblings, formatPlaceFull } from '@/lib/gedcom-store';
 import type { PersonRecord } from '@/lib/gedcom-store';
@@ -509,6 +509,27 @@ export default async function PersonPage({ params }: PersonPageProps) {
             </div>
           )}
         </div>
+
+        {/* Card Détails */}
+        {(person.occupation || person.nationality) && (
+          <div style={{ background: 'var(--paper-card)', border: '1px solid var(--line)', borderRadius: 'var(--r-card)', padding: '20px 24px', marginTop: 20 }}>
+            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 18, fontWeight: 500, color: 'var(--ink-900)', margin: '0 0 16px', letterSpacing: '-0.01em' }}>Détails</h3>
+            <dl style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {person.occupation && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                  <dt style={{ fontSize: 13, color: 'var(--ink-500)' }}>Profession</dt>
+                  <dd style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink-900)', margin: 0, textAlign: 'right' }}>{person.occupation}</dd>
+                </div>
+              )}
+              {person.nationality && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                  <dt style={{ fontSize: 13, color: 'var(--ink-500)' }}>Nationalité</dt>
+                  <dd style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink-900)', margin: 0, textAlign: 'right' }}>{person.nationality}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        )}
 
 </>,
           <><h2 className="section-heading">Lieux de vie</h2>        {/* Migration / life journey — pass coords as JSON string to bypass RSC number serialization bug */}
