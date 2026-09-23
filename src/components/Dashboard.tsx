@@ -298,8 +298,9 @@ export default async function Dashboard() {
                 gap: '16px',
                 padding: '20px',
                 borderRadius: 'var(--r-card)',
-                border: '1px solid',
+                border: '1px solid var(--line)',
                 textDecoration: 'none',
+                color: 'var(--ink-900)',
               }}
             >
               <div
@@ -363,6 +364,7 @@ export default async function Dashboard() {
               border: '1px solid var(--line)',
               borderRadius: 'var(--r-card)',
               padding: '24px',
+              boxShadow: 'var(--shadow-sm)',
             }}
           >
             <div
@@ -408,6 +410,7 @@ export default async function Dashboard() {
                   border: '1px solid var(--line)',
                   borderRadius: 'var(--r-card)',
                   padding: '24px',
+                  boxShadow: 'var(--shadow-sm)',
                 }}
               >
                 <div
@@ -502,6 +505,7 @@ export default async function Dashboard() {
                   border: '1px solid var(--line)',
                   borderRadius: 'var(--r-card)',
                   padding: '24px',
+                  boxShadow: 'var(--shadow-sm)',
                 }}
               >
                 <h2

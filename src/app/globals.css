@@ -288,7 +288,7 @@ nav { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.22) transparent;
 .mobile-menu::backdrop, .person-preview::backdrop { background:rgba(15,29,22,.6); backdrop-filter:blur(3px); }
 .menu-close { display:block; margin:12px 12px 0 auto; padding:10px 16px; color:white; }
 .dashboard-journey { max-width:1080px; padding:0 48px 28px; margin:auto; }
-.journey-card,.story-card { background:var(--paper-card); border:1px solid var(--line); border-radius:20px; padding:28px; margin:0 0 20px; }
+.journey-card,.story-card { background:var(--paper-card); border:1px solid var(--line); border-radius:20px; padding:28px; margin:0 0 20px; box-shadow:var(--shadow-sm); }
 .journey-card { border-top:4px solid var(--gold-500); }
 .journey-card h2,.story-card h2,.source-section h2,.source-item h2 { font-family:var(--font-serif); font-size:26px; line-height:1.2; margin:8px 0 12px; }
 .journey-card p,.story-card p { color:var(--ink-600); line-height:1.65; }
@@ -388,7 +388,7 @@ summary { cursor:pointer; padding:12px 0; font-weight:600; color:var(--green-700
 .nav-utilities a { padding:8px 0; }
 
 /* ── Dashboard ─────────────────────────────────────────────────── */
-.dash-nav-card { background:var(--paper-card); border-color:var(--line); transition:border-color var(--ease), box-shadow var(--ease), transform var(--ease-md); }
+.dash-nav-card { background:var(--paper-card); border-color:var(--line); box-shadow:var(--shadow-sm); transition:border-color var(--ease), box-shadow var(--ease), transform var(--ease-md); }
 .dash-nav-card:hover { border-color:var(--gold-500); box-shadow:var(--shadow-lift); transform:translateY(-2px); }
 .dash-recent-link { transition:background var(--ease); }
 .dash-recent-link:hover { background:var(--paper-body); }
