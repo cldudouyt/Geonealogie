@@ -607,8 +607,14 @@ export default async function PersonPage({ params }: PersonPageProps) {
         )}
 
 </>,
-          <><SourcesSection id={id} sources={sources} documents={documents} events={Array.from(new Set(timeline.map(e => [e.label, e.dateRaw].filter(Boolean).join(' · '))))} />
-        {/* Online research */}
+          <><SourcesSection id={id} sources={sources} documents={documents} events={Array.from(new Set(timeline.map(e => [e.label, e.dateRaw].filter(Boolean).join(' · '))))} /></>
+        ]} />
+        </Suspense>
+
+        {/* Photos & documents — toujours visible */}
+        <DocumentsSection personId={id} initialDocs={documents} />
+
+        {/* Recherche en ligne — toujours visible, pas dans un onglet */}
         <ResearchPanel
           givenNames={person.givenNames}
           surname={person.surname}
@@ -616,12 +622,6 @@ export default async function PersonPage({ params }: PersonPageProps) {
           deathYear={person.deathYear}
           birthPlace={person.birthPlace}
         />
-</>
-        ]} />
-        </Suspense>
-
-        {/* Photos & documents — toujours visible, pas dans un onglet */}
-        <DocumentsSection personId={id} initialDocs={documents} />
       </main>
     </div>
   );

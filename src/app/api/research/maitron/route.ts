@@ -24,47 +24,68 @@ function isMaitronPage(url: string): boolean {
     && /maitron\.fr\/.+/.test(url);
 }
 
-export async function GET(req: NextRequest) {
-  const q = req.nextUrl.searchParams.get('q') || '';
-  if (!q) return NextResponse.json({ results: [] });
+function titleCase(s: string): string {
+  return s.toLowerCase().replace(/(?:^|\s)\S/g, c => c.toUpperCase());
+}
 
-  const searchUrl = `${BASE}/?s=${encodeURIComponent(q)}`;
+// Build query variants to maximise recall on Maitron (which stores entries as "NOM Prénom")
+function queryVariants(q: string): string[] {
+  const normalized = titleCase(q);
+  const words = q.trim().split(/\s+/);
+  const reversed = words.length > 1
+    ? titleCase([...words.slice(1), words[0]].join(' '))
+    : normalized;
+  const surnameOnly = words.length > 1 ? titleCase(words[words.length - 1]) : normalized;
+  return [...new Set([normalized, reversed, surnameOnly])];
+}
 
-  // Strategy 0 — WordPress REST API (JSON, tried first, no HTML needed)
+async function wpRestSearch(query: string): Promise<MaitronResult[] | null> {
+  const apiUrl = `${BASE}/wp-json/wp/v2/posts?search=${encodeURIComponent(query)}&per_page=5&_fields=title,link,excerpt`;
+  const ctrl = new AbortController();
+  setTimeout(() => ctrl.abort(), 6000);
   try {
-    const apiUrl = `${BASE}/wp-json/wp/v2/posts?search=${encodeURIComponent(q)}&per_page=5&_fields=title,link,excerpt`;
-    const ctrl0 = new AbortController();
-    setTimeout(() => ctrl0.abort(), 8000);
     const apiRes = await fetch(apiUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
         'Accept': 'application/json',
       },
       cache: 'no-store',
-      signal: ctrl0.signal,
+      signal: ctrl.signal,
     });
-    if (apiRes.ok) {
-      const data = await apiRes.json();
-      if (Array.isArray(data) && data.length > 0) {
-        const results: MaitronResult[] = data
-          .map((p: { title?: { rendered?: string }; link?: string; excerpt?: { rendered?: string } }) => ({
-            title: stripTags(p.title?.rendered ?? ''),
-            url: p.link ?? '',
-            excerpt: stripTags(p.excerpt?.rendered ?? '').slice(0, 200),
-          }))
-          .filter((r: MaitronResult) => r.title.length > 2 && r.url.length > 0);
-        if (results.length > 0) {
-          return NextResponse.json({ results, searchUrl, strategy: 'wp-rest' });
-        }
-      }
-    }
-  } catch { /* fall through to HTML scraping */ }
+    if (!apiRes.ok) return null;
+    const data = await apiRes.json();
+    if (!Array.isArray(data) || data.length === 0) return null;
+    const results: MaitronResult[] = data
+      .map((p: { title?: { rendered?: string }; link?: string; excerpt?: { rendered?: string } }) => ({
+        title: stripTags(p.title?.rendered ?? ''),
+        url: p.link ?? '',
+        excerpt: stripTags(p.excerpt?.rendered ?? '').slice(0, 200),
+      }))
+      .filter((r: MaitronResult) => r.title.length > 2 && r.url.length > 0);
+    return results.length > 0 ? results : null;
+  } catch { return null; }
+}
 
-  // Strategies 1-3 — HTML scraping fallback
+export async function GET(req: NextRequest) {
+  const q = req.nextUrl.searchParams.get('q') || '';
+  if (!q) return NextResponse.json({ results: [] });
+
+  const searchUrl = `${BASE}/?s=${encodeURIComponent(q)}`;
+  const variants = queryVariants(q);
+
+  // Strategy 0 — WordPress REST API: try each query variant
+  for (const variant of variants) {
+    const res = await wpRestSearch(variant);
+    if (res) return NextResponse.json({ results: res, searchUrl, strategy: 'wp-rest', variant });
+  }
+
+  // Strategies 1-3 — HTML scraping fallback (try each variant)
+  for (const variant of variants) {
   try {
     const ctrlHtml = new AbortController();
     setTimeout(() => ctrlHtml.abort(), 8000);
-    const res = await fetch(searchUrl, {
+    const variantSearchUrl = `${BASE}/?s=${encodeURIComponent(variant)}`;
+    const res = await fetch(variantSearchUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml',
@@ -74,7 +95,7 @@ export async function GET(req: NextRequest) {
       signal: ctrlHtml.signal,
     });
 
-    if (!res.ok) return NextResponse.json({ results: [], error: `HTTP ${res.status}`, searchUrl });
+    if (!res.ok) continue;
 
     const html = await res.text();
     const results: MaitronResult[] = [];
@@ -141,8 +162,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ results, searchUrl });
-  } catch (e) {
-    return NextResponse.json({ results: [], error: String(e), searchUrl });
-  }
+    if (results.length > 0) return NextResponse.json({ results, searchUrl: variantSearchUrl });
+  } catch { /* try next variant */ }
+  } // end for variants
+
+  return NextResponse.json({ results: [], searchUrl });
 }
