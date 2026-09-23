@@ -381,6 +381,15 @@ summary { cursor:pointer; padding:12px 0; font-weight:600; color:var(--green-700
 .story-photo { width:108px; height:132px; object-fit:cover; border-radius:12px; }
 @media(max-width:480px) { .story-card { flex-direction:column; } }
 
+/* ── Carte des origines ─────────────────────────────────────────── */
+.origins-map-layout { display:grid; grid-template-columns:1fr 320px; gap:24px; }
+.origins-map-container { height:560px; }
+@media(max-width:900px) {
+  .origins-map-layout { grid-template-columns:1fr; }
+  .origins-map-container { height:380px; order:-1; }
+  .map-page { padding:20px 18px 48px !important; }
+}
+
 .dashboard-hero { display:grid; grid-template-columns:1.05fr 1fr; gap:32px; align-items:start; }
 .dashboard-hero .journey-card { margin:0; }
 .dashboard-stats { grid-column:1 / -1; }

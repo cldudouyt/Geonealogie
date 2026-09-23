@@ -244,23 +244,22 @@ export default function OriginsMapSection() {
       </div>
 
       {/* Map + sidebar */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24 }}>
+      <div className="origins-map-layout">
         {/* Map */}
-        <div style={{
+        <div className="origins-map-container" style={{
           position: 'relative',
-          height: 560,
           borderRadius: 16,
           overflow: 'hidden',
-          border: '1px solid #e7e0d0',
+          border: '1px solid var(--line)',
         }}>
           {loading ? (
             <div style={{
-              height: '100%',
+              height: '100%', minHeight: 360,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: '#e4ede8',
-              color: '#8a8474',
+              background: 'var(--paper-tint)',
+              color: 'var(--ink-500)',
               fontSize: 14,
             }}>
               Chargement de la carte…

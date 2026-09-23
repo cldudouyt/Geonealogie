@@ -4,7 +4,7 @@ export const metadata = { title: 'Carte des origines — Géonéalogie' };
 
 export default function MapPage() {
   return (
-    <div style={{
+    <div className="map-page" style={{
       padding: '30px 40px 60px',
       minHeight: '100vh',
       background: 'var(--paper-body)',
