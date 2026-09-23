@@ -14,9 +14,12 @@ export async function GET(req: NextRequest) {
   const sruUrl = `https://catalogue.bnf.fr/api/SRU?operation=searchRetrieve&version=1.2&query=bib.anywhere+all+%22${encodeURIComponent(q)}%22&recordSchema=dublincore&maximumRecords=5`;
 
   try {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 8000);
     const res = await fetch(sruUrl, {
       headers: { 'User-Agent': 'Geonealogie/1.0' },
-      next: { revalidate: 3600 },
+      cache: 'no-store',
+      signal: ctrl.signal,
     });
     if (!res.ok) return NextResponse.json({ results: [] });
 

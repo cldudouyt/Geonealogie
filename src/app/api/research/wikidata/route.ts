@@ -12,9 +12,11 @@ export async function GET(req: NextRequest) {
   if (!q) return NextResponse.json({ results: [] });
 
   try {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 8000);
     const res = await fetch(
       `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(q)}&language=fr&type=item&format=json&limit=3`,
-      { headers: { 'User-Agent': 'Geonealogie/1.0' }, next: { revalidate: 3600 } }
+      { headers: { 'User-Agent': 'Geonealogie/1.0' }, cache: 'no-store', signal: ctrl.signal }
     );
     if (!res.ok) return NextResponse.json({ results: [] });
     const data = await res.json();

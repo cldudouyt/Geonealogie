@@ -64,25 +64,30 @@ const EXTERNAL_SOURCES = [
 ];
 
 async function searchWikipedia(lang: 'fr' | 'en', name: string): Promise<WikiResult[]> {
-  const searchRes = await fetch(
-    `https://${lang}.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(name)}&limit=3&format=json&origin=*`
-  );
-  const [, titles] = await searchRes.json() as [string, string[], string[], string[]];
-  if (!titles?.length) return [];
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const searchRes = await fetch(
+      `https://${lang}.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(name)}&limit=3&format=json&origin=*`,
+      { signal: ctrl.signal }
+    );
+    const [, titles] = await searchRes.json() as [string, string[], string[], string[]];
+    if (!titles?.length) return [];
 
-  const results = await Promise.all(
-    titles.slice(0, 2).map(async (title) => {
-      try {
-        const res = await fetch(
-          `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
-          { headers: { 'Api-User-Agent': 'Geonealogie/1.0' } }
-        );
-        if (!res.ok) return null;
-        return await res.json() as WikiResult;
-      } catch { return null; }
-    })
-  );
-  return results.filter(Boolean) as WikiResult[];
+    const results = await Promise.all(
+      titles.slice(0, 2).map(async (title) => {
+        try {
+          const res = await fetch(
+            `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
+            { headers: { 'Api-User-Agent': 'Geonealogie/1.0' }, signal: ctrl.signal }
+          );
+          if (!res.ok) return null;
+          return await res.json() as WikiResult;
+        } catch { return null; }
+      })
+    );
+    return results.filter(Boolean) as WikiResult[];
+  } catch { return []; } finally { clearTimeout(timer); }
 }
 
 function Spinner() {
@@ -149,7 +154,12 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
   const nameWithDates = `${fullName}${birthYear ? ` ${birthYear}` : ''}${deathYear ? `-${deathYear}` : ''}`;
 
   const safeJson = async (url: string) => {
-    try { const r = await fetch(url); return r.ok ? await r.json() : {}; } catch { return {}; }
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10000);
+    try {
+      const r = await fetch(url, { signal: ctrl.signal });
+      return r.ok ? await r.json() : {};
+    } catch { return {}; } finally { clearTimeout(timer); }
   };
 
   const runSearch = async () => {

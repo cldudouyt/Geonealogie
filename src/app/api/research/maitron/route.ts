@@ -33,12 +33,15 @@ export async function GET(req: NextRequest) {
   // Strategy 0 — WordPress REST API (JSON, tried first, no HTML needed)
   try {
     const apiUrl = `${BASE}/wp-json/wp/v2/posts?search=${encodeURIComponent(q)}&per_page=5&_fields=title,link,excerpt`;
+    const ctrl0 = new AbortController();
+    setTimeout(() => ctrl0.abort(), 8000);
     const apiRes = await fetch(apiUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
         'Accept': 'application/json',
       },
       cache: 'no-store',
+      signal: ctrl0.signal,
     });
     if (apiRes.ok) {
       const data = await apiRes.json();
@@ -59,6 +62,8 @@ export async function GET(req: NextRequest) {
 
   // Strategies 1-3 — HTML scraping fallback
   try {
+    const ctrlHtml = new AbortController();
+    setTimeout(() => ctrlHtml.abort(), 8000);
     const res = await fetch(searchUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
@@ -66,6 +71,7 @@ export async function GET(req: NextRequest) {
         'Accept-Language': 'fr-FR,fr;q=0.9',
       },
       cache: 'no-store',
+      signal: ctrlHtml.signal,
     });
 
     if (!res.ok) return NextResponse.json({ results: [], error: `HTTP ${res.status}`, searchUrl });
