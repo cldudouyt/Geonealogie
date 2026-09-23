@@ -1,50 +1,65 @@
 import Link from 'next/link';
 import { listAllDocuments, isImageMime } from '@/lib/documents-store';
-import { getPerson } from '@/lib/gedcom-store';
+import { getAllPersons } from '@/lib/gedcom-store';
 import type { DocumentMeta } from '@/lib/documents-store';
 
 export const dynamic = 'force-dynamic';
 
+type PhotoItem =
+  | { kind: 'avatar'; url: string; name: string }
+  | { kind: 'doc'; doc: DocumentMeta };
+
 interface PhotoGroup {
   personId: string;
   personName: string;
-  photos: DocumentMeta[];
+  items: PhotoItem[];
 }
 
 export default async function AlbumPage() {
   let groups: PhotoGroup[] = [];
 
   try {
-    const docs = await listAllDocuments();
-    const photos = docs.filter(d => !d.deletionPending && isImageMime(d.mimeType));
+    const [persons, docs] = await Promise.all([
+      getAllPersons(),
+      listAllDocuments(),
+    ]);
 
-    // Group by personId
-    const byPerson = new Map<string, DocumentMeta[]>();
-    for (const photo of photos) {
-      const existing = byPerson.get(photo.personId) ?? [];
-      existing.push(photo);
-      byPerson.set(photo.personId, existing);
+    const byPerson = new Map<string, PhotoGroup>();
+
+    // Avatars (photos de profil)
+    for (const person of persons) {
+      if (!person.photoUrl) continue;
+      byPerson.set(person.id, {
+        personId: person.id,
+        personName: person.displayName ?? person.id,
+        items: [{ kind: 'avatar', url: person.photoUrl, name: 'Photo de profil' }],
+      });
     }
 
-    // Resolve person names
-    const entries = await Promise.all(
-      Array.from(byPerson.entries()).map(async ([personId, personPhotos]) => {
-        const person = await getPerson(personId).catch(() => undefined);
-        return {
-          personId,
-          personName: person?.displayName ?? personId,
-          photos: personPhotos,
-        };
-      })
-    );
+    // Documents images
+    for (const doc of docs) {
+      if (doc.deletionPending || !isImageMime(doc.mimeType)) continue;
+      const existing = byPerson.get(doc.personId);
+      if (existing) {
+        existing.items.push({ kind: 'doc', doc });
+      } else {
+        const person = persons.find(p => p.id === doc.personId);
+        byPerson.set(doc.personId, {
+          personId: doc.personId,
+          personName: person?.displayName ?? doc.personId,
+          items: [{ kind: 'doc', doc }],
+        });
+      }
+    }
 
-    // Sort groups by person name
-    groups = entries.sort((a, b) => a.personName.localeCompare(b.personName, 'fr'));
+    groups = Array.from(byPerson.values()).sort((a, b) =>
+      a.personName.localeCompare(b.personName, 'fr'),
+    );
   } catch {
     // Show empty state gracefully if DB unavailable
   }
 
-  const totalPhotos = groups.reduce((n, g) => n + g.photos.length, 0);
+  const totalPhotos = groups.reduce((n, g) => n + g.items.length, 0);
 
   return (
     <div style={{ padding: '32px 24px', maxWidth: 1100, margin: '0 auto' }}>
@@ -92,7 +107,6 @@ export default async function AlbumPage() {
       {/* Photo groups */}
       {groups.map(group => (
         <div key={group.personId} style={{ marginBottom: 40 }}>
-          {/* Group header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <Link
               href={`/person/${group.personId}`}
@@ -114,19 +128,20 @@ export default async function AlbumPage() {
               borderRadius: 999,
               padding: '2px 9px',
             }}>
-              {group.photos.length}
+              {group.items.length}
             </span>
           </div>
 
-          {/* Photo grid */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
             gap: 14,
           }}>
-            {group.photos.map(photo => (
-              <PhotoCard key={photo.id} photo={photo} personId={group.personId} />
-            ))}
+            {group.items.map((item) =>
+              item.kind === 'avatar'
+                ? <AvatarCard key={`avatar-${group.personId}`} url={item.url} name={item.name} personId={group.personId} />
+                : <DocCard key={item.doc.id} doc={item.doc} personId={group.personId} />
+            )}
           </div>
         </div>
       ))}
@@ -134,9 +149,36 @@ export default async function AlbumPage() {
   );
 }
 
-function PhotoCard({ photo, personId }: { photo: DocumentMeta; personId: string }) {
-  const caption = photo.caption || photo.title || photo.originalName;
-  const fileUrl = `/api/persons/${personId}/documents/${photo.id}/file`;
+function AvatarCard({ url, name, personId }: { url: string; name: string; personId: string }) {
+  return (
+    <a
+      href={`/person/${personId}`}
+      style={{
+        display: 'block',
+        background: 'var(--paper-card, #fffdf9)',
+        border: '1px solid var(--line, #e7e0d0)',
+        borderRadius: 12,
+        overflow: 'hidden',
+        textDecoration: 'none',
+        transition: 'border-color 0.15s, box-shadow 0.15s',
+        position: 'relative',
+      }}
+    >
+      <div style={{ width: '100%', aspectRatio: '4 / 3', background: 'var(--paper-body, #f4f1ea)', overflow: 'hidden' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+      </div>
+      <div style={{ padding: '8px 10px 10px' }}>
+        <p style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--ink-900, #1c1f1c)', margin: 0 }}>{name}</p>
+        <p style={{ fontSize: 11, color: 'var(--ink-600, #9aa89b)', margin: '3px 0 0' }}>Photo de profil</p>
+      </div>
+    </a>
+  );
+}
+
+function DocCard({ doc, personId }: { doc: DocumentMeta; personId: string }) {
+  const caption = doc.caption || doc.title || doc.originalName;
+  const fileUrl = `/api/persons/${personId}/documents/${doc.id}/file`;
 
   return (
     <a
@@ -152,51 +194,17 @@ function PhotoCard({ photo, personId }: { photo: DocumentMeta; personId: string 
         textDecoration: 'none',
         transition: 'border-color 0.15s, box-shadow 0.15s',
       }}
-      className="album-card"
     >
-      {/* Thumbnail */}
-      <div style={{
-        width: '100%',
-        aspectRatio: '4 / 3',
-        background: 'var(--paper-body, #f4f1ea)',
-        overflow: 'hidden',
-        position: 'relative',
-      }}>
+      <div style={{ width: '100%', aspectRatio: '4 / 3', background: 'var(--paper-body, #f4f1ea)', overflow: 'hidden' }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={fileUrl}
-          alt={caption}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            display: 'block',
-          }}
-          loading="lazy"
-        />
+        <img src={fileUrl} alt={caption} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
       </div>
-
-      {/* Caption */}
       <div style={{ padding: '8px 10px 10px' }}>
-        <p style={{
-          fontSize: 12.5,
-          fontWeight: 500,
-          color: 'var(--ink-900, #1c1f1c)',
-          margin: 0,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}>
+        <p style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--ink-900, #1c1f1c)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {caption}
         </p>
-        {photo.takenDate && (
-          <p style={{
-            fontSize: 11,
-            color: 'var(--ink-600, #9aa89b)',
-            margin: '3px 0 0',
-          }}>
-            {photo.takenDate}
-          </p>
+        {doc.takenDate && (
+          <p style={{ fontSize: 11, color: 'var(--ink-600, #9aa89b)', margin: '3px 0 0' }}>{doc.takenDate}</p>
         )}
       </div>
     </a>
