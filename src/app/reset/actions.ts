@@ -3,6 +3,7 @@
 import { hasDb, listDbUsers, saveResetToken, getResetToken, markResetTokenUsed, updateDbUserPassword } from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import { hashPassword, makeSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth';
+import { consumeLimit, limitKey } from '@/lib/request-limits';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
@@ -69,6 +70,12 @@ export async function applyReset(_prev: ApplyState, formData: FormData): Promise
   if (!rt) return { error: 'Session expirée. Recommencez.' };
   if (rt.usedAt) return { error: 'Ce code a déjà été utilisé.' };
   if (new Date(rt.expiresAt) < new Date()) return { error: 'Code expiré (15 min). Recommencez.' };
+
+  const key = limitKey('reset-otp', token);
+  if (!await consumeLimit(key, 10, 15 * 60_000)) {
+    return { error: 'Trop de tentatives. Recommencez la procédure depuis le début.' };
+  }
+
   if (rt.otp !== otp) return { error: 'Code incorrect.' };
 
   const salt = crypto.randomUUID();

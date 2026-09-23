@@ -1,7 +1,9 @@
 import { getPerson } from '@/lib/gedcom-store';
 import { NextResponse } from 'next/server';
+import { requireRole } from '@/lib/session';
 
 export async function GET(request: Request) {
+  await requireRole('admin');
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id') || '69';
   const person = await getPerson(id);

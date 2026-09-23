@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loadOverrides } from '@/lib/overrides-store';
-import { getAllPersons, getStore } from '@/lib/gedcom-store';
+import { getAllPersons, getStore, isPresumedAlive } from '@/lib/gedcom-store';
 
 function gedDate(raw?: string): string {
   return raw ? raw.toUpperCase() : '';
@@ -29,45 +29,45 @@ export async function GET() {
 
   // Individuals
   for (const p of persons) {
+    const alive = isPresumedAlive(p);
     lines.push(`0 @${p.id}@ INDI`);
     lines.push(`1 NAME ${p.givenNames} /${p.surname}/`);
     if (p.givenNames) lines.push(`2 GIVN ${p.givenNames}`);
     if (p.surname) lines.push(`2 SURN ${p.surname}`);
-    if (p.nickname) lines.push(`2 NICK ${p.nickname}`);
+    if (!alive && p.nickname) lines.push(`2 NICK ${p.nickname}`);
     if (p.sex !== 'U') lines.push(`1 SEX ${p.sex}`);
 
-    if (p.birthDateRaw || p.birthPlaceFull || p.birthPlace) {
+    if (!alive && (p.birthDateRaw || p.birthPlaceFull || p.birthPlace)) {
       lines.push('1 BIRT');
       if (p.birthDateRaw) lines.push(`2 DATE ${gedDate(p.birthDateRaw)}`);
       if (p.birthPlaceFull || p.birthPlace) lines.push(`2 PLAC ${gedPlace(p.birthPlaceFull || p.birthPlace)}`);
     }
 
-    if (p.chrDateRaw || p.chrPlace) {
+    if (!alive && (p.chrDateRaw || p.chrPlace)) {
       lines.push('1 CHR');
       if (p.chrDateRaw) lines.push(`2 DATE ${gedDate(p.chrDateRaw)}`);
       if (p.chrPlace) lines.push(`2 PLAC ${p.chrPlace}`);
     }
 
-    if (p.deathDateRaw || p.deathPlaceFull || p.deathPlace) {
+    if (!alive && (p.deathDateRaw || p.deathPlaceFull || p.deathPlace)) {
       lines.push('1 DEAT');
       if (p.deathDateRaw) lines.push(`2 DATE ${gedDate(p.deathDateRaw)}`);
       if (p.deathPlaceFull || p.deathPlace) lines.push(`2 PLAC ${gedPlace(p.deathPlaceFull || p.deathPlace)}`);
     }
 
-    if (p.burialDateRaw || p.burialPlace) {
+    if (!alive && (p.burialDateRaw || p.burialPlace)) {
       lines.push('1 BURI');
       if (p.burialDateRaw) lines.push(`2 DATE ${gedDate(p.burialDateRaw)}`);
       if (p.burialPlace) lines.push(`2 PLAC ${p.burialPlace}`);
     }
 
-    for (const occ of p.occupations) {
-      lines.push(`1 OCCU ${occ}`);
+    if (!alive) {
+      for (const occ of p.occupations) lines.push(`1 OCCU ${occ}`);
+      if (p.nationality) lines.push(`1 NATI ${p.nationality}`);
     }
-
-    if (p.nationality) lines.push(`1 NATI ${p.nationality}`);
     if (p.isAdopted) lines.push('1 _FIL ADOPTED_CHILD');
 
-    if (p.notes) {
+    if (!alive && p.notes) {
       const noteLines = p.notes.split('\n');
       lines.push(`1 NOTE ${noteLines[0]}`);
       for (let i = 1; i < noteLines.length; i++) {
@@ -75,13 +75,15 @@ export async function GET() {
       }
     }
 
-    for (const event of p.events) {
-      lines.push('1 EVEN', `2 TYPE ${event.type}`);
-      if (event.dateRaw) lines.push(`2 DATE ${gedDate(event.dateRaw)}`);
-      if (event.placeFull || event.place) lines.push(`2 PLAC ${event.placeFull || event.place}`);
-      if (event.note) { const [first, ...rest] = event.note.split('\n'); lines.push(`2 NOTE ${first}`, ...rest.map(line => `3 CONT ${line}`)); }
+    if (!alive) {
+      for (const event of p.events) {
+        lines.push('1 EVEN', `2 TYPE ${event.type}`);
+        if (event.dateRaw) lines.push(`2 DATE ${gedDate(event.dateRaw)}`);
+        if (event.placeFull || event.place) lines.push(`2 PLAC ${event.placeFull || event.place}`);
+        if (event.note) { const [first, ...rest] = event.note.split('\n'); lines.push(`2 NOTE ${first}`, ...rest.map(line => `3 CONT ${line}`)); }
+      }
     }
-    const sources = (overrides.newPersons.find(n => n.id === p.id) ?? overrides.persons[p.id])?.sources ?? [];
+    const sources = alive ? [] : (overrides.newPersons.find(n => n.id === p.id) ?? overrides.persons[p.id])?.sources ?? [];
     for (const source of sources) {
       const sourceId = `S-${source.id}`;
       lines.push(`1 SOUR @${sourceId}@`, `2 NOTE ${source.event}`, `2 QUAY ${source.confidence === 'confirmed' ? 3 : source.confidence === 'approximate' ? 1 : 0}`);

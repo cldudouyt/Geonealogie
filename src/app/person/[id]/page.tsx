@@ -31,7 +31,7 @@ function formatGivenNames(givenNames: string): string {
   const names = givenNames.replace(/,/g, '').trim().split(/\s+/).filter(Boolean);
   return names.join(', ');
 }
-import { getPerson, getParents, getChildren, getSpouses, getSiblings, formatPlaceFull } from '@/lib/gedcom-store';
+import { getPerson, getParents, getChildren, getSpouses, getSiblings, formatPlaceFull, getDefaultPersonId, findRelationshipPath, getStore } from '@/lib/gedcom-store';
 import type { PersonRecord } from '@/lib/gedcom-store';
 
 function generateBio(
@@ -77,7 +77,7 @@ function generateBio(
     if (person.deathPlaceFull || person.deathPlace) d += ` à ${formatPlaceFull(person.deathPlaceFull) || person.deathPlace}`;
     if (person.birthYear && person.deathYear) {
       const age = parseInt(person.deathYear) - parseInt(person.birthYear);
-      if (age > 0 && age < 120) d += `, à l'âge de $environ {age} ans`;
+      if (age > 0 && age < 120) d += `, à l'âge de environ ${age} ans`;
     }
     lines.push(d);
   }
@@ -94,6 +94,7 @@ import ResearchPanel from '@/components/ResearchPanel';
 import { narrativeFingerprint } from '@/lib/narrative-facts';
 import NarrativeSection from '@/components/NarrativeSection';
 import { getNarrative } from '@/lib/narratives-store';
+import { computeRelationshipTitle } from '@/lib/relationship-label';
 
 interface PersonPageProps {
   params: Promise<{ id: string }>;
@@ -124,6 +125,28 @@ export default async function PersonPage({ params }: PersonPageProps) {
   const spouses = await getSpouses(id);
   const siblings = await getSiblings(id);
   const narrative = await getNarrative(id);
+
+  // Lien de parenté avec la personne de référence
+  let relationLabel: string | null = null;
+  let relationDefaultId: string | null = null;
+  try {
+    const defaultId = await getDefaultPersonId();
+    if (defaultId && defaultId !== id) {
+      const rawPath = await findRelationshipPath(defaultId, id);
+      if (rawPath && rawPath.length > 1) {
+        const store = await getStore();
+        const pathRelations = rawPath.slice(1).map(step => {
+          const p = store.persons.get(step.personId);
+          return { relation: step.relation, sex: p?.sex ?? 'U' };
+        });
+        const { label, article } = computeRelationshipTitle(pathRelations);
+        if (label && label !== 'même personne') {
+          relationLabel = article ? `${article} ${label}` : label;
+          relationDefaultId = defaultId;
+        }
+      }
+    }
+  } catch { /* non-bloquant */ }
 
   // Resolve adoptive parents and adopted children for link display
   const adoptiveParents = person.adoptiveParentIds.length > 0
@@ -400,6 +423,21 @@ export default async function PersonPage({ params }: PersonPageProps) {
               <span style={{ display: 'inline-block', marginTop: 6, fontSize: '0.75rem', padding: '2px 8px', borderRadius: 9999, background: 'rgba(217,119,6,0.7)', color: 'white', fontWeight: 600 }}>
                 Adopté{person.sex === 'F' ? 'e' : ''}
               </span>
+            )}
+            {relationLabel && relationDefaultId && (
+              <Link
+                href={`/relation?from=${relationDefaultId}&to=${id}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8,
+                  fontSize: '0.75rem', padding: '3px 10px', borderRadius: 9999,
+                  background: 'rgba(201,168,106,0.2)', color: '#f0d89a',
+                  fontWeight: 500, textDecoration: 'none',
+                  border: '1px solid rgba(201,168,106,0.3)',
+                }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                {relationLabel}
+              </Link>
             )}
           </div>
         </div>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAllPersons, clearStore } from '@/lib/gedcom-store';
 import { geocodeSingle, getCached } from '@/lib/geocoder';
 import { loadOverrides, savePersonEdit, type PersonEdit } from '@/lib/overrides-store';
+import { requireRole } from '@/lib/session';
 
 export const maxDuration = 300; // 5 min timeout (Vercel Pro)
 
@@ -23,6 +24,7 @@ async function resolvePlace(place: string, isFirst = false): Promise<{ lat: numb
 }
 
 export async function GET() {
+  await requireRole('admin');
   const [persons, overrides] = await Promise.all([getAllPersons(), loadOverrides()]);
 
   // GEDCOM places without coords
@@ -61,6 +63,7 @@ export async function GET() {
 }
 
 export async function POST() {
+  await requireRole('admin');
   const [persons, overrides] = await Promise.all([getAllPersons(), loadOverrides()]);
   const log: string[] = [];
   let geocoded = 0;

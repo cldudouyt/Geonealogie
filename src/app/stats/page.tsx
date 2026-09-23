@@ -1,5 +1,6 @@
 import { getAllPersons } from '@/lib/gedcom-store';
 
+export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Statistiques — Géonéalogie' };
 
 function top<T extends string>(arr: T[], n = 10): { value: T; count: number }[] {

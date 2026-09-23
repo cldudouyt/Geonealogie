@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllPersons } from '@/lib/gedcom-store';
+import { getAllPersons, isPresumedAlive } from '@/lib/gedcom-store';
 
 import { csvCell as esc } from '@/lib/csv';
 
@@ -14,25 +14,28 @@ export async function GET() {
     'Profession', 'Nationalité', 'Adopté(e)', 'Notes',
   ].join(',');
 
-  const rows = persons.map(p => [
-    esc(p.id),
-    esc(p.givenNames),
-    esc(p.surname),
-    esc(p.displayName),
-    esc(p.sex),
-    esc(p.birthDateRaw),
-    esc(p.birthYear),
-    esc(p.birthPlaceFull || p.birthPlace),
-    esc(p.deathDateRaw),
-    esc(p.deathYear),
-    esc(p.deathPlaceFull || p.deathPlace),
-    esc(p.burialDateRaw),
-    esc(p.burialPlace),
-    esc(p.occupation),
-    esc(p.nationality),
-    p.isAdopted ? 'Oui' : 'Non',
-    esc(p.notes),
-  ].join(','));
+  const rows = persons.map(p => {
+    const alive = isPresumedAlive(p);
+    return [
+      esc(p.id),
+      esc(p.givenNames),
+      esc(p.surname),
+      esc(p.displayName),
+      esc(p.sex),
+      alive ? '' : esc(p.birthDateRaw),
+      alive ? '' : esc(p.birthYear),
+      alive ? '' : esc(p.birthPlaceFull || p.birthPlace),
+      alive ? '' : esc(p.deathDateRaw),
+      alive ? '' : esc(p.deathYear),
+      alive ? '' : esc(p.deathPlaceFull || p.deathPlace),
+      alive ? '' : esc(p.burialDateRaw),
+      alive ? '' : esc(p.burialPlace),
+      alive ? '' : esc(p.occupation),
+      alive ? '' : esc(p.nationality),
+      p.isAdopted ? 'Oui' : 'Non',
+      alive ? '' : esc(p.notes),
+    ].join(',');
+  });
 
   const csv = [header, ...rows].join('\r\n');
 
