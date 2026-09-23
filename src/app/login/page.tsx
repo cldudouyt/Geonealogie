@@ -1,16 +1,27 @@
 'use client';
 
-import { useActionState, useEffect, useSyncExternalStore } from 'react';
+import { useActionState, useEffect, useSyncExternalStore, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { login } from './actions';
 
 const subscribe = () => () => {};
 
+function WelcomeBanner() {
+  const isWelcome = useSearchParams().get('welcome') === '1';
+  if (!isWelcome) return null;
+  return (
+    <div style={{
+      background: '#eef5f0', border: '1px solid #c3deca', borderRadius: 12,
+      padding: '14px 16px', marginBottom: 4, fontSize: 13.5, color: '#2a4f37', lineHeight: 1.55,
+    }}>
+      ✓ Compte activé ! Cliquez sur <strong>Mot de passe oublié</strong> ci-dessous pour définir votre mot de passe.
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const hydrated = useSyncExternalStore(subscribe, () => true, () => false);
   const [state, action, pending] = useActionState(login, null);
-  const searchParams = useSearchParams();
-  const isWelcome = searchParams.get('welcome') === '1';
   useEffect(() => { if (state?.success) window.location.assign('/'); }, [state?.success]);
 
   return (
@@ -110,14 +121,9 @@ export default function LoginPage() {
         </div>
 
         {/* Bandeau de bienvenue après acceptation d'invitation */}
-        {isWelcome && (
-          <div style={{
-            background: '#eef5f0', border: '1px solid #c3deca', borderRadius: 12,
-            padding: '14px 16px', marginBottom: 4, fontSize: 13.5, color: '#2a4f37', lineHeight: 1.55,
-          }}>
-            ✓ Compte activé ! Cliquez sur <strong>Mot de passe oublié</strong> ci-dessous pour définir votre mot de passe.
-          </div>
-        )}
+        <Suspense>
+          <WelcomeBanner />
+        </Suspense>
 
         {/* Formulaire */}
         <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
