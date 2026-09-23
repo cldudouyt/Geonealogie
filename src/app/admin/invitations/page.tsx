@@ -8,8 +8,8 @@ export const metadata = { title: 'Invitations — Géonéalogie' };
 export default async function InvitationsPage() {
   await requireRole('admin');
 
-  let invitations = [];
-  let dbUsers = [];
+  let invitations: import('@/lib/db').InvitationRecord[] = [];
+  let dbUsers: import('@/lib/db').DbUser[] = [];
   if (hasDb()) {
     try {
       [invitations, dbUsers] = await Promise.all([listInvitations(), listDbUsers()]);
