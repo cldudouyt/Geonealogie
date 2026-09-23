@@ -38,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr">
       <body
         className={`${hanken.variable} ${newsreader.variable}`}
-        style={{ margin: 0, background: '#e9e4d8' }}
+        style={{ margin: 0, background: '#eeeae1' }}
       >
         {/* Keep async session resolution inside an explicit streaming boundary. */}
         <Suspense fallback={<p role="status">Chargement de votre espace familial…</p>}><SessionShell>{children}</SessionShell></Suspense>

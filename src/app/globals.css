@@ -10,48 +10,48 @@
   --sidebar-width: 400px;
 
   /* ── Legacy aliases (kept for backward compat) ── */
-  --color-bg-body: #e9e4d8;
-  --color-bg-main: #f4f1ea;
-  --color-bg-card: #fffdf9;
-  --color-nav-bg: #15271f;
-  --color-green-mid: #1e3a2f;
-  --color-green: #2f5142;
-  --color-gold: #c9a86a;
-  --color-text-body: #1c1f1c;
-  --color-border-card: #e9e2d2;
+  --color-bg-body: #eeeae1;
+  --color-bg-main: #f0ece3;
+  --color-bg-card: #ffffff;
+  --color-nav-bg: #0b1e13;
+  --color-green-mid: #1c5038;
+  --color-green: #2e7050;
+  --color-gold: #c07838;
+  --color-text-body: #181d19;
+  --color-border-card: #ddd8cc;
 
-  /* ── Design system tokens (DesignSync ad7815b8) ── */
+  /* ── Design system tokens ── */
 
   /* Greens */
-  --green-900: #0f1d16;
-  --green-800: #15271f;
-  --green-700: #1e3a2f;
-  --green-600: #2f5142;
-  --green-300: #b0c4b5;
-  --green-200: #aebaae;
+  --green-900: #081510;
+  --green-800: #0b1e13;
+  --green-700: #1c5038;
+  --green-600: #2e7050;
+  --green-300: #a8c8b4;
+  --green-200: #a4b8a8;
 
-  /* Gold */
-  --gold-600: #b5651d;
-  --gold-500: #c9a86a;
-  --gold-300: #d6bd8e;
+  /* Amber accent (replaces gold) */
+  --gold-600: #a0622a;
+  --gold-500: #c07838;
+  --gold-300: #d8a870;
 
   /* Paper (light surfaces) */
-  --paper-card: #fffdf9;
-  --paper-body: #f4f1ea;
-  --paper-page: #e9e4d8;
-  --paper-tint: #f1f4ef;
+  --paper-card: #ffffff;
+  --paper-body: #f0ece3;
+  --paper-page: #eeeae1;
+  --paper-tint: #eef2ec;
 
   /* Lines */
-  --line-soft:   #f1ebdd;
-  --line:        #e7e0d0;
-  --line-strong: #e0d8c6;
+  --line-soft:   #ede8de;
+  --line:        #ddd8cc;
+  --line-strong: #d4cec0;
 
   /* Ink (text) */
-  --ink-900: #1c1f1c;
-  --ink-600: #5a5e52;
-  --ink-500: #8a8474;
-  --ink-400: #9aa89b;
-  --ink-nav: #e8e4d8;
+  --ink-900: #181d19;
+  --ink-600: #5a6556;
+  --ink-500: #848070;
+  --ink-400: #99a493;
+  --ink-nav: #dde8d8;
 
   /* Person/event accent */
   --slate-500: #5b7da3;
@@ -103,13 +103,13 @@
   --sp-5: 20px; --sp-6: 24px; --sp-8: 32px;
 
   /* Elevation */
-  --shadow-card: 0 8px 28px -14px rgba(30, 58, 47, 0.4);
+  --shadow-card: 0 8px 28px -14px rgba(28, 80, 56, 0.32);
   --shadow-pop:  0 8px 24px rgba(0, 0, 0, 0.1);
-  --shadow-sm:   0 2px 8px rgba(30, 58, 47, 0.06);
-  --shadow-lift: 0 4px 18px rgba(30, 58, 47, 0.13);
+  --shadow-sm:   0 2px 8px rgba(28, 80, 56, 0.06);
+  --shadow-lift: 0 4px 18px rgba(28, 80, 56, 0.14);
 
-  /* Secondary text — résout les #6c7064 hardcodés */
-  --ink-secondary: #6c7064;
+  /* Secondary text */
+  --ink-secondary: #697060;
 
   /* Échelle typographique */
   --text-2xs: 10px;
@@ -123,8 +123,9 @@
   --ease-md: 0.2s ease;
 
   /* Palette étendue */
-  --green-500: #3d6652;
-  --green-400: #4a7058;
+  --green-500: #3d7858;
+  --green-400: #4a8868;
+  --focus-ring: rgba(46, 112, 80, 0.14);
 }
 
 @theme inline {
@@ -150,8 +151,8 @@
 }
 
 body {
-  background: #e9e4d8;
-  color: #1c1f1c;
+  background: #eeeae1;
+  color: #181d19;
   font-family: var(--font-sans, 'Hanken Grotesk', system-ui, sans-serif);
   margin: 0;
 }
@@ -342,7 +343,7 @@ summary { cursor:pointer; padding:12px 0; font-weight:600; color:var(--green-700
  .app-scroller { padding-bottom:calc(76px + env(safe-area-inset-bottom)); }
  .mobile-navigation { display:flex; position:fixed; inset:auto 0 0; z-index:210; background:var(--green-800); color:var(--paper-card); border-top:1px solid var(--green-600); padding:8px 8px calc(8px + env(safe-area-inset-bottom)); gap:4px; }
  .mobile-navigation a,.mobile-navigation button { flex:1; display:flex; justify-content:center; align-items:center; padding:12px 4px; min-height:48px; font-size:13px; border-radius:10px; }
- .mobile-navigation [aria-current=page],.mobile-navigation [aria-expanded=true] { background:rgba(201,168,106,.2); color:#f6d99f; }
+ .mobile-navigation [aria-current=page],.mobile-navigation [aria-expanded=true] { background:rgba(192,120,56,.2); color:#f0c070; }
  .global-header { padding:12px 16px !important; height:auto !important; flex-wrap:wrap; gap:10px !important; }
  .global-header > div:first-child { max-width:none !important; min-width:180px; }
  .header-actions { gap:6px !important; }
