@@ -14,19 +14,23 @@ function toAbsolute(href: string): string {
 }
 
 function stripTags(s: string): string {
-  return s.replace(/&nbsp;/g, ' ').replace(/&#\d+;/g, '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  return s.replace(/&nbsp;/g, ' ').replace(/&#\d+;/g, '').replace(/&amp;/g, '&')
+    .replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 }
 
-function isArticleUrl(href: string): boolean {
-  // SPIP articles: /spip.php?article123, or /notice/..., or /maitron-en-ligne?...
-  return /spip\.php\?article\d|\/notice\/|maitron-en-ligne/.test(href);
+function isMaitronArticleUrl(href: string): boolean {
+  // WordPress: https://maitron.fr/notice/..., https://maitron.fr/12345-..., /?p=...
+  // SPIP legacy: /spip.php?article..., /maitron-en-ligne?...
+  if (!href.includes('maitron.fr') && !href.startsWith('/')) return false;
+  return /maitron\.fr\/\d|maitron\.fr\/notice\/|spip\.php\?article\d|maitron-en-ligne|\?p=\d/.test(href);
 }
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q') || '';
   if (!q) return NextResponse.json({ results: [] });
 
-  const searchUrl = `${BASE}/recherche-avancee/?exp1_type1=and1&exp1_from1=full1&choix=2&typetri=triP&exp1=${encodeURIComponent(q)}&search=OK`;
+  // Maitron is now WordPress — use the simple ?s= search endpoint
+  const searchUrl = `${BASE}/?s=${encodeURIComponent(q)}`;
 
   try {
     const res = await fetch(searchUrl, {
@@ -43,33 +47,37 @@ export async function GET(req: NextRequest) {
     const html = await res.text();
     const results: MaitronResult[] = [];
 
-    // Strategy 1: structured results list (SPIP default template — guillemets simples ou doubles)
-    const listBlockMatch = html.match(/class=["'][^"']*resultats[^"']*["'][^>]*>([\s\S]{0,8000}?)<\/(?:ul|div)>/);
-    if (listBlockMatch) {
-      const block = listBlockMatch[1];
-      // Each result: <a href="..."> with a <strong> title and optional .excerpt
-      const entryRe = /<a\s+href=["']([^"']+)["'][^>]*>\s*(?:<[^>]+>\s*)*<strong[^>]*>([\s\S]*?)<\/strong>([\s\S]*?)(?=<\/a>|<a\s)/g;
-      let m;
-      while ((m = entryRe.exec(block)) !== null && results.length < 5) {
-        const href = m[1];
-        if (!isArticleUrl(href)) continue;
-        const title = stripTags(m[2]);
-        const afterTitle = m[3];
-        const excerptMatch = afterTitle.match(/<span[^>]*class="[^"]*excerpt[^"]*"[^>]*>([\s\S]*?)<\/span>/);
-        const excerpt = excerptMatch ? stripTags(excerptMatch[1]) : '';
-        const url = toAbsolute(href);
-        if (title && !results.find(r => r.url === url)) results.push({ url, title, excerpt });
-      }
+    // Strategy 1: WordPress <article> elements (standard WP search results)
+    const articleRe = /<article[^>]*>([\s\S]*?)<\/article>/g;
+    let artMatch;
+    while ((artMatch = articleRe.exec(html)) !== null && results.length < 5) {
+      const block = artMatch[1];
+
+      // Title link: <h2 class="entry-title"><a href="...">Title</a></h2>
+      const linkMatch = block.match(/<a\s+(?:rel="bookmark"\s+)?href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/);
+      if (!linkMatch) continue;
+
+      const url = toAbsolute(linkMatch[1]);
+      const title = stripTags(linkMatch[2]);
+      if (!title || title.length < 3) continue;
+
+      // Excerpt: .entry-summary p or .excerpt or plain <p>
+      const excerptMatch = block.match(/<div[^>]*class=["'][^"']*(?:summary|excerpt)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i)
+        || block.match(/<p[^>]*class=["'][^"']*excerpt[^"']*["'][^>]*>([\s\S]*?)<\/p>/i)
+        || block.match(/<p>([\s\S]*?)<\/p>/);
+      const excerpt = excerptMatch ? stripTags(excerptMatch[1]).slice(0, 200) : '';
+
+      if (!results.find(r => r.url === url)) results.push({ url, title, excerpt });
     }
 
-    // Strategy 2: any article link in the page (fallback for layout changes)
+    // Strategy 2: any link whose URL matches a Maitron article pattern (fallback)
     if (results.length === 0) {
-      const linkRe = /<a\s+href=["']([^"']+)["'][^>]*>([\s\S]{3,120}?)<\/a>/g;
-      let m2;
-      while ((m2 = linkRe.exec(html)) !== null && results.length < 5) {
-        const href = m2[1];
-        if (!isArticleUrl(href)) continue;
-        const title = stripTags(m2[2]);
+      const linkRe = /<a\s+href=["']([^"']+)["'][^>]*>([\s\S]{4,120}?)<\/a>/g;
+      let m;
+      while ((m = linkRe.exec(html)) !== null && results.length < 5) {
+        const href = m[1];
+        if (!isMaitronArticleUrl(href)) continue;
+        const title = stripTags(m[2]);
         if (title.length < 4) continue;
         const url = toAbsolute(href);
         if (!results.find(r => r.url === url)) results.push({ url, title, excerpt: '' });
