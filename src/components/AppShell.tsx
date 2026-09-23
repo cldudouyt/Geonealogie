@@ -5,8 +5,10 @@ import Link from 'next/link';
 import NavRail from './NavRail';
 import GlobalHeader from './GlobalHeader';
 import { ExplorationTracker } from './PersonalJourney';
+import { useSession } from './SessionContext';
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const session = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const moreButton = useRef<HTMLButtonElement>(null);
@@ -21,6 +23,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="app-main">{pathname !== '/' && <GlobalHeader />}<div id="main-content" tabIndex={-1} ref={scrollerRef} className="app-scroller">{children}</div></div>
     <nav aria-label="Navigation principale mobile" className="mobile-navigation">
       {[['/', 'Accueil'], ['/tree', 'Arbre'], ['/search', 'Recherche']].map(([href, label]) => <Link key={href} href={href} aria-current={pathname === href ? 'page' : undefined}>{label}</Link>)}
+      {session.canEdit && <Link href="/person/new" aria-current={pathname === '/person/new' ? 'page' : undefined}>Ajouter</Link>}
       <button ref={moreButton} aria-expanded={menuOpen} aria-controls="mobile-menu" onClick={() => { dialog.current?.showModal(); setMenuOpen(true); }}>Plus</button>
     </nav>
     <dialog id="mobile-menu" ref={dialog} className="mobile-menu" aria-label="Toutes les rubriques" onClose={() => setMenuOpen(false)} onClick={e => { if (e.target === dialog.current) close(); }}>
