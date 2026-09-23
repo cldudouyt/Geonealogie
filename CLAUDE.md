@@ -179,3 +179,40 @@ npm run test:duplicates   # parcours de fusion de doublons
 - Pas de commentaires sauf si la logique est non-évidente
 - Composants Server Components par défaut, `"use client"` uniquement si nécessaire
 - Nommage : `camelCase` pour variables/fonctions, `PascalCase` pour composants
+
+## Backlog produit, UX et fiabilité — 23 septembre 2026
+
+Objectif : rendre l'exploration familiale plus simple et permettre aux proches d'enrichir le site ensemble. Conserver l'identité vert/crème et améliorer les fonctionnalités existantes avant de multiplier les écrans.
+
+Statut : propositions à réaliser, pas des fonctionnalités livrées. Vérifier l'existant et la dernière branche avant chaque chantier ; compléter les parcours déjà présents sans les dupliquer.
+
+### Lot 1 recommandé — exploration mobile et participation
+
+- [ ] **P1 — Arbre mobile plus lisible.** Afficher d'abord les proches de la personne choisie, permettre de déplier/replier les branches, ouvrir une fiche courte au toucher et conserver le centrage, le zoom et les branches ouvertes au retour d'une fiche. Réutiliser les commandes de plein écran et de recentrage existantes. Vérifier navigation tactile, clavier et absence de débordement horizontal.
+- [ ] **P1 — Parenté directement sur les fiches.** Afficher le lien avec la personne de référence (« Catherine est ta tante », lorsque les données le permettent), avec accès au chemin explicatif. Réutiliser le calcul de `/relation`. Gérer explicitement l'absence de personne de référence, de chemin connu et les liens ambigus ; ne pas inventer de parenté.
+- [ ] **P1 — Contributions guidées.** Proposer « Ajouter un souvenir », « Identifier cette photo » et « Proposer une correction ». Prévoir un formulaire court lié à la fiche ou au média, une file de validation et les statuts en attente/acceptée/refusée. Une proposition ne modifie pas les données avant validation par un rôle autorisé ; conserver auteur, date et historique. Définir explicitement les droits de proposition des lecteurs.
+
+### Lot 2 — qualité des données et mémoire familiale
+
+- [ ] **P2 — Doublons mieux expliqués.** Compléter la comparaison existante : différences surlignées, raisons du rapprochement et aperçu des parents, conjoints et enfants après fusion. Conserver confirmation, contrôle concurrent et possibilités d'annulation existantes. Une concordance n'est pas une preuve d'identité ; aucun nouveau mécanisme de fusion silencieuse. Couvrir les homonymes, liens répétés et contradictions par des tests.
+- [ ] **P2 — Album familial.** Regrouper les photos par personne, événement et époque, avec légendes et identification manuelle des personnes. Réutiliser les médias existants, distinguer dates exactes/approximatives et respecter les droits de consultation. Ne pas rendre publics les médias ni les informations de personnes vivantes par défaut.
+- [ ] **P2 — Invitations et gestion des accès dans le site.** Permettre à l'administrateur d'inviter un proche, de choisir son rôle et de révoquer son accès sans modifier les variables d'hébergement. Prévoir invitations à usage unique et durée limitée, invalidation des sessions révoquées et migration des accès existants sans verrouiller l'administrateur. Choisir le mécanisme d'authentification et d'envoi avant implémentation ; ne pas stocker de mots de passe en clair.
+
+### UX et design — critères transverses
+
+- [ ] **Hiérarchie des actions.** Une action principale claire par contexte ; regrouper les actions secondaires dans un menu accessible sans masquer les fonctions indispensables.
+- [ ] **Lisibilité mobile et accessibilité.** Libellés compréhensibles, alternatives accessibles aux icônes, contrastes vérifiés, cibles tactiles confortables et texte agrandissable. Tester petits écrans, zoom du texte, navigation clavier et focus visible.
+- [ ] **Continuité de navigation.** Conserver recherche, filtres, pagination et position d'exploration lors des allers-retours ; compléter la synchronisation URL et le retour arrière déjà en place.
+- [ ] **Confiance dans les informations.** Distinguer visuellement information sourcée, hypothèse familiale et texte généré par IA ; donner accès aux sources et à la validation humaine. Ne pas présenter un score ou une génération comme une preuve.
+
+### Socle technique — à mener en parallèle des lots produit
+
+- [ ] **P1 — Tests automatisés avant fusion.** Ajouter une CI GitHub Actions pour tests unitaires/intégration, vérification TypeScript, build et parcours Playwright essentiels (mobile, rôles, recherche, édition, doublons/restauration). Utiliser des données synthétiques et aucun secret de production ; joindre les traces en cas d'échec. Configurer séparément les contrôles requis avant fusion selon les droits du dépôt.
+- [ ] **P1 — Exercice de restauration complète.** Tester sur un environnement isolé la restauration d'une sauvegarde incluant GEDCOM, modifications et médias ; vérifier intégrité, relations et droits d'accès. Documenter le périmètre sauvegardé et les exclusions. L'export et la récupération de fichiers existent déjà : ne pas les confondre avec une restauration globale opérationnelle.
+- [ ] **P2 — Restauration globale guidée.** Après validation de l'exercice, prévoir inspection, simulation et confirmation explicite avant remplacement, sauvegarde préalable et procédure de retour arrière. Ne jamais tester le remplacement sur les données familiales de production.
+
+### Validation de chaque livraison
+
+- [ ] Définir les critères d'acceptation et ajouter les tests de non-régression du parcours modifié.
+- [ ] Vérifier mobile et ordinateur, états vides/chargement/erreur et droits lecteur/contributeur/administrateur.
+- [ ] Mettre à jour ce backlog uniquement après vérification ; distinguer implémentation, tests et mise en production.
