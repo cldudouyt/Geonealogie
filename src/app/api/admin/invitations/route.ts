@@ -53,9 +53,16 @@ export async function POST(req: Request) {
         Vous vous connecterez avec cette adresse email : <strong>${email}</strong>
       </p>
       <a href="${inviteUrl}" style="display:inline-block;background:#1e3a2f;color:#f1ede2;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px">
-        Accepter l'invitation
+        Activer mon accès
       </a>
-      <p style="color:#9a9080;font-size:12px;margin:20px 0 0">
+      <div style="background:#f4f1ea;border-radius:10px;padding:14px 16px;margin:20px 0 0;font-size:13px;color:#4a4f46;line-height:1.6">
+        <strong>Étapes pour vous connecter :</strong><br>
+        1. Cliquez sur « Activer mon accès » et confirmez votre nom.<br>
+        2. Sur la page de connexion, cliquez sur <strong>Mot de passe oublié</strong>.<br>
+        3. Entrez votre email (<strong>${email}</strong>) pour recevoir un code.<br>
+        4. Saisissez le code et choisissez votre mot de passe.
+      </div>
+      <p style="color:#9a9080;font-size:12px;margin:16px 0 0">
         Ce lien est valable 7 jours et ne peut être utilisé qu'une seule fois.<br>
         Si vous n'attendiez pas cette invitation, ignorez ce message.
       </p>

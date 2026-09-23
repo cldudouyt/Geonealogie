@@ -10,7 +10,6 @@ const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box', fontFamily: 'var(--font-sans)',
   transition: 'border-color .15s, box-shadow .15s',
 };
-
 const focus = (e: React.FocusEvent<HTMLInputElement>) => {
   e.currentTarget.style.borderColor = 'var(--green-600)';
   e.currentTarget.style.boxShadow = '0 0 0 3px rgba(47,81,66,.12)';
@@ -22,14 +21,13 @@ const blur = (e: React.FocusEvent<HTMLInputElement>) => {
 
 interface Props {
   token: string;
-  role: string;
   roleLabel: string;
   suggestedName?: string;
   createdBy: string;
-  isExpired: boolean;
+  email: string;
 }
 
-export default function InviteForm({ token, roleLabel, suggestedName, createdBy, isExpired }: Props) {
+export default function InviteForm({ token, roleLabel, suggestedName, createdBy, email }: Props) {
   const [state, action, pending] = useActionState<ClaimState | null, FormData>(claimInvitation, null);
 
   return (
@@ -72,82 +70,56 @@ export default function InviteForm({ token, roleLabel, suggestedName, createdBy,
           </p>
         </div>
 
-        {isExpired ? (
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 14, color: 'var(--ink-600)', marginBottom: 16 }}>
-              Ce lien d'invitation a expiré. Demandez un nouveau lien à l'administrateur.
-            </p>
-            <a href="/login" style={{
-              display: 'inline-block', background: 'var(--green-700)', color: '#f1ede2',
-              padding: '10px 24px', borderRadius: 10, textDecoration: 'none',
-              fontSize: 14, fontWeight: 600,
-            }}>
-              Se connecter
-            </a>
+        <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <input type="hidden" name="token" value={token} />
+
+          <div>
+            <label htmlFor="name" style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--ink-900)', marginBottom: 6 }}>
+              Votre prénom et nom <span style={{ color: '#d98b82' }}>*</span>
+            </label>
+            <input
+              id="name" name="name" type="text" required autoFocus
+              autoComplete="name" placeholder="Marie Dupont"
+              defaultValue={suggestedName}
+              style={inputStyle} onFocus={focus} onBlur={blur}
+            />
           </div>
-        ) : (
-          <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <input type="hidden" name="token" value={token} />
 
-            <div>
-              <label htmlFor="name" style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--ink-900)', marginBottom: 6 }}>
-                Votre prénom et nom <span style={{ color: '#d98b82' }}>*</span>
-              </label>
-              <input
-                id="name" name="name" type="text" required autoFocus
-                autoComplete="name" placeholder="Marie Dupont"
-                defaultValue={suggestedName}
-                style={inputStyle} onFocus={focus} onBlur={blur}
-              />
-            </div>
+          {/* Email info box */}
+          <div style={{
+            background: 'var(--paper-body)', border: '1px solid var(--line)', borderRadius: 10,
+            padding: '12px 14px', fontSize: 13, color: 'var(--ink-600)', lineHeight: 1.5,
+          }}>
+            <strong style={{ color: 'var(--ink-900)' }}>Votre email de connexion :</strong><br />
+            <span style={{ fontFamily: 'monospace', fontSize: 13.5 }}>{email}</span>
+            <br /><br />
+            Après avoir activé votre compte, vous recevrez un code par email pour définir votre mot de passe.
+          </div>
 
-            <div>
-              <label htmlFor="password" style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--ink-900)', marginBottom: 6 }}>
-                Choisissez un mot de passe <span style={{ color: '#d98b82' }}>*</span>
-              </label>
-              <input
-                id="password" name="password" type="password" required
-                autoComplete="new-password" placeholder="8 caractères minimum"
-                style={inputStyle} onFocus={focus} onBlur={blur}
-              />
-            </div>
+          {state?.error && (
+            <p style={{
+              margin: 0, fontSize: 13.5, color: '#b03a2e',
+              background: '#fae6e3', border: '1px solid #f5c5bf',
+              borderRadius: 10, padding: '10px 14px',
+            }}>
+              {state.error}
+            </p>
+          )}
 
-            <div>
-              <label htmlFor="confirm" style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--ink-900)', marginBottom: 6 }}>
-                Confirmer <span style={{ color: '#d98b82' }}>*</span>
-              </label>
-              <input
-                id="confirm" name="confirm" type="password" required
-                autoComplete="new-password" placeholder="••••••••"
-                style={inputStyle} onFocus={focus} onBlur={blur}
-              />
-            </div>
-
-            {state?.error && (
-              <p style={{
-                margin: 0, fontSize: 13.5, color: '#b03a2e',
-                background: '#fae6e3', border: '1px solid #f5c5bf',
-                borderRadius: 10, padding: '10px 14px',
-              }}>
-                {state.error}
-              </p>
-            )}
-
-            <button
-              type="submit" disabled={pending}
-              style={{
-                width: '100%', height: 46, borderRadius: 10,
-                background: 'var(--green-700)', color: '#f1ede2',
-                fontSize: 15, fontWeight: 600, border: 'none',
-                cursor: pending ? 'not-allowed' : 'pointer',
-                opacity: pending ? 0.7 : 1, transition: 'background .15s, opacity .15s',
-                fontFamily: 'var(--font-sans)',
-              }}
-            >
-              {pending ? 'Création du compte…' : 'Créer mon accès'}
-            </button>
-          </form>
-        )}
+          <button
+            type="submit" disabled={pending}
+            style={{
+              width: '100%', height: 46, borderRadius: 10,
+              background: 'var(--green-700)', color: '#f1ede2',
+              fontSize: 15, fontWeight: 600, border: 'none',
+              cursor: pending ? 'not-allowed' : 'pointer',
+              opacity: pending ? 0.7 : 1, transition: 'background .15s, opacity .15s',
+              fontFamily: 'var(--font-sans)',
+            }}
+          >
+            {pending ? 'Activation…' : 'Activer mon accès'}
+          </button>
+        </form>
       </div>
     </div>
   );

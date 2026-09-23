@@ -1,9 +1,8 @@
 'use server';
 
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getInvitation, markInvitationUsed, saveDbUser } from '@/lib/db';
-import { hashPassword, makeSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth';
+import { hashPassword } from '@/lib/auth';
 import type { Role } from '@/lib/auth';
 
 export interface ClaimState {
@@ -16,21 +15,18 @@ export async function claimInvitation(
 ): Promise<ClaimState> {
   const token = formData.get('token')?.toString() || '';
   const name = formData.get('name')?.toString().trim() || '';
-  const password = formData.get('password')?.toString() || '';
-  const confirm = formData.get('confirm')?.toString() || '';
 
   if (!name) return { error: 'Le prénom/nom est obligatoire.' };
-  if (password.length < 8) return { error: 'Le mot de passe doit contenir au moins 8 caractères.' };
-  if (password !== confirm) return { error: 'Les mots de passe ne correspondent pas.' };
 
   const inv = await getInvitation(token);
   if (!inv) return { error: 'Invitation introuvable.' };
   if (inv.usedAt) return { error: 'Cette invitation a déjà été utilisée.' };
   if (new Date(inv.expiresAt) < new Date()) return { error: 'Cette invitation a expiré.' };
 
+  // Create account with a random placeholder password (user will set their own via OTP reset)
   const userId = crypto.randomUUID();
   const salt = crypto.randomUUID();
-  const passwordHash = await hashPassword(password, salt);
+  const passwordHash = await hashPassword(crypto.randomUUID(), salt);
 
   await saveDbUser({
     id: userId,
@@ -45,15 +41,6 @@ export async function claimInvitation(
 
   await markInvitationUsed(token, name);
 
-  const token2 = await makeSessionToken({ name, role: inv.role as Role, id: userId });
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, token2, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: SESSION_MAX_AGE,
-    path: '/',
-  });
-
-  redirect('/');
+  // Redirect to login with welcome flag so the user knows to set their password
+  redirect('/login?welcome=1');
 }
