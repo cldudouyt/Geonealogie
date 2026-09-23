@@ -196,39 +196,37 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
 
   return (
     <div className="bg-[#fffdf9] border border-[#e7e0d0] rounded-2xl overflow-hidden mt-6">
-      <button
-        onClick={toggle}
-        className="w-full flex items-center justify-between px-6 py-4 hover:bg-[#f1f4ef] transition-colors"
-      >
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between px-6 py-4">
+        <button
+          onClick={toggle}
+          className="flex items-center gap-2 flex-1 text-left hover:opacity-80 transition-opacity"
+        >
           <svg className="w-5 h-5 text-[#8a8474]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <h2 className="text-base font-semibold text-[#1c1f1c]" style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }}>Recherche en ligne</h2>
-          <span className="text-xs text-[#9aa89b] font-normal">Maitron, Wikipedia, Wikidata, VIAF, BnF…</span>
-        </div>
-        <svg className={`w-4 h-4 text-[#9aa89b] transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+          <span className="text-xs text-[#9aa89b] font-normal hidden sm:inline">Maitron, Wikipedia, Wikidata, VIAF, BnF…</span>
+          <svg className={`w-4 h-4 text-[#9aa89b] transition-transform ml-auto ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {searched && !loading && (
+          <button
+            type="button"
+            onClick={() => { setSearched(false); runSearch(); }}
+            style={{ marginLeft: 12, padding: '6px 12px', background: '#eef2ec', color: '#2f5142', borderRadius: 8, fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}
+            title="Relancer la recherche"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Actualiser
+          </button>
+        )}
+      </div>
 
       {open && (
         <div className="border-t border-[#f1ebdd] px-6 py-5 space-y-6">
-          {/* Bouton relancer */}
-          {searched && !loading && (
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => { setSearched(false); runSearch(); }}
-                className="flex items-center gap-1.5 text-xs text-[#2f5142] hover:text-[#1e3a2f] transition-colors"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Actualiser
-              </button>
-            </div>
-          )}
 
           {/* Maitron */}
           <div>
