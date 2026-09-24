@@ -151,7 +151,7 @@ const TABS: { id: ViewMode; label: string }[] = [
 ];
 
 const GEN_OPTIONS = [1, 2, 3, 4, 5];
-const DEFAULT_GENERATIONS = 2;
+const DEFAULT_GENERATIONS = 4;
 
 /* ── Dot-grid background ─────────────────────────────────────── */
 const DOT_GRID: React.CSSProperties = {
