@@ -14,7 +14,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const moreButton = useRef<HTMLButtonElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   useEffect(() => { scrollerRef.current?.scrollTo(0, 0); dialog.current?.close(); }, [pathname]);
-  if (pathname === '/login') return <>{children}</>;
+  if (pathname === '/login' || pathname.startsWith('/reset') || pathname.startsWith('/invite/')) return <>{children}</>;
   const close = () => { dialog.current?.close(); setMenuOpen(false); moreButton.current?.focus(); };
   return <div className="app-shell">
     <a href="#main-content" className="skip-link">Aller au contenu</a>
