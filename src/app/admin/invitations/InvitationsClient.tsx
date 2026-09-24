@@ -34,12 +34,15 @@ export default function InvitationsClient({ initialInvitations, initialDbUsers, 
   const [role, setRole] = useState<'reader' | 'contributor' | 'admin'>('reader');
   const [suggestedName, setSuggestedName] = useState('');
   const [error, setError] = useState('');
+  const [createdUrl, setCreatedUrl] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [copiedToken, setCopiedToken] = useState('');
+  const [copiedNew, setCopiedNew] = useState(false);
   const [, startTransition] = useTransition();
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError('');
+    setError(''); setCreatedUrl(''); setEmailError('');
     const res = await fetch('/api/admin/invitations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -48,6 +51,8 @@ export default function InvitationsClient({ initialInvitations, initialDbUsers, 
     const data = await res.json();
     if (!res.ok) { setError(data.error || 'Erreur'); return; }
     setEmail(''); setSuggestedName('');
+    if (data.inviteUrl) setCreatedUrl(data.inviteUrl);
+    if (data.emailError) setEmailError(data.emailError);
     const res2 = await fetch('/api/admin/invitations');
     const d2 = await res2.json();
     setInvitations(d2.invitations || []);
@@ -115,22 +120,53 @@ export default function InvitationsClient({ initialInvitations, initialDbUsers, 
             </select>
           </div>
           {error && <p style={{ margin: 0, fontSize: 13, color: '#b03a2e' }}>{error}</p>}
-          <div>
-            <button type="submit" style={{
-              height: 38, padding: '0 20px', background: 'var(--green-700)', color: '#f1ede2',
-              border: 'none', borderRadius: 9, fontSize: 13.5, fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'var(--font-sans)',
-            }}>
-              Envoyer l'invitation
-            </button>
-            {!process.env.RESEND_API_KEY && (
-              <span style={{ marginLeft: 12, fontSize: 12, color: 'var(--ink-500)' }}>
-                (lien à copier — email non configuré)
-              </span>
-            )}
-          </div>
+          <button type="submit" style={{
+            height: 38, padding: '0 20px', background: 'var(--green-700)', color: '#f1ede2',
+            border: 'none', borderRadius: 9, fontSize: 13.5, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'var(--font-sans)',
+          }}>
+            Envoyer l'invitation
+          </button>
         </form>
       </div>
+
+      {/* Post-create: show invite link + email status */}
+      {createdUrl && (
+        <div style={{
+          background: emailError ? '#fff8f0' : '#f0f7f2',
+          border: `1px solid ${emailError ? '#f5c89a' : '#a8d4b8'}`,
+          borderRadius: 12, padding: '16px 20px',
+        }}>
+          {emailError ? (
+            <>
+              <p style={{ margin: '0 0 8px', fontSize: 13.5, fontWeight: 600, color: '#9a4b0a' }}>
+                ⚠ L'email n'a pas pu être envoyé — partagez ce lien manuellement :
+              </p>
+              <p style={{ margin: '0 0 6px', fontSize: 11, color: '#9a7050' }}>
+                Raison : {emailError}
+              </p>
+            </>
+          ) : (
+            <p style={{ margin: '0 0 8px', fontSize: 13.5, fontWeight: 600, color: '#2f6b46' }}>
+              ✓ Email envoyé. Lien d'invitation :
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              readOnly value={createdUrl}
+              style={{ flex: 1, minWidth: 0, height: 34, padding: '0 10px', fontSize: 12.5, border: '1px solid #d0c8bb', borderRadius: 8, background: 'white', color: '#333', fontFamily: 'monospace' }}
+              onFocus={e => e.target.select()}
+            />
+            <button
+              type="button"
+              onClick={() => { navigator.clipboard.writeText(createdUrl).catch(() => {}); setCopiedNew(true); setTimeout(() => setCopiedNew(false), 2000); }}
+              style={{ height: 34, padding: '0 14px', background: copiedNew ? '#2f6b46' : '#1e3a2f', color: '#f1ede2', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              {copiedNew ? '✓ Copié !' : 'Copier'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Pending invitations */}
       {pending.length > 0 && (

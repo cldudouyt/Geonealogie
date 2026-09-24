@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   const inviteUrl = `${baseUrl}/invite/${token}`;
 
   const roleLabels: Record<InviteRole, string> = { reader: 'Lecteur', contributor: 'Contributeur', admin: 'Administrateur' };
-  await sendEmail(
+  const emailResult = await sendEmail(
     email,
     `${session.name} vous invite à rejoindre Géonéalogie`,
     `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 20px">
@@ -63,7 +63,12 @@ export async function POST(req: Request) {
     </div>`,
   );
 
-  return Response.json({ token, inviteUrl });
+  return Response.json({
+    token,
+    inviteUrl,
+    emailSent: emailResult.ok,
+    emailError: emailResult.ok ? undefined : emailResult.error,
+  });
 }
 
 export async function DELETE(req: Request) {
