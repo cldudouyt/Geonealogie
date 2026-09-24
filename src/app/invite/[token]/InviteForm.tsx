@@ -31,7 +31,7 @@ function blur(e: React.FocusEvent<HTMLInputElement>) {
   e.currentTarget.style.boxShadow = 'none';
 }
 
-export default function InviteForm({ token, isReset }: { token: string; isReset: boolean }) {
+export default function InviteForm({ token, isReset, maskedEmail }: { token: string; isReset: boolean; maskedEmail?: string }) {
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
 
@@ -86,6 +86,19 @@ export default function InviteForm({ token, isReset }: { token: string; isReset:
               ? 'Choisissez un nouveau mot de passe pour votre compte.'
               : 'Choisissez un prénom et un mot de passe pour activer votre compte.'}
           </p>
+          {maskedEmail && (
+            <p style={{
+              fontSize: 12, color: '#a09888', margin: '10px 0 0',
+              letterSpacing: '0.01em',
+            }}>
+              <span style={{ userSelect: 'none' }}>Compte : </span>
+              <span style={{
+                fontFamily: 'monospace', color: '#7a9080',
+                background: 'rgba(47,81,66,.07)', borderRadius: 5,
+                padding: '1px 7px', fontSize: 12.5,
+              }}>{maskedEmail}</span>
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
