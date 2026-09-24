@@ -142,6 +142,7 @@ export interface InvitationRecord {
   expiresAt: string;
   usedAt?: string;
   usedBy?: string;
+  resetForUserId?: string; // set for password-reset links (existing user)
 }
 
 export interface DbUser {

@@ -38,6 +38,9 @@ export default function InvitationsClient({ initialInvitations, initialDbUsers, 
   const [emailError, setEmailError] = useState('');
   const [copiedToken, setCopiedToken] = useState('');
   const [copiedNew, setCopiedNew] = useState(false);
+  const [resetUrl, setResetUrl] = useState('');
+  const [resetUserId, setResetUserId] = useState('');
+  const [copiedReset, setCopiedReset] = useState(false);
   const [, startTransition] = useTransition();
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
@@ -70,6 +73,24 @@ export default function InvitationsClient({ initialInvitations, initialDbUsers, 
   async function handleDeleteUser(id: string) {
     await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
     setDbUsers((users: DbUser[]) => users.filter((u: DbUser) => u.id !== id));
+  }
+
+  async function handleResetUser(user: DbUser) {
+    setResetUrl(''); setResetUserId(user.id); setCopiedReset(false);
+    const res = await fetch('/api/admin/invitations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: user.email || '',
+        role: user.role,
+        resetForUserId: user.id,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok && data.inviteUrl) setResetUrl(data.inviteUrl);
+    const res2 = await fetch('/api/admin/invitations');
+    const d2 = await res2.json();
+    setInvitations(d2.invitations || []);
   }
 
   function copyLink(token: string) {
@@ -168,6 +189,34 @@ export default function InvitationsClient({ initialInvitations, initialDbUsers, 
         </div>
       )}
 
+      {/* Post-reset: show reset link */}
+      {resetUrl && (
+        <div style={{
+          background: '#f0f4ff', border: '1px solid #a8b8d8', borderRadius: 12, padding: '16px 20px',
+        }}>
+          <p style={{ margin: '0 0 8px', fontSize: 13.5, fontWeight: 600, color: '#2a3a6b' }}>
+            Lien de réinitialisation du mot de passe — à partager directement avec {dbUsers.find(u => u.id === resetUserId)?.name || 'l\'utilisateur'} :
+          </p>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              readOnly value={resetUrl}
+              style={{ flex: 1, minWidth: 0, height: 34, padding: '0 10px', fontSize: 12.5, border: '1px solid #d0c8bb', borderRadius: 8, background: 'white', color: '#333', fontFamily: 'monospace' }}
+              onFocus={e => e.target.select()}
+            />
+            <button
+              type="button"
+              onClick={() => { navigator.clipboard.writeText(resetUrl).catch(() => {}); setCopiedReset(true); setTimeout(() => setCopiedReset(false), 2000); }}
+              style={{ height: 34, padding: '0 14px', background: copiedReset ? '#2a3a6b' : '#3f617f', color: '#f1ede2', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              {copiedReset ? '✓ Copié !' : 'Copier'}
+            </button>
+          </div>
+          <p style={{ margin: '8px 0 0', fontSize: 12, color: '#6070a0' }}>
+            Valable 7 jours. L'utilisateur choisit son nouveau mot de passe en suivant ce lien.
+          </p>
+        </div>
+      )}
+
       {/* Pending invitations */}
       {pending.length > 0 && (
         <section>
@@ -242,6 +291,16 @@ export default function InvitationsClient({ initialInvitations, initialDbUsers, 
                   <span style={{ ...rc, borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 500 }}>
                     {ROLE_LABELS[u.role]}
                   </span>
+                  <button
+                    onClick={() => handleResetUser(u)}
+                    style={{
+                      height: 32, padding: '0 12px', background: 'none',
+                      border: '1px solid var(--line)', borderRadius: 8, fontSize: 12,
+                      cursor: 'pointer', color: '#3f617f', fontFamily: 'var(--font-sans)',
+                    }}
+                  >
+                    Réinitialiser l'accès
+                  </button>
                   <button
                     onClick={() => startTransition(() => { handleDeleteUser(u.id); })}
                     style={{
