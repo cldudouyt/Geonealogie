@@ -1,6 +1,6 @@
 'use server';
 
-import { getInvitation, saveDbUser, deleteInvitation, listDbUsers } from '@/lib/db';
+import { getInvitation, saveDbUser, deleteInvitation, listDbUsers, updateDbUserPassword } from '@/lib/db';
 import { hashPassword, makeSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth';
 import type { Role } from '@/lib/auth';
 import { cookies } from 'next/headers';
@@ -12,7 +12,6 @@ export async function activateInvitation(formData: FormData): Promise<{ error: s
   const password = formData.get('password')?.toString() || '';
   const confirm = formData.get('confirm')?.toString() || '';
 
-  if (!name) return { error: 'Prénom requis.' };
   if (password.length < 8) return { error: 'Le mot de passe doit contenir au moins 8 caractères.' };
   if (password !== confirm) return { error: 'Les mots de passe ne correspondent pas.' };
 
@@ -21,30 +20,45 @@ export async function activateInvitation(formData: FormData): Promise<{ error: s
   if (inv.usedAt) return { error: 'Ce lien a déjà été utilisé. Connectez-vous directement.' };
   if (new Date(inv.expiresAt) < new Date()) return { error: 'Lien expiré (7 jours). Demandez un nouveau lien.' };
 
-  // Check email not already registered
-  const existing = await listDbUsers().catch(() => []);
-  if (existing.find(u => u.email?.toLowerCase() === inv.email.toLowerCase())) {
-    return { error: 'Ce compte existe déjà. Connectez-vous directement.' };
-  }
-
-  const userId = crypto.randomUUID();
   const salt = crypto.randomUUID();
   const passwordHash = await hashPassword(password, salt);
 
-  await saveDbUser({
-    id: userId,
-    name,
-    email: inv.email,
-    role: inv.role as Role,
-    passwordHash,
-    salt,
-    createdAt: new Date().toISOString(),
-    invitationToken: token,
-  });
+  let userId: string;
+  let userRole: Role;
+  let userName: string;
+
+  if (inv.resetForUserId) {
+    const users = await listDbUsers().catch(() => []);
+    const existingUser = users.find(u => u.id === inv.resetForUserId);
+    const updated = await updateDbUserPassword(inv.email, passwordHash, salt);
+    if (!updated) return { error: 'Compte introuvable. Contactez l\'administrateur.' };
+    userId = inv.resetForUserId;
+    userRole = inv.role as Role;
+    userName = existingUser?.name || inv.suggestedName || 'Utilisateur';
+  } else {
+    if (!name) return { error: 'Prénom requis.' };
+    const existing = await listDbUsers().catch(() => []);
+    if (existing.find(u => u.email?.toLowerCase() === inv.email.toLowerCase())) {
+      return { error: 'Ce compte existe déjà. Connectez-vous directement.' };
+    }
+    userId = crypto.randomUUID();
+    userRole = inv.role as Role;
+    userName = name;
+    await saveDbUser({
+      id: userId,
+      name: userName,
+      email: inv.email,
+      role: userRole,
+      passwordHash,
+      salt,
+      createdAt: new Date().toISOString(),
+      invitationToken: token,
+    });
+  }
 
   await deleteInvitation(token);
 
-  const sessionToken = await makeSessionToken({ name, role: inv.role as Role, id: userId });
+  const sessionToken = await makeSessionToken({ name: userName, role: userRole, id: userId });
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, sessionToken, {
     httpOnly: true,

@@ -17,12 +17,14 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return Response.json({ error: 'Non autorisé' }, { status: 401 });
 
-  const { email, role, suggestedName } = await req.json() as { email: string; role: InviteRole; suggestedName?: string };
+  const { email, role, suggestedName, resetForUserId } = await req.json() as {
+    email: string; role: InviteRole; suggestedName?: string; resetForUserId?: string;
+  };
   if (!email || !role) return Response.json({ error: 'Email et rôle requis' }, { status: 400 });
   if (!['reader', 'contributor', 'admin'].includes(role)) return Response.json({ error: 'Rôle invalide' }, { status: 400 });
 
   const token = crypto.randomUUID();
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const inv = {
     token,
@@ -32,12 +34,18 @@ export async function POST(req: Request) {
     createdBy: session.name,
     createdAt: new Date().toISOString(),
     expiresAt,
+    ...(resetForUserId ? { resetForUserId } : {}),
   };
 
   await saveInvitation(inv);
 
   const baseUrl = appBaseUrl();
   const inviteUrl = `${baseUrl}/invite/${token}`;
+
+  // For password reset links, don't send email — admin shares the link directly
+  if (resetForUserId) {
+    return Response.json({ token, inviteUrl, emailSent: false });
+  }
 
   const roleLabels: Record<InviteRole, string> = { reader: 'Lecteur', contributor: 'Contributeur', admin: 'Administrateur' };
   const emailResult = await sendEmail(
