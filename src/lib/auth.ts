@@ -29,20 +29,33 @@ export async function verifyPassword(password: string, hash: string, salt: strin
   return equal(await hashPassword(password, salt), hash);
 }
 
-interface EnvAccount { name: string; role: Role; password: string; email?: string }
+export function isValidEmail(value: unknown): value is string {
+  return typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+interface EnvAccount { name: string; role: Role; password: string; email: string }
+const warned = new Set<string>();
+function warnOnce(message: string) {
+  if (warned.has(message)) return;
+  warned.add(message);
+  console.error(`[auth] ${message}`);
+}
 function envAccounts(): EnvAccount[] {
   const configured: unknown = JSON.parse(process.env.AUTH_USERS_JSON || '[]');
   if (!Array.isArray(configured)) throw new Error('Configuration des accès invalide.');
-  const result: EnvAccount[] = (configured as unknown[]).filter(
-    (a): a is EnvAccount => !!a && typeof (a as EnvAccount).name === 'string' && typeof (a as EnvAccount).password === 'string' && (a as EnvAccount).password.length > 0 && ['reader','contributor','admin'].includes((a as EnvAccount).role)
-  );
+  const result: EnvAccount[] = [];
+  for (const a of configured as Partial<EnvAccount>[]) {
+    if (!a || typeof a.name !== 'string' || typeof a.password !== 'string' || !a.password || !['reader','contributor','admin'].includes(a.role as string)) continue;
+    if (!isValidEmail(a.email)) { warnOnce(`AUTH_USERS_JSON : l'accès « ${a.name} » est ignoré, email obligatoire.`); continue; }
+    result.push({ name: a.name, role: a.role as Role, password: a.password, email: a.email.trim() });
+  }
   if (process.env.AUTH_PASSWORD) {
-    result.push({
-      name: 'Clément DUDOUYT',
-      role: 'admin',
-      password: process.env.AUTH_PASSWORD,
-      email: process.env.AUTH_ADMIN_EMAIL,
-    });
+    const email = process.env.AUTH_ADMIN_EMAIL;
+    if (isValidEmail(email)) {
+      result.push({ name: 'Clément DUDOUYT', role: 'admin', password: process.env.AUTH_PASSWORD, email: email.trim() });
+    } else {
+      warnOnce('AUTH_ADMIN_EMAIL manquant ou invalide : le compte administrateur AUTH_PASSWORD est désactivé.');
+    }
   }
   return result;
 }
@@ -54,7 +67,7 @@ export async function authenticate(password: string, email: string): Promise<Aut
   // Check env accounts with matching email
   const digest = await signature(password);
   for (const account of envAccounts()) {
-    if (account.email?.toLowerCase() === lEmail && equal(digest, await signature(account.password))) {
+    if (account.email.toLowerCase() === lEmail &&equal(digest, await signature(account.password))) {
       return { name: account.name, role: account.role };
     }
   }

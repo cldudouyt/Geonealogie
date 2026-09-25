@@ -21,6 +21,18 @@ test('role-bound sessions reject tampering, revoked credentials and expired toke
   try { assert.equal(await readSessionToken(token), null); } finally { Date.now = realNow; }
   process.env.AUTH_USERS_JSON = '[]'; assert.equal(await readSessionToken(token), null);
 });
+test('accounts without a valid email cannot sign in', async () => {
+  const saved = { users: process.env.AUTH_USERS_JSON, admin: process.env.AUTH_ADMIN_EMAIL };
+  try {
+    process.env.AUTH_USERS_JSON = JSON.stringify([{ name: 'No email', role: 'reader', password: 'no-email' }, { name: 'Bad email', role: 'reader', password: 'bad-email', email: 'pas-un-email' }]);
+    assert.equal(await authenticate('no-email', ''), null);
+    assert.equal(await authenticate('bad-email', 'pas-un-email'), null);
+    delete process.env.AUTH_ADMIN_EMAIL;
+    assert.equal(await authenticate('test-admin', 'admin@test.local'), null);
+    process.env.AUTH_ADMIN_EMAIL = ' Admin@Test.local ';
+    assert.equal((await authenticate('test-admin', 'admin@test.local'))?.role, 'admin');
+  } finally { process.env.AUTH_USERS_JSON = saved.users; process.env.AUTH_ADMIN_EMAIL = saved.admin; }
+});
 test('parallel writes on different persons preserve every edit', async () => {
   await Promise.all(Array.from({ length: 12 }, (_, i) => savePersonEdit(`P${i}`, { nickname: `Name ${i}` }, 'QA')));
   const state = await loadOverrides(); assert.equal(Object.keys(state.persons).length, 12); assert.equal(state.history?.length, 12);

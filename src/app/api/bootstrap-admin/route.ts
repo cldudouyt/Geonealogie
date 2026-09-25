@@ -1,5 +1,5 @@
 import { saveDbUser, listDbUsers, hasDb, listInvitations } from '@/lib/db';
-import { hashPassword } from '@/lib/auth';
+import { hashPassword, isValidEmail } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   };
 
   if (token !== secret) return Response.json({ error: 'Token invalide' }, { status: 403 });
-  if (!email || !password || password.length < 8) return Response.json({ error: 'email + password (8 car. min) requis' }, { status: 400 });
+  if (!isValidEmail(email) || !password || password.length < 8) return Response.json({ error: 'email + password (8 car. min) requis' }, { status: 400 });
   if (!hasDb()) return Response.json({ error: 'DATABASE_URL non configuré' }, { status: 500 });
 
   const existing = await listDbUsers();

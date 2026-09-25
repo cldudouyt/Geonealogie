@@ -30,6 +30,7 @@ Postgres (ou le fallback fichier) ne stocke que ce que les utilisateurs modifien
 |---|---|---|
 | `DATABASE_URL` | Postgres (Neon) pour les écritures ; absent en dev → fallback fichiers `data/*.json` | non (recommandé en prod) |
 | `AUTH_PASSWORD` | Mot de passe administrateur familial | oui |
+| `AUTH_ADMIN_EMAIL` | Email de connexion de l'administrateur `AUTH_PASSWORD` (sans lui, ce compte est désactivé) | oui |
 | `AUTH_SECRET` | Secret de signature des sessions (≥32 caractères aléatoires) | oui |
 | `AUTH_USERS_JSON` | Accès nommés supplémentaires (voir ci-dessous) | non |
 | `GEMINI_API_KEY` | Clé API Gemini (gratuite sur aistudio.google.com), requise pour les fonctionnalités IA (`/api/ai`, portrait de fiche) | pour les features IA |
@@ -41,8 +42,8 @@ Postgres (ou le fallback fichier) ne stocke que ce que les utilisateurs modifien
 
 ```json
 [
-  { "name": "Prénom du proche", "role": "reader", "password": "un-secret-unique" },
-  { "name": "Prénom du contributeur", "role": "contributor", "password": "un-autre-secret" }
+  { "name": "Prénom du proche", "role": "reader", "password": "un-secret-unique", "email": "proche@exemple.fr" },
+  { "name": "Prénom du contributeur", "role": "contributor", "password": "un-autre-secret", "email": "contributeur@exemple.fr" }
 ]
 ```
 

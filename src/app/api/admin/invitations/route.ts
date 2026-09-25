@@ -1,5 +1,6 @@
 import { requireRole, getSession } from '@/lib/session';
-import { listInvitations, saveInvitation, deleteInvitation, type InviteRole } from '@/lib/db';
+import { listInvitations, saveInvitation, deleteInvitation, listDbUsers, type InviteRole } from '@/lib/db';
+import { isValidEmail } from '@/lib/auth';
 import { hasDb } from '@/lib/db';
 import { sendEmail, appBaseUrl } from '@/lib/email';
 
@@ -17,10 +18,20 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return Response.json({ error: 'Non autorisé' }, { status: 401 });
 
-  const { email, role, suggestedName, resetForUserId } = await req.json() as {
+  const body = await req.json() as {
     email: string; role: InviteRole; suggestedName?: string; resetForUserId?: string;
   };
-  if (!email || !role) return Response.json({ error: 'Email et rôle requis' }, { status: 400 });
+  const { suggestedName, resetForUserId } = body;
+  let { email, role } = body;
+  if (resetForUserId) {
+    const user = (await listDbUsers()).find(u => u.id === resetForUserId);
+    if (!user) return Response.json({ error: 'Compte introuvable' }, { status: 404 });
+    if (!isValidEmail(user.email)) return Response.json({ error: 'Ce compte n’a pas d’email : supprimez-le et réinvitez la personne avec son email.' }, { status: 400 });
+    email = user.email;
+    role = user.role;
+  }
+  if (!isValidEmail(email)) return Response.json({ error: 'Email valide obligatoire' }, { status: 400 });
+  email = email.trim();
   if (!['reader', 'contributor', 'admin'].includes(role)) return Response.json({ error: 'Rôle invalide' }, { status: 400 });
 
   const token = crypto.randomUUID();

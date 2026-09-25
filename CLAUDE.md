@@ -140,7 +140,7 @@ const results = await runAgentsInParallel([
 - Géocodage : API Nominatim (OpenStreetMap)
 
 ## Authentification et rôles
-Mot de passe partagé (`AUTH_PASSWORD`) + sessions signées (`AUTH_SECRET`). Des accès nommés supplémentaires se déclarent via `AUTH_USERS_JSON` (tableau `{ name, role, password }`).
+Mot de passe partagé (`AUTH_PASSWORD`) + sessions signées (`AUTH_SECRET`). Des accès nommés supplémentaires se déclarent via `AUTH_USERS_JSON` (tableau `{ name, role, password, email }`, email obligatoire : un accès sans email valide est ignoré).
 
 | Rôle | Droits |
 |------|--------|
@@ -156,6 +156,7 @@ DATABASE_URL=postgres://...    ← Postgres Neon (injecté par Vercel) ; absent 
 GEMINI_API_KEY=...             ← obligatoire pour les features IA (clé gratuite sur aistudio.google.com)
 BLOB_READ_WRITE_TOKEN=...
 AUTH_PASSWORD=...
+AUTH_ADMIN_EMAIL=...           ← obligatoire, email de connexion du compte AUTH_PASSWORD (sinon compte désactivé)
 AUTH_SECRET=...
 AUTH_USERS_JSON=...            ← optionnel, accès nommés (voir "Authentification et rôles")
 GITHUB_TOKEN=...               ← optionnel, création d'issues depuis les suggestions (scope repo)

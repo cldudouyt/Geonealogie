@@ -13,7 +13,8 @@ state.history = [{ id: 'qa-history', at: '2026-09-21T10:00:00Z', actor: 'QA', la
 await writeFile(path.join(dir, 'overrides.json'), JSON.stringify(state));
 await writeFile(path.join(dir, 'documents.json'), JSON.stringify({ 'qa-person': [{ id: 'qa-doc', personId: 'qa-person', url: '/' + mediaDir.replace(/^public\//, '') + '/test.txt', originalName: 'test.txt', mimeType: 'text/plain', size: 22, uploadedAt: new Date().toISOString() }] }));
 const base = 'http://localhost:3107';
-const env = { ...process.env, GEDCOM_PATH: path.resolve('tests/fixtures/sample.ged'), GEO_DATA_DIR: dir, AUTH_SECRET: 'qa-local-recovery-only', AUTH_PASSWORD: 'qa-admin', AUTH_USERS_JSON: JSON.stringify([{ name: 'QA reader', role: 'reader', password: 'qa-reader' }]) };
+const emailFor = p => ({"qa-admin":"admin@qa.local","qa-reader":"reader@qa.local","qa-contributor":"contributor@qa.local"})[p] ?? "admin@qa.local";
+const env = { ...process.env, GEDCOM_PATH: path.resolve('tests/fixtures/sample.ged'), GEO_DATA_DIR: dir, AUTH_SECRET: 'qa-local-recovery-only', AUTH_PASSWORD: 'qa-admin', AUTH_ADMIN_EMAIL: 'admin@qa.local', AUTH_USERS_JSON: JSON.stringify([{ name: 'QA reader', role: 'reader', password: 'qa-reader', email: 'reader@qa.local' }]) };
 for (const key of ['DATABASE_URL','POSTGRES_URL','VERCEL','BLOB_READ_WRITE_TOKEN','BLOB_PRIVATE_READ_WRITE_TOKEN','ANTHROPIC_API_KEY','ANTHROPIC_AUTH_TOKEN']) delete env[key];
 const server = spawn(process.execPath, ['node_modules/next/dist/bin/next',process.env.QA_DEV ? 'dev' : 'start','--hostname','127.0.0.1','--port','3107'], { env, stdio: ['ignore','pipe','pipe'] });
 let logs = ''; server.stdout.on('data', b => logs += b); server.stderr.on('data', b => logs += b);
@@ -26,7 +27,7 @@ try {
   // Never forward genealogy searches to external archive providers in local QA.
   await context.route('**/api/research/**', r => r.fulfill({ json: { total: 0, results: [] } }));
   const page = await context.newPage(); page.setDefaultTimeout(30000); if (process.env.QA_DEV) page.on('console', msg => { if(msg.type() === 'error') console.log('CONSOLE', msg.text()); }); const errors = []; page.on('pageerror', e => { errors.push(e.message); console.error('PAGE ERROR', page.url(), e.message); });
-  const login = async password => { await page.goto(base + '/login'); await page.locator('input[type=password]').fill(password); await page.locator('button[type=submit]').click(); await page.waitForURL(base + '/'); };
+  const login = async password => { await page.goto(base + '/login'); await page.locator('input[type=email]').fill(emailFor(password)); await page.locator('input[type=password]').fill(password); await page.locator('button[type=submit]').click(); await page.waitForURL(base + '/'); };
   const mobile = async () => assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `overflow ${page.url()}`);
   assert.equal((await context.request.get(base + '/api/export/backup')).status(), 401);
   await login('qa-admin');
@@ -86,12 +87,12 @@ try {
   await context.clearCookies();
   await page.goto(base + '/login');
   for (let i = 0; i < 5; i++) {
-    await page.locator('input[type=password]').fill('wrong-synthetic-password');
+    await page.locator('input[type=email]').fill(emailFor('wrong-synthetic-password')); await page.locator('input[type=password]').fill('wrong-synthetic-password');
     await page.locator('button[type=submit]').click();
     await page.getByText('Mot de passe incorrect ou accès non configuré.', { exact: true }).waitFor();
     await page.reload();
   }
-  await page.locator('input[type=password]').fill('qa-admin');
+  await page.locator('input[type=email]').fill(emailFor('qa-admin')); await page.locator('input[type=password]').fill('qa-admin');
   await page.locator('button[type=submit]').click();
   await page.getByText('Trop de tentatives. Réessayez dans 15 minutes.', { exact: true }).waitFor();
   assert.equal((await context.request.get(base + '/api/export/backup')).status(), 401);

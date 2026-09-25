@@ -87,7 +87,9 @@ export default function InvitationsClient({ initialInvitations, initialDbUsers, 
       }),
     });
     const data = await res.json();
-    if (res.ok && data.inviteUrl) setResetUrl(data.inviteUrl);
+    if (!res.ok) { setError(data.error || 'Réinitialisation impossible'); return; }
+    setError('');
+    if (data.inviteUrl) setResetUrl(data.inviteUrl);
     const res2 = await fetch('/api/admin/invitations');
     const d2 = await res2.json();
     setInvitations(d2.invitations || []);
@@ -285,7 +287,10 @@ export default function InvitationsClient({ initialInvitations, initialDbUsers, 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-900)' }}>{u.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--ink-500)', marginTop: 2 }}>
-                      Depuis le {formatDate(u.createdAt)}
+                      {u.email
+                        ? <>{u.email} · </>
+                        : <span style={{ color: '#b03a2e', fontWeight: 600 }}>Email manquant · </span>}
+                      depuis le {formatDate(u.createdAt)}
                     </div>
                   </div>
                   <span style={{ ...rc, borderRadius: 999, padding: '3px 10px', fontSize: 12, fontWeight: 500 }}>

@@ -16,12 +16,12 @@ Pour donner des accès distincts, ajouter `AUTH_USERS_JSON` aux variables d’en
 
 ```json
 [
-  { "name": "Prénom du proche", "role": "reader", "password": "REMPLACER_PAR_UN_SECRET_UNIQUE" },
-  { "name": "Prénom du contributeur", "role": "contributor", "password": "REMPLACER_PAR_UN_AUTRE_SECRET_UNIQUE" }
+  { "name": "Prénom du proche", "role": "reader", "password": "REMPLACER_PAR_UN_SECRET_UNIQUE", "email": "proche@exemple.fr" },
+  { "name": "Prénom du contributeur", "role": "contributor", "password": "REMPLACER_PAR_UN_AUTRE_SECRET_UNIQUE", "email": "contributeur@exemple.fr" }
 ]
 ```
 
-Chaque secret doit être différent. Ne pas mettre les valeurs réelles dans Git. Les accès sont configurés par l’exploitant ; cette version n’ajoute pas de gestion de comptes en libre-service.
+L'email est obligatoire pour chaque accès (il sert d'identifiant de connexion) ; un accès sans email valide est ignoré. `AUTH_ADMIN_EMAIL` est de même obligatoire pour le compte `AUTH_PASSWORD`. Chaque secret doit être différent. Ne pas mettre les valeurs réelles dans Git. Les accès sont configurés par l’exploitant ; cette version n’ajoute pas de gestion de comptes en libre-service.
 
 | Rôle | Possibilités |
 | --- | --- |

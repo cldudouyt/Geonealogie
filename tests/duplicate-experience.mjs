@@ -12,7 +12,8 @@ for (const id of ['qa-parent-one','qa-parent-two']) data.newPersons.push({id,giv
 for (const id of ['qa-batch-one','qa-batch-two']) data.newPersons.push({id,givenNames:'Louise Jeanne',surname:'TESTLOT',sex:'F',birthDateRaw:'1 JAN 1900',birthPlace:'Nantes',relations:[{relType:'child',relPersonId:'qa-parent-one'},{relType:'child',relPersonId:'qa-parent-two'}]});
 await writeFile(path.join(dir, 'overrides.json'), JSON.stringify(data));
 const port = 3097; const base = `http://localhost:${port}`;
-const env = { ...process.env, AUTH_PASSWORD: 'qa-admin', AUTH_SECRET: 'qa-only-local-secret', GEO_DATA_DIR: dir, AUTH_USERS_JSON: JSON.stringify([{ name: 'Lecture QA', role: 'reader', password: 'qa-reader' },{ name: 'Contribution QA', role: 'contributor', password: 'qa-contributor' }]) };
+const emailFor = p => ({"qa-admin":"admin@qa.local","qa-reader":"reader@qa.local","qa-contributor":"contributor@qa.local"})[p] ?? "admin@qa.local";
+const env = { ...process.env, AUTH_PASSWORD: 'qa-admin', AUTH_ADMIN_EMAIL: 'admin@qa.local', AUTH_SECRET: 'qa-only-local-secret', GEO_DATA_DIR: dir, AUTH_USERS_JSON: JSON.stringify([{ name: 'Lecture QA', role: 'reader', password: 'qa-reader', email: 'reader@qa.local' },{ name: 'Contribution QA', role: 'contributor', password: 'qa-contributor', email: 'contributor@qa.local' }]) };
 delete env.DATABASE_URL; delete env.POSTGRES_URL; delete env.VERCEL;
 const server = spawn(process.execPath, ['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port)], { env, stdio: ['ignore', 'pipe', 'pipe'] });
 let log = ''; server.stdout.on('data', b => log += b); server.stderr.on('data', b => log += b);
@@ -25,7 +26,7 @@ try {
   const page = await context.newPage(); page.setDefaultTimeout(15000); page.setDefaultNavigationTimeout(20000); const errors=[]; page.on('pageerror', e=>{errors.push(e.message);console.error('BROWSER ERROR', e.stack);});
   for(const route of ['/api/admin/debug-person','/api/admin/debug-journey','/api/journey/69','/api/persons']) assert.equal((await context.request.get(base+route)).status(),401,route);
   console.log('PASS anonymous data routes protected');
-  await page.goto(base+'/login'); await page.locator('input[type=password]').fill('qa-admin'); await page.locator('button[type=submit]').click(); await page.waitForURL(base+'/');
+  await page.goto(base+'/login'); await page.locator('input[type=email]').fill(emailFor('qa-admin')); await page.locator('input[type=password]').fill('qa-admin'); await page.locator('button[type=submit]').click(); await page.waitForURL(base+'/');
   const noOverflow = async () => assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth));
   await mkdir('/tmp/geonealogie-screens',{recursive:true});
   await page.goto(base+'/doublons');
@@ -47,7 +48,7 @@ try {
 
   await browser.close();
   browser = await chromium.launch({headless:true, executablePath:process.env.QA_CHROMIUM || undefined, args:process.env.QA_CHROMIUM_ARGS ? JSON.parse(process.env.QA_CHROMIUM_ARGS) : undefined});
-  const reader = await browser.newContext({viewport:{width:390,height:844}}); await reader.route(/https?:\/\/(?!localhost)/, r => r.abort()); const rp=await reader.newPage(); rp.setDefaultTimeout(15000); rp.setDefaultNavigationTimeout(20000); await rp.goto(base+'/login'); await rp.locator('input[type=password]').fill('qa-reader'); await rp.locator('button[type=submit]').click(); await rp.waitForURL(base+'/');
+  const reader = await browser.newContext({viewport:{width:390,height:844}}); await reader.route(/https?:\/\/(?!localhost)/, r => r.abort()); const rp=await reader.newPage(); rp.setDefaultTimeout(15000); rp.setDefaultNavigationTimeout(20000); await rp.goto(base+'/login'); await rp.locator('input[type=email]').fill(emailFor('qa-reader')); await rp.locator('input[type=password]').fill('qa-reader'); await rp.locator('button[type=submit]').click(); await rp.waitForURL(base+'/');
   assert.equal((await reader.request.get(base+'/history')).status(),403); assert.equal((await reader.request.post(base+'/api/admin/clear-cache')).status(),403); assert.equal((await reader.request.get(base+'/person/qa-first/edit')).status(),403);
   await rp.goto(base+'/person/qa-first'); await rp.getByRole('tab',{name:'Sources',exact:true}).click(); assert.equal(await rp.getByText('Ajouter une source',{exact:true}).count(),0);
   await rp.getByRole('button',{name:'Plus',exact:true}).click(); await rp.getByRole('button',{name:'Se déconnecter'}).click(); await rp.waitForURL(base+'/login');
