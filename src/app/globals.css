@@ -278,9 +278,10 @@ nav { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.22) transparent;
 }
 
 /* Family experience */
-.app-shell { display:flex; height:100dvh; width:100%; overflow:hidden; }
+/* position:relative keeps absolutely positioned descendants (e.g. sr-only inputs) inside the clipped shell instead of lengthening the document */
+.app-shell { position:relative; display:flex; height:100dvh; width:100%; overflow:hidden; }
 .app-main { flex:1; min-width:0; display:flex; flex-direction:column; }
-.app-scroller { flex:1; min-height:0; overflow:auto; background:var(--paper-body); }
+.app-scroller { position:relative; flex:1; min-height:0; overflow:auto; background:var(--paper-body); }
 .desktop-navigation { flex-shrink:0; }
 .mobile-navigation { display:none; }
 .mobile-menu { padding:0; border:0; max-height:90dvh; max-width:calc(100vw - 24px); border-radius:18px; color:var(--ink-nav); background:var(--green-800); }
