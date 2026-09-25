@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useReference } from '@/components/PersonalJourney';
 import type { TreeData, TreeNode } from '@/lib/types';
-import TreeVertical from '@/components/tree/TreeVertical';
+import TreeVertical, { useIsNarrow } from '@/components/tree/TreeVertical';
 import TreeRadial from '@/components/tree/TreeRadial';
 import TreeListeSosa from '@/components/tree/TreeListeSosa';
 
@@ -152,6 +152,7 @@ const TABS: { id: ViewMode; label: string }[] = [
 
 const GEN_OPTIONS = [1, 2, 3, 4, 5];
 const DEFAULT_GENERATIONS = 4;
+const DEFAULT_GENERATIONS_DESKTOP_VERTICAL = 3;
 
 /* ── Dot-grid background ─────────────────────────────────────── */
 const DOT_GRID: React.CSSProperties = {
@@ -205,7 +206,9 @@ export default function TreePage({ defaultFocusId, userPersonId }: { defaultFocu
   const viewParam = searchParams.get('view') as ViewMode | null;
   const view: ViewMode = TABS.some(t => t.id === viewParam) ? viewParam! : 'vertical';
   const genParam = parseInt(searchParams.get('gen') ?? '', 10);
-  const generations = GEN_OPTIONS.includes(genParam) ? genParam : DEFAULT_GENERATIONS;
+  const isNarrow = useIsNarrow();
+  const defaultGenerations = view === 'vertical' && !isNarrow ? DEFAULT_GENERATIONS_DESKTOP_VERTICAL : DEFAULT_GENERATIONS;
+  const generations = GEN_OPTIONS.includes(genParam) ? genParam : defaultGenerations;
 
 
   const [fullscreen, setFullscreen] = useState(false);

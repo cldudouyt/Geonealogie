@@ -12,7 +12,7 @@ function subscribeNarrow(onChange: () => void) {
   return () => mql.removeEventListener('change', onChange);
 }
 
-function useIsNarrow(): boolean {
+export function useIsNarrow(): boolean {
   return useSyncExternalStore(subscribeNarrow, () => window.matchMedia(NARROW_QUERY).matches, () => false);
 }
 
