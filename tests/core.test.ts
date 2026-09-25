@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { loadOverrides, savePersonEdit, addNewPerson, mergePerson, restoreLatest } from '../src/lib/overrides-store';
-import { authenticate, makeSessionToken, readSessionToken, permits } from '../src/lib/auth';
+import { authenticate, makeSessionToken, readSessionToken, permits, decodeSessionToken, sessionMatchesDbUser } from '../src/lib/auth';
 import { saveDocumentMeta, getDocumentsForPerson, deleteDocumentMeta } from '../src/lib/documents-store';
 import { readState, mutateVersioned } from '../src/lib/state-store';
 let dir: string;
@@ -32,6 +32,17 @@ test('accounts without a valid email cannot sign in', async () => {
     process.env.AUTH_ADMIN_EMAIL = ' Admin@Test.local ';
     assert.equal((await authenticate('test-admin', 'admin@test.local'))?.role, 'admin');
   } finally { process.env.AUTH_USERS_JSON = saved.users; process.env.AUTH_ADMIN_EMAIL = saved.admin; }
+});
+test('database-user sessions are bound to the password and die when it changes', async () => {
+  const user = { id: 'u-1', name: 'Marie', role: 'reader' as const, passwordHash: 'hash-before' };
+  const token = await makeSessionToken({ name: user.name, role: user.role, id: user.id, passwordHash: user.passwordHash });
+  const session = await decodeSessionToken(token); assert.ok(session);
+  assert.equal(await sessionMatchesDbUser(session, user), true);
+  assert.equal(await sessionMatchesDbUser(session, { ...user, passwordHash: 'hash-after' }), false);
+  assert.equal(await sessionMatchesDbUser(session, { ...user, role: 'admin' }), false);
+  assert.equal(await sessionMatchesDbUser(session, { ...user, id: 'u-2' }), false);
+  await assert.rejects(makeSessionToken({ name: user.name, role: user.role, id: user.id }));
+  assert.equal(await readSessionToken(token), null);
 });
 test('parallel writes on different persons preserve every edit', async () => {
   await Promise.all(Array.from({ length: 12 }, (_, i) => savePersonEdit(`P${i}`, { nickname: `Name ${i}` }, 'QA')));

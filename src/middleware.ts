@@ -10,7 +10,7 @@ export async function middleware(request: NextRequest) {
   }
   if (pathname === '/api/logout') return NextResponse.next();
   const admin = /^\/(api\/)?admin(\/|$)/.test(pathname) || pathname.startsWith('/doublons') || pathname.startsWith('/history') || pathname.startsWith('/api/geocode/batch') || pathname === '/api/export/backup';
-  const writing = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
+  const writing = !['GET', 'HEAD', 'OPTIONS'].includes(request.method) && pathname !== '/api/persons/me';
   const editor = /\/person\/(new|[^/]+\/edit)$/.test(pathname);
   const minimum = admin ? 'admin' : (writing || editor) ? 'contributor' : 'reader';
   if (!permits(session.role, minimum)) return NextResponse.json({ error: 'Accès réservé à un rôle autorisé.' }, { status: 403 });

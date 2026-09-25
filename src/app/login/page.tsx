@@ -1,23 +1,9 @@
 'use client';
 
-import { useActionState, useEffect, useSyncExternalStore, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useActionState, useEffect, useSyncExternalStore } from 'react';
 import { login } from './actions';
 
 const subscribe = () => () => {};
-
-function WelcomeBanner() {
-  const isWelcome = useSearchParams().get('welcome') === '1';
-  if (!isWelcome) return null;
-  return (
-    <div style={{
-      background: '#eef5f0', border: '1px solid #c3deca', borderRadius: 12,
-      padding: '14px 16px', marginBottom: 4, fontSize: 13.5, color: '#2a4f37', lineHeight: 1.55,
-    }}>
-      ✓ Compte activé ! Cliquez sur <strong>Mot de passe oublié</strong> ci-dessous pour définir votre mot de passe.
-    </div>
-  );
-}
 
 export default function LoginPage() {
   const hydrated = useSyncExternalStore(subscribe, () => true, () => false);
@@ -119,11 +105,6 @@ export default function LoginPage() {
             Accès privé — famille uniquement
           </p>
         </div>
-
-        {/* Bandeau de bienvenue après acceptation d'invitation */}
-        <Suspense>
-          <WelcomeBanner />
-        </Suspense>
 
         {/* Formulaire */}
         <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

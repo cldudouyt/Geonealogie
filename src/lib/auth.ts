@@ -60,25 +60,25 @@ function envAccounts(): EnvAccount[] {
   return result;
 }
 
-export interface AuthAccount { name: string; role: Role; id?: string }
+export interface AuthAccount { name: string; role: Role; id?: string; passwordHash?: string }
+
+function dbCredentialSource(id: string, passwordHash: string): string { return `db:${id}:${passwordHash}`; }
 
 export async function authenticate(password: string, email: string): Promise<AuthAccount | null> {
   const lEmail = email.toLowerCase();
-  // Check env accounts with matching email
   const digest = await signature(password);
   for (const account of envAccounts()) {
-    if (account.email.toLowerCase() === lEmail &&equal(digest, await signature(account.password))) {
+    if (account.email.toLowerCase() === lEmail && equal(digest, await signature(account.password))) {
       return { name: account.name, role: account.role };
     }
   }
-  // Check DB accounts
   try {
     const { hasDb, listDbUsers } = await import('./db');
     if (hasDb()) {
       const dbUsers = await listDbUsers();
       const user = dbUsers.find(u => u.email?.toLowerCase() === lEmail);
       if (user && await verifyPassword(password, user.passwordHash, user.salt)) {
-        return { name: user.name, role: user.role, id: user.id };
+        return { name: user.name, role: user.role, id: user.id, passwordHash: user.passwordHash };
       }
     }
   } catch { /* ignore DB errors during auth */ }
@@ -86,36 +86,45 @@ export async function authenticate(password: string, email: string): Promise<Aut
 }
 
 export async function makeSessionToken(account: AuthAccount): Promise<string> {
-  // Credential anchor: for env accounts use HMAC(password); for DB accounts use HMAC(userId)
-  const credentialSource = account.id ?? envAccounts().find(a => a.name === account.name)?.password;
+  const credentialSource = account.id
+    ? (account.passwordHash ? dbCredentialSource(account.id, account.passwordHash) : undefined)
+    : envAccounts().find(a => a.name === account.name)?.password;
   if (!credentialSource) throw new Error('Connexion non configurée.');
   const session: Session = { name: account.name, role: account.role, expires: Date.now() + SESSION_MAX_AGE * 1000, credential: await signature(credentialSource), ...(account.id ? { id: account.id } : {}) };
   const payload = encodeURIComponent(JSON.stringify(session));
   return `${payload}.${await signature(payload)}`;
 }
 
-export async function readSessionToken(token: string): Promise<Session | null> {
+export async function decodeSessionToken(token: string): Promise<Session | null> {
   try {
     const split = token.lastIndexOf('.');
     const payload = token.slice(0, split);
     if (split < 0 || !equal(await signature(payload), token.slice(split + 1))) return null;
     const session = JSON.parse(decodeURIComponent(payload)) as Session;
     if (!Number.isFinite(session.expires) || session.expires <= Date.now()) return null;
-    // Check env accounts
-    for (const a of envAccounts()) {
-      if (a.name === session.name && a.role === session.role && equal(await signature(a.password), session.credential)) return session;
-    }
-    // Check DB accounts
-    try {
-      const { hasDb, listDbUsers } = await import('./db');
-      if (hasDb()) {
-        const dbUsers = await listDbUsers();
-        for (const u of dbUsers) {
-          if (u.name === session.name && u.role === session.role && equal(await signature(u.id), session.credential)) return session;
-        }
+    return session;
+  } catch { return null; }
+}
+
+export async function sessionMatchesDbUser(session: Session, user: { id: string; name: string; role: Role; passwordHash: string }): Promise<boolean> {
+  return session.id === user.id && user.name === session.name && user.role === session.role
+    && equal(await signature(dbCredentialSource(user.id, user.passwordHash)), session.credential);
+}
+
+export async function readSessionToken(token: string): Promise<Session | null> {
+  const session = await decodeSessionToken(token);
+  if (!session) return null;
+  try {
+    if (!session.id) {
+      for (const a of envAccounts()) {
+        if (a.name === session.name && a.role === session.role && equal(await signature(a.password), session.credential)) return session;
       }
-    } catch { /* ignore DB errors */ }
-    return null;
+      return null;
+    }
+    const { hasDb, listDbUsers } = await import('./db');
+    if (!hasDb()) return null;
+    const user = (await listDbUsers()).find(u => u.id === session.id);
+    return user && await sessionMatchesDbUser(session, user) ? session : null;
   } catch { return null; }
 }
 export async function verifySessionToken(token: string): Promise<boolean> { return Boolean(await readSessionToken(token)); }

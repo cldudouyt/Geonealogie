@@ -1,10 +1,15 @@
 'use server';
 
-import { getInvitation, saveDbUser, deleteInvitation, listDbUsers, updateDbUserPassword } from '@/lib/db';
+import { getInvitation, claimInvitation, releaseInvitation, createDbUser, listDbUsers, updateDbUserPasswordById, type DbUser } from '@/lib/db';
 import { hashPassword, makeSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth';
-import type { Role } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+
+const CLAIM_ERRORS = {
+  missing: 'Lien invalide ou expiré. Demandez un nouveau lien à l\'administrateur.',
+  used: 'Ce lien a déjà été utilisé. Connectez-vous directement.',
+  expired: 'Lien expiré (7 jours). Demandez un nouveau lien.',
+} as const;
 
 export async function activateInvitation(formData: FormData): Promise<{ error: string } | undefined> {
   const token = formData.get('token')?.toString() || '';
@@ -16,49 +21,51 @@ export async function activateInvitation(formData: FormData): Promise<{ error: s
   if (password !== confirm) return { error: 'Les mots de passe ne correspondent pas.' };
 
   const inv = await getInvitation(token).catch(() => null);
-  if (!inv) return { error: 'Lien invalide ou expiré. Demandez un nouveau lien à l\'administrateur.' };
-  if (inv.usedAt) return { error: 'Ce lien a déjà été utilisé. Connectez-vous directement.' };
-  if (new Date(inv.expiresAt) < new Date()) return { error: 'Lien expiré (7 jours). Demandez un nouveau lien.' };
+  if (!inv) return { error: CLAIM_ERRORS.missing };
+  if (inv.usedAt) return { error: CLAIM_ERRORS.used };
+  if (new Date(inv.expiresAt) < new Date()) return { error: CLAIM_ERRORS.expired };
+
+  let target: DbUser | undefined;
+  if (inv.resetForUserId) {
+    target = (await listDbUsers().catch(() => [])).find(u => u.id === inv.resetForUserId);
+    if (!target) return { error: 'Ce compte n’existe plus. Contactez l\'administrateur.' };
+  } else if (!name) {
+    return { error: 'Prénom requis.' };
+  }
 
   const salt = crypto.randomUUID();
   const passwordHash = await hashPassword(password, salt);
 
-  let userId: string;
-  let userRole: Role;
-  let userName: string;
+  let claim;
+  try { claim = await claimInvitation(token, target?.name ?? name); }
+  catch { return { error: 'Activation momentanément indisponible. Réessayez dans un instant.' }; }
+  if (!claim.ok) return { error: CLAIM_ERRORS[claim.reason] };
 
-  if (inv.resetForUserId) {
-    const users = await listDbUsers().catch(() => []);
-    const existingUser = users.find(u => u.id === inv.resetForUserId);
-    const updated = await updateDbUserPassword(inv.email, passwordHash, salt);
-    if (!updated) return { error: 'Compte introuvable. Contactez l\'administrateur.' };
-    userId = inv.resetForUserId;
-    userRole = inv.role as Role;
-    userName = existingUser?.name || inv.suggestedName || 'Utilisateur';
-  } else {
-    if (!name) return { error: 'Prénom requis.' };
-    const existing = await listDbUsers().catch(() => []);
-    if (existing.find(u => u.email?.toLowerCase() === inv.email.toLowerCase())) {
-      return { error: 'Ce compte existe déjà. Connectez-vous directement.' };
+  let user: DbUser;
+  try {
+    if (inv.resetForUserId) {
+      const updated = await updateDbUserPasswordById(inv.resetForUserId, passwordHash, salt);
+      if (!updated) return { error: 'Ce compte n’existe plus. Contactez l\'administrateur.' };
+      user = updated;
+    } else {
+      user = {
+        id: crypto.randomUUID(),
+        name,
+        email: claim.invitation.email,
+        role: claim.invitation.role,
+        passwordHash,
+        salt,
+        createdAt: new Date().toISOString(),
+        invitationToken: token,
+      };
+      if (!await createDbUser(user)) return { error: 'Ce compte existe déjà. Connectez-vous directement.' };
     }
-    userId = crypto.randomUUID();
-    userRole = inv.role as Role;
-    userName = name;
-    await saveDbUser({
-      id: userId,
-      name: userName,
-      email: inv.email,
-      role: userRole,
-      passwordHash,
-      salt,
-      createdAt: new Date().toISOString(),
-      invitationToken: token,
-    });
+  } catch {
+    await releaseInvitation(token).catch(() => {});
+    return { error: 'Activation momentanément indisponible. Réessayez dans un instant.' };
   }
 
-  await deleteInvitation(token);
-
-  const sessionToken = await makeSessionToken({ name: userName, role: userRole, id: userId });
+  const sessionToken = await makeSessionToken({ name: user.name, role: user.role, id: user.id, passwordHash: user.passwordHash });
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, sessionToken, {
     httpOnly: true,

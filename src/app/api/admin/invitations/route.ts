@@ -6,6 +6,10 @@ import { sendEmail, appBaseUrl } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+}
+
 export async function GET() {
   await requireRole('admin');
   if (!hasDb()) return Response.json({ invitations: [] });
@@ -65,14 +69,14 @@ export async function POST(req: Request) {
     `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 20px">
       <h1 style="font-size:24px;color:#1c1f1c;margin:0 0 12px">Invitation à Géonéalogie</h1>
       <p style="color:#4a4f46;line-height:1.6;margin:0 0 20px">
-        <strong>${session.name}</strong> vous invite à rejoindre l'espace familial Géonéalogie
+        <strong>${escapeHtml(session.name)}</strong> vous invite à rejoindre l'espace familial Géonéalogie
         en tant que <strong>${roleLabels[role]}</strong>.
       </p>
       <p style="color:#4a4f46;line-height:1.6;margin:0 0 8px">
         Cliquez sur le bouton ci-dessous pour activer votre compte et créer votre mot de passe.
-        Vous vous connecterez ensuite avec cette adresse email : <strong>${email}</strong>
+        Vous vous connecterez ensuite avec cette adresse email : <strong>${escapeHtml(email)}</strong>
       </p>
-      <a href="${inviteUrl}" style="display:inline-block;background:#1e3a2f;color:#f1ede2;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-top:12px">
+      <a href="${escapeHtml(inviteUrl)}" style="display:inline-block;background:#1e3a2f;color:#f1ede2;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-top:12px">
         Activer mon accès et créer mon mot de passe
       </a>
       <p style="color:#9a9080;font-size:12px;margin:20px 0 0">

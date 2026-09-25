@@ -160,34 +160,56 @@ export interface DbUser {
 const INVITATIONS_KEY = 'invitations';
 const DB_USERS_KEY = 'db-users';
 
+export class StoreConflictError extends Error {}
+
+async function kvMutate<T, R>(id: string, initial: () => T, mutate: (state: T) => R): Promise<R> {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const row = await kvReadVersion<T>(id);
+    const state = row?.data ?? initial();
+    const result = mutate(state);
+    if (await kvCompareSet(id, row?.version ?? null, state)) return result;
+  }
+  throw new StoreConflictError('Une autre modification est en cours. Réessayez dans un instant.');
+}
+
+type InvitationMap = Record<string, InvitationRecord>;
+
 export async function listInvitations(): Promise<InvitationRecord[]> {
-  const data = await kvGet<Record<string, InvitationRecord>>(INVITATIONS_KEY);
+  const data = await kvGet<InvitationMap>(INVITATIONS_KEY);
   return Object.values(data ?? {});
 }
 
 export async function getInvitation(token: string): Promise<InvitationRecord | null> {
-  const data = await kvGet<Record<string, InvitationRecord>>(INVITATIONS_KEY);
+  const data = await kvGet<InvitationMap>(INVITATIONS_KEY);
   return data?.[token] ?? null;
 }
 
 export async function saveInvitation(inv: InvitationRecord): Promise<void> {
-  const data = await kvGet<Record<string, InvitationRecord>>(INVITATIONS_KEY) ?? {};
-  data[inv.token] = inv;
-  await kvSet(INVITATIONS_KEY, data);
-}
-
-export async function markInvitationUsed(token: string, usedBy: string): Promise<void> {
-  const data = await kvGet<Record<string, InvitationRecord>>(INVITATIONS_KEY) ?? {};
-  if (data[token]) {
-    data[token] = { ...data[token], usedAt: new Date().toISOString(), usedBy };
-    await kvSet(INVITATIONS_KEY, data);
-  }
+  await kvMutate<InvitationMap, void>(INVITATIONS_KEY, () => ({}), data => { data[inv.token] = inv; });
 }
 
 export async function deleteInvitation(token: string): Promise<void> {
-  const data = await kvGet<Record<string, InvitationRecord>>(INVITATIONS_KEY) ?? {};
-  delete data[token];
-  await kvSet(INVITATIONS_KEY, data);
+  await kvMutate<InvitationMap, void>(INVITATIONS_KEY, () => ({}), data => { delete data[token]; });
+}
+
+export type ClaimResult = { ok: true; invitation: InvitationRecord } | { ok: false; reason: 'missing' | 'used' | 'expired' };
+
+export async function claimInvitation(token: string, usedBy: string): Promise<ClaimResult> {
+  return kvMutate<InvitationMap, ClaimResult>(INVITATIONS_KEY, () => ({}), data => {
+    const inv = data[token];
+    if (!inv) return { ok: false, reason: 'missing' };
+    if (inv.usedAt) return { ok: false, reason: 'used' };
+    if (new Date(inv.expiresAt) < new Date()) return { ok: false, reason: 'expired' };
+    data[token] = { ...inv, usedAt: new Date().toISOString(), usedBy };
+    return { ok: true, invitation: data[token] };
+  });
+}
+
+export async function releaseInvitation(token: string): Promise<void> {
+  await kvMutate<InvitationMap, void>(INVITATIONS_KEY, () => ({}), data => {
+    const inv = data[token];
+    if (inv) { delete inv.usedAt; delete inv.usedBy; }
+  });
 }
 
 export async function listDbUsers(): Promise<DbUser[]> {
@@ -195,65 +217,50 @@ export async function listDbUsers(): Promise<DbUser[]> {
 }
 
 export async function saveDbUser(user: DbUser): Promise<void> {
-  const users = await listDbUsers();
-  const idx = users.findIndex(u => u.id === user.id);
-  if (idx >= 0) users[idx] = user; else users.push(user);
-  await kvSet(DB_USERS_KEY, users);
+  await kvMutate<DbUser[], void>(DB_USERS_KEY, () => [], users => {
+    const idx = users.findIndex(u => u.id === user.id);
+    if (idx >= 0) users[idx] = user; else users.push(user);
+  });
 }
 
-export async function deleteDbUser(id: string): Promise<void> {
-  const users = await listDbUsers();
-  await kvSet(DB_USERS_KEY, users.filter(u => u.id !== id));
+export async function createDbUser(user: DbUser): Promise<boolean> {
+  return kvMutate<DbUser[], boolean>(DB_USERS_KEY, () => [], users => {
+    const email = user.email?.toLowerCase();
+    if (users.some(u => u.id === user.id || (email && u.email?.toLowerCase() === email))) return false;
+    users.push(user);
+    return true;
+  });
+}
+
+export type DeleteUserResult = 'ok' | 'missing' | 'self' | 'last-admin';
+
+export async function deleteDbUser(id: string, actorId?: string): Promise<DeleteUserResult> {
+  return kvMutate<DbUser[], DeleteUserResult>(DB_USERS_KEY, () => [], users => {
+    const idx = users.findIndex(u => u.id === id);
+    if (idx < 0) return 'missing';
+    if (actorId && actorId === id) return 'self';
+    if (users[idx].role === 'admin' && users.filter(u => u.role === 'admin').length <= 1) return 'last-admin';
+    users.splice(idx, 1);
+    return 'ok';
+  });
 }
 
 export async function updateDbUserPersonId(userId: string, personId: string): Promise<boolean> {
-  const users = await listDbUsers();
-  const idx = users.findIndex(u => u.id === userId);
-  if (idx < 0) return false;
-  users[idx] = { ...users[idx], personId };
-  await kvSet(DB_USERS_KEY, users);
-  return true;
+  return kvMutate<DbUser[], boolean>(DB_USERS_KEY, () => [], users => {
+    const idx = users.findIndex(u => u.id === userId);
+    if (idx < 0) return false;
+    users[idx] = { ...users[idx], personId };
+    return true;
+  });
 }
 
-export async function updateDbUserPassword(email: string, passwordHash: string, salt: string): Promise<boolean> {
-  const users = await listDbUsers();
-  const idx = users.findIndex(u => u.email?.toLowerCase() === email.toLowerCase());
-  if (idx < 0) return false;
-  users[idx] = { ...users[idx], passwordHash, salt };
-  await kvSet(DB_USERS_KEY, users);
-  return true;
-}
-
-/* ── Password reset tokens (stored in kv_state) ──────────────────────── */
-
-export interface ResetToken {
-  token: string;
-  email: string;
-  otp: string;
-  createdAt: string;
-  expiresAt: string;
-  usedAt?: string;
-}
-
-const RESET_TOKENS_KEY = 'reset-tokens';
-
-export async function saveResetToken(rt: ResetToken): Promise<void> {
-  const data = await kvGet<Record<string, ResetToken>>(RESET_TOKENS_KEY) ?? {};
-  data[rt.token] = rt;
-  await kvSet(RESET_TOKENS_KEY, data);
-}
-
-export async function getResetToken(token: string): Promise<ResetToken | null> {
-  const data = await kvGet<Record<string, ResetToken>>(RESET_TOKENS_KEY);
-  return data?.[token] ?? null;
-}
-
-export async function markResetTokenUsed(token: string): Promise<void> {
-  const data = await kvGet<Record<string, ResetToken>>(RESET_TOKENS_KEY) ?? {};
-  if (data[token]) {
-    data[token] = { ...data[token], usedAt: new Date().toISOString() };
-    await kvSet(RESET_TOKENS_KEY, data);
-  }
+export async function updateDbUserPasswordById(userId: string, passwordHash: string, salt: string): Promise<DbUser | null> {
+  return kvMutate<DbUser[], DbUser | null>(DB_USERS_KEY, () => [], users => {
+    const idx = users.findIndex(u => u.id === userId);
+    if (idx < 0) return null;
+    users[idx] = { ...users[idx], passwordHash, salt };
+    return users[idx];
+  });
 }
 
 export async function kvReadVersion<T>(id: string): Promise<{ data: T; version: number } | null> {

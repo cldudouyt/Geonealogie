@@ -41,6 +41,8 @@ export default function InvitationsClient({ initialInvitations, initialDbUsers, 
   const [resetUrl, setResetUrl] = useState('');
   const [resetUserId, setResetUserId] = useState('');
   const [copiedReset, setCopiedReset] = useState(false);
+  const [confirmRevoke, setConfirmRevoke] = useState('');
+  const [userError, setUserError] = useState<{ id: string; message: string } | null>(null);
   const [, startTransition] = useTransition();
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
@@ -71,8 +73,20 @@ export default function InvitationsClient({ initialInvitations, initialDbUsers, 
   }
 
   async function handleDeleteUser(id: string) {
-    await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
-    setDbUsers((users: DbUser[]) => users.filter((u: DbUser) => u.id !== id));
+    setUserError(null);
+    if (confirmRevoke !== id) { setConfirmRevoke(id); return; }
+    setConfirmRevoke('');
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setUserError({ id, message: data.error || 'Révocation impossible.' });
+        return;
+      }
+      setDbUsers((users: DbUser[]) => users.filter((u: DbUser) => u.id !== id));
+    } catch {
+      setUserError({ id, message: 'Révocation impossible : connexion interrompue.' });
+    }
   }
 
   async function handleResetUser(user: DbUser) {
@@ -282,7 +296,7 @@ export default function InvitationsClient({ initialInvitations, initialDbUsers, 
               return (
                 <div key={u.id} style={{
                   background: 'var(--paper-card)', border: '1px solid var(--line)', borderRadius: 12,
-                  padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-900)' }}>{u.name}</div>
@@ -308,14 +322,21 @@ export default function InvitationsClient({ initialInvitations, initialDbUsers, 
                   </button>
                   <button
                     onClick={() => startTransition(() => { handleDeleteUser(u.id); })}
+                    onBlur={() => setConfirmRevoke(current => current === u.id ? '' : current)}
+                    aria-label={confirmRevoke === u.id ? `Confirmer la révocation de ${u.name}` : `Révoquer l'accès de ${u.name}`}
                     style={{
-                      height: 32, padding: '0 12px', background: 'none',
-                      border: '1px solid var(--line)', borderRadius: 8, fontSize: 12,
-                      cursor: 'pointer', color: '#b03a2e', fontFamily: 'var(--font-sans)',
+                      height: 32, padding: '0 12px',
+                      background: confirmRevoke === u.id ? '#b03a2e' : 'none',
+                      border: `1px solid ${confirmRevoke === u.id ? '#b03a2e' : 'var(--line)'}`, borderRadius: 8, fontSize: 12,
+                      cursor: 'pointer', color: confirmRevoke === u.id ? '#fffdf9' : '#b03a2e', fontFamily: 'var(--font-sans)',
+                      fontWeight: confirmRevoke === u.id ? 600 : 400,
                     }}
                   >
-                    Révoquer
+                    {confirmRevoke === u.id ? 'Confirmer ?' : 'Révoquer'}
                   </button>
+                  {userError?.id === u.id && (
+                    <p role="alert" style={{ flexBasis: '100%', margin: 0, fontSize: 12.5, color: '#b03a2e' }}>{userError.message}</p>
+                  )}
                 </div>
               );
             })}
