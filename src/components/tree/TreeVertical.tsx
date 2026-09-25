@@ -1,8 +1,20 @@
 'use client';
 
-import { Fragment, useLayoutEffect, useRef } from 'react';
+import { Fragment, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TreeData, TreeNode } from '@/lib/types';
+
+const NARROW_QUERY = '(max-width: 639.98px)';
+
+function subscribeNarrow(onChange: () => void) {
+  const mql = window.matchMedia(NARROW_QUERY);
+  mql.addEventListener('change', onChange);
+  return () => mql.removeEventListener('change', onChange);
+}
+
+function useIsNarrow(): boolean {
+  return useSyncExternalStore(subscribeNarrow, () => window.matchMedia(NARROW_QUERY).matches, () => false);
+}
 
 interface TreeVerticalProps {
   treeData: TreeData;
@@ -67,12 +79,14 @@ function PersonCard({
   isSibling,
   onClick,
   anchorRef,
+  fluid,
 }: {
   person: TreeNode;
   isCenter: boolean;
   isSibling?: boolean;
   onClick: () => void;
   anchorRef?: React.Ref<HTMLDivElement>;
+  fluid?: boolean;
 }) {
   const w = isCenter ? CARD_W_CENTRAL : CARD_W_NORMAL;
   const s = person.sex ?? 'U';
@@ -101,9 +115,12 @@ function PersonCard({
       onClick={onClick}
       title={isCenter ? `Voir la fiche de ${person.displayName}` : `Centrer sur ${person.displayName}`}
       style={{
-        width: isSibling ? 148 : w,
+        width: fluid ? '100%' : isSibling ? 148 : w,
+        minWidth: 0,
+        minHeight: fluid ? 48 : undefined,
+        boxSizing: 'border-box',
         borderRadius: 13,
-        padding: isSibling ? 10 : 13,
+        padding: fluid ? (isCenter ? '12px 14px' : '9px 10px') : isSibling ? 10 : 13,
         boxShadow: '0 4px 14px -10px rgba(0,0,0,.4)',
         cursor: 'pointer',
         flexShrink: 0,
@@ -142,7 +159,7 @@ function PersonCard({
           Focus
         </span>
       )}
-      {person.isAdopted && !isCenter && (
+      {person.isAdopted && !isCenter && !fluid && (
         <span style={{
           position: 'absolute',
           top: 6,
@@ -161,20 +178,21 @@ function PersonCard({
       )}
 
       <p style={{
-        fontSize: isSibling ? 12.5 : 13.5,
+        fontSize: fluid ? (isCenter ? 14.5 : 12.5) : isSibling ? 12.5 : 13.5,
         fontWeight: 700,
         color: nameColor,
         margin: 0,
         lineHeight: 1.3,
         overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-        paddingRight: isCenter ? 44 : 0,
+        paddingRight: isCenter ? 52 : 0,
+        ...(fluid
+          ? { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflowWrap: 'anywhere' }
+          : { textOverflow: 'ellipsis', whiteSpace: 'nowrap' }),
       }}>
         {renderName(person.displayName, isCenter)}
       </p>
 
-      {meta && (
+      {(meta || (fluid && person.isAdopted && !isCenter)) && (
         <p style={{
           fontSize: isSibling ? 11 : 11.5,
           color: metaColor,
@@ -183,8 +201,25 @@ function PersonCard({
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
+          display: fluid ? 'flex' : undefined,
+          alignItems: 'center',
+          gap: 6,
         }}>
           {meta}
+          {fluid && person.isAdopted && !isCenter && (
+            <span style={{
+              fontSize: 9.5,
+              fontWeight: 600,
+              letterSpacing: '.04em',
+              background: '#f0ece4',
+              color: '#7d705a',
+              borderRadius: 999,
+              padding: '1px 6px',
+              border: '1px solid #ddd5c2',
+            }}>
+              adopté
+            </span>
+          )}
         </p>
       )}
     </div>
@@ -303,13 +338,15 @@ function GroupRow({
   groups,
   centerIds,
   onNav,
+  justify,
 }: {
   groups: CoupleGroup[];
   centerIds: Set<string>;
   onNav: (id: string) => void;
+  justify: 'flex-start' | 'flex-end';
 }) {
   return (
-    <div style={{ display: 'flex', gap: 28, justifyContent: 'center', alignItems: 'flex-start', padding: '0 12px' }}>
+    <div style={{ display: 'flex', gap: 28, justifyContent: justify, alignItems: 'flex-start', padding: '0 12px' }}>
       {groups.map((g, i) => (
         <CoupleBox key={`${g.childName}-${i}-${g.parents[0]?.id}`} group={g} centerIds={centerIds} onNav={onNav} />
       ))}
@@ -326,7 +363,6 @@ const SIDE_LABEL: React.CSSProperties = {
   background: '#eef2ec',
   borderRadius: 999,
   padding: '3px 12px',
-  justifySelf: 'center',
 };
 
 const GEN_LABEL: React.CSSProperties = {
@@ -338,83 +374,61 @@ const GEN_LABEL: React.CSSProperties = {
   margin: '18px 0 8px',
 };
 
-/* ── Main component ─────────────────────────────────────────── */
-export default function TreeVertical({ treeData, focusId, onFocus }: TreeVerticalProps) {
-  const router = useRouter();
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const focusCardRef = useRef<HTMLDivElement>(null);
-  const { nodes, links, rootId } = treeData;
+/* ── Shared data derivation ─────────────────────────────────── */
+interface FamilyView {
+  nodeMap: Map<string, TreeNode>;
+  focusNode: TreeNode;
+  parents: TreeNode[];
+  paternal: CoupleGroup[][];
+  maternal: CoupleGroup[][];
+  spouses: TreeNode[];
+  siblings: TreeNode[];
+  descendantLevels: TreeNode[][];
+}
 
+function deriveFamily({ nodes, links, rootId }: TreeData, focusId: string): FamilyView | null {
   const nodeMap = new Map<string, TreeNode>(nodes.map(n => [n.id, n]));
-  const effectiveId = rootId || focusId;
-  const focusNode = nodeMap.get(effectiveId);
+  const focusNode = nodeMap.get(rootId || focusId);
+  if (!focusNode) return null;
 
-  useLayoutEffect(() => {
-    const container = scrollRef.current;
-    const card = focusCardRef.current;
-    if (!container || !card) return;
-    const c = container.getBoundingClientRect();
-    const r = card.getBoundingClientRect();
-    container.scrollLeft += (r.left + r.width / 2) - (c.left + c.width / 2);
-  }, [treeData, effectiveId]);
-
-  /* Build parent / child / spouse maps */
   const childToParents = new Map<string, string[]>();
   const parentToChildren = new Map<string, string[]>();
   const spouseMap = new Map<string, string[]>();
-
+  const push = (map: Map<string, string[]>, key: string, value: string) => {
+    const list = map.get(key) ?? [];
+    list.push(value);
+    map.set(key, list);
+  };
   for (const link of links) {
     if (link.type === 'parent' || link.type === 'adoption') {
-      const p = childToParents.get(link.target) ?? [];
-      p.push(link.source);
-      childToParents.set(link.target, p);
-
-      const c = parentToChildren.get(link.source) ?? [];
-      c.push(link.target);
-      parentToChildren.set(link.source, c);
+      push(childToParents, link.target, link.source);
+      push(parentToChildren, link.source, link.target);
     } else if (link.type === 'spouse') {
-      const a = spouseMap.get(link.source) ?? [];
-      a.push(link.target);
-      spouseMap.set(link.source, a);
-      const b = spouseMap.get(link.target) ?? [];
-      b.push(link.source);
-      spouseMap.set(link.target, b);
+      push(spouseMap, link.source, link.target);
+      push(spouseMap, link.target, link.source);
     }
   }
 
-  if (!focusNode) {
-    return (
-      <div style={{ padding: 40, color: '#8a8474', textAlign: 'center' }}>
-        Personne introuvable
-      </div>
-    );
-  }
+  const byIds = (ids: Iterable<string>) =>
+    [...new Set(ids)].map(id => nodeMap.get(id)).filter(Boolean) as TreeNode[];
 
-  const centerIds = new Set([focusNode.id]);
-  const parentsOf = (id: string, seen: Set<string>): TreeNode[] =>
-    sortParents(
-      [...new Set(childToParents.get(id) ?? [])]
-        .filter(pid => !seen.has(pid))
-        .map(pid => nodeMap.get(pid))
-        .filter(Boolean) as TreeNode[],
-    );
-
-  /* Parents (generation 1) then, per side, couples grouped by the child they belong to */
   const seenUp = new Set<string>([focusNode.id]);
-  const parents = parentsOf(focusNode.id, seenUp);
+  const parentsOf = (id: string): TreeNode[] =>
+    sortParents(byIds((childToParents.get(id) ?? []).filter(pid => !seenUp.has(pid))));
+
+  const parents = parentsOf(focusNode.id);
   for (const p of parents) seenUp.add(p.id);
-  const parentIds = parents.map(p => p.id);
   const father = parents.find(p => p.sex === 'M') ?? parents.find(p => p.sex !== 'F');
   const mother = parents.find(p => p !== father && p.sex !== 'M');
 
-  function sideLevels(start: TreeNode | undefined): CoupleGroup[][] {
+  const sideLevels = (start: TreeNode | undefined): CoupleGroup[][] => {
     const levels: CoupleGroup[][] = [];
     let frontier = start ? [start] : [];
     while (frontier.length > 0) {
       const groups: CoupleGroup[] = [];
       const next: TreeNode[] = [];
       for (const child of frontier) {
-        const ps = parentsOf(child.id, seenUp);
+        const ps = parentsOf(child.id);
         if (ps.length === 0) continue;
         for (const p of ps) seenUp.add(p.id);
         groups.push({ childName: firstName(child.displayName), parents: ps });
@@ -425,37 +439,259 @@ export default function TreeVertical({ treeData, focusId, onFocus }: TreeVertica
       frontier = next;
     }
     return levels;
-  }
-
+  };
   const paternal = sideLevels(father);
   const maternal = sideLevels(mother);
-  const upperGens = Math.max(paternal.length, maternal.length);
 
-  /* Descendant levels: [enfants, petits-enfants, …] */
   const descendantLevels: TreeNode[][] = [];
   const seenDown = new Set<string>([focusNode.id]);
   let frontierDown = [focusNode.id];
   while (frontierDown.length > 0) {
-    const nextIds = [...new Set(frontierDown.flatMap(id => parentToChildren.get(id) ?? []))]
-      .filter(id => !seenDown.has(id));
-    const level = nextIds.map(id => nodeMap.get(id)).filter(Boolean) as TreeNode[];
+    const level = byIds(frontierDown.flatMap(id => parentToChildren.get(id) ?? []).filter(id => !seenDown.has(id)));
     if (level.length === 0) break;
     for (const p of level) seenDown.add(p.id);
     descendantLevels.push(level);
     frontierDown = level.map(p => p.id);
   }
 
-  const spouseIds = spouseMap.get(focusNode.id) ?? [];
-  const spouses = spouseIds.map(id => nodeMap.get(id)).filter(Boolean) as TreeNode[];
-  const focusRow: TreeNode[] = spouses.length > 0 ? [focusNode, ...spouses] : [focusNode];
+  const spouses = byIds(spouseMap.get(focusNode.id) ?? []);
+  const siblings = byIds(parents.flatMap(p => parentToChildren.get(p.id) ?? []).filter(id => id !== focusNode.id));
 
-  /* Siblings: other children of focus's parents */
-  const siblingIds = parentIds
-    .flatMap(pid => parentToChildren.get(pid) ?? [])
-    .filter(id => id !== focusNode.id);
-  const siblings = [...new Set(siblingIds)]
-    .map(id => nodeMap.get(id))
-    .filter(Boolean) as TreeNode[];
+  return { nodeMap, focusNode, parents, paternal, maternal, spouses, siblings, descendantLevels };
+}
+
+/* ── Mobile layout ──────────────────────────────────────────── */
+type Side = 'paternal' | 'maternal';
+
+const TWO_COL: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  gap: 10,
+  alignItems: 'start',
+};
+
+const MOBILE_LABEL: React.CSSProperties = { ...GEN_LABEL, margin: '6px 0 8px' };
+
+function MobileConnector() {
+  return <div aria-hidden="true" style={{ width: 2, height: 16, background: '#d8cfb8', margin: '6px auto' }} />;
+}
+
+function CardGrid({ persons, onNav, isSibling }: { persons: TreeNode[]; onNav: (id: string) => void; isSibling?: boolean }) {
+  return (
+    <div style={TWO_COL}>
+      {persons.map(p => (
+        <PersonCard key={p.id} person={p} isCenter={false} isSibling={isSibling} fluid onClick={() => onNav(p.id)} />
+      ))}
+    </div>
+  );
+}
+
+function OlderAncestors({
+  side,
+  levels,
+  open,
+  onToggle,
+  onNav,
+}: {
+  side: Side;
+  levels: CoupleGroup[][];
+  open: boolean;
+  onToggle: () => void;
+  onNav: (id: string) => void;
+}) {
+  if (levels.length === 0) return <div />;
+  const count = levels.reduce((n, level) => n + level.reduce((m, g) => m + g.parents.length, 0), 0);
+  const sideName = side === 'paternal' ? 'Côté paternel' : 'Côté maternel';
+  const listId = `tree-older-${side}`;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={listId}
+        aria-label={`${sideName} : ${open ? 'masquer' : 'afficher'} les arrière-grands-parents (${count})`}
+        onClick={onToggle}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          width: '100%',
+          minHeight: 44,
+          padding: '8px 10px',
+          borderRadius: 10,
+          border: '1px solid #e0d8c6',
+          background: '#fffdf9',
+          color: '#2f5142',
+          fontFamily: 'inherit',
+          fontSize: 12.5,
+          fontWeight: 600,
+          lineHeight: 1.3,
+          textAlign: 'left',
+          cursor: 'pointer',
+        }}
+      >
+        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" style={{ flexShrink: 0, transition: 'transform .15s', transform: open ? 'rotate(180deg)' : undefined }}>
+          <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span>{open ? 'Masquer' : `Afficher les arrière-grands-parents (${count})`}</span>
+      </button>
+      {open && (
+        <div id={listId} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {levels.map((groups, i) => ({ groups, gen: i + 3 })).reverse().map(({ groups, gen }) => (
+            <Fragment key={gen}>
+              <div style={{ ...MOBILE_LABEL, margin: '4px 0 0' }}>{ancestorLabel(gen)}</div>
+              {groups.map(g => (
+                <div
+                  key={g.parents[0]?.id ?? g.childName}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                    padding: 6,
+                    borderRadius: 12,
+                    border: '1px dashed #e0d8c6',
+                    background: 'rgba(255,253,249,.6)',
+                  }}
+                >
+                  <div style={{ fontSize: 10.5, color: '#8a8474', paddingLeft: 2 }}>Parents de {g.childName}</div>
+                  {g.parents.map(p => (
+                    <PersonCard key={p.id} person={p} isCenter={false} fluid onClick={() => onNav(p.id)} />
+                  ))}
+                </div>
+              ))}
+            </Fragment>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GrandparentBlock({ side, persons, onNav }: { side: Side; persons: TreeNode[]; onNav: (id: string) => void }) {
+  if (persons.length === 0) return <div />;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+      <span style={{ ...SIDE_LABEL, fontSize: 9.5, letterSpacing: '.1em', padding: '3px 10px', alignSelf: 'flex-start' }}>
+        {side === 'paternal' ? 'Côté paternel' : 'Côté maternel'}
+      </span>
+      {persons.map(p => (
+        <PersonCard key={p.id} person={p} isCenter={false} fluid onClick={() => onNav(p.id)} />
+      ))}
+    </div>
+  );
+}
+
+function readOpenState(key: string): Record<Side, boolean> {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (raw) {
+      const v = JSON.parse(raw) as Partial<Record<Side, unknown>>;
+      return { paternal: v.paternal === true, maternal: v.maternal === true };
+    }
+  } catch {}
+  return { paternal: false, maternal: false };
+}
+
+function MobileTree({ family, onNav }: { family: FamilyView; onNav: (id: string) => void }) {
+  const { focusNode, parents, paternal, maternal, spouses, siblings, descendantLevels } = family;
+  const storageKey = `geo-tree-vertical-open:${focusNode.id}`;
+  const [open, setOpen] = useState(() => readOpenState(storageKey));
+  const toggle = (side: Side) => {
+    const next = { ...open, [side]: !open[side] };
+    setOpen(next);
+    try { sessionStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
+  };
+
+  const grandPaternal = paternal[0]?.flatMap(g => g.parents) ?? [];
+  const grandMaternal = maternal[0]?.flatMap(g => g.parents) ?? [];
+  const olderPaternal = paternal.slice(1);
+  const olderMaternal = maternal.slice(1);
+  const hasOlder = olderPaternal.length > 0 || olderMaternal.length > 0;
+  const hasGrand = grandPaternal.length + grandMaternal.length > 0;
+  const hasParents = parents.length > 0;
+
+  return (
+    <div style={{ padding: '18px 12px 22px', display: 'flex', flexDirection: 'column' }}>
+      {hasOlder && (
+        <div style={{ ...TWO_COL, marginBottom: 14 }}>
+          <OlderAncestors side="paternal" levels={olderPaternal} open={open.paternal} onToggle={() => toggle('paternal')} onNav={onNav} />
+          <OlderAncestors side="maternal" levels={olderMaternal} open={open.maternal} onToggle={() => toggle('maternal')} onNav={onNav} />
+        </div>
+      )}
+
+      {hasGrand && (
+        <>
+          <div style={MOBILE_LABEL}>{ancestorLabel(2)}</div>
+          <div style={TWO_COL}>
+            <GrandparentBlock side="paternal" persons={grandPaternal} onNav={onNav} />
+            <GrandparentBlock side="maternal" persons={grandMaternal} onNav={onNav} />
+          </div>
+          {hasParents && <MobileConnector />}
+        </>
+      )}
+
+      {hasParents && (
+        <>
+          <div style={MOBILE_LABEL}>{ancestorLabel(1)}</div>
+          <CardGrid persons={parents} onNav={onNav} />
+          <MobileConnector />
+        </>
+      )}
+
+      {!hasParents && <div style={MOBILE_LABEL}>Personne de référence</div>}
+      <PersonCard person={focusNode} isCenter fluid onClick={() => onNav(focusNode.id)} />
+
+      {spouses.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <div style={MOBILE_LABEL}>{spouses.length > 1 ? 'Conjoints' : 'Conjoint'}</div>
+          <CardGrid persons={spouses} onNav={onNav} />
+        </div>
+      )}
+
+      {siblings.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{ ...MOBILE_LABEL, color: '#8a8474' }}>Fratrie</div>
+          <CardGrid persons={siblings} onNav={onNav} isSibling />
+        </div>
+      )}
+
+      {descendantLevels.map((level, i) => (
+        <Fragment key={`desc-${i + 1}`}>
+          <MobileConnector />
+          <div style={MOBILE_LABEL}>{descendantLabel(i + 1)}</div>
+          <CardGrid persons={level} onNav={onNav} />
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+/* ── Main component ─────────────────────────────────────────── */
+export default function TreeVertical({ treeData, focusId, onFocus }: TreeVerticalProps) {
+  const router = useRouter();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const focusCardRef = useRef<HTMLDivElement>(null);
+  const isNarrow = useIsNarrow();
+  const family = useMemo(() => deriveFamily(treeData, focusId), [treeData, focusId]);
+
+  useLayoutEffect(() => {
+    const container = scrollRef.current;
+    const card = focusCardRef.current;
+    if (!container || !card) return;
+    const c = container.getBoundingClientRect();
+    const r = card.getBoundingClientRect();
+    container.scrollLeft += (r.left + r.width / 2) - (c.left + c.width / 2);
+  }, [family, isNarrow]);
+
+  if (!family) {
+    return (
+      <div style={{ padding: 40, color: '#8a8474', textAlign: 'center' }}>
+        Personne introuvable
+      </div>
+    );
+  }
+
+  const { nodeMap, focusNode, parents, paternal, maternal, spouses, siblings, descendantLevels } = family;
 
   const nav = (id: string) => {
     if (onFocus) {
@@ -465,6 +701,11 @@ export default function TreeVertical({ treeData, focusId, onFocus }: TreeVertica
     }
   };
 
+  if (isNarrow) return <MobileTree key={focusNode.id} family={family} onNav={nav} />;
+
+  const centerIds = new Set([focusNode.id]);
+  const focusRow: TreeNode[] = [focusNode, ...spouses];
+  const upperGens = Math.max(paternal.length, maternal.length);
   const hasSiblings = siblings.length > 0;
   const hasAncestors = parents.length > 0;
 
@@ -482,25 +723,25 @@ export default function TreeVertical({ treeData, focusId, onFocus }: TreeVertica
           gap: 0,
         }}
       >
-        {/* Older generations: paternal side | maternal side, oldest first */}
+        {/* Sides share equal widths and hug the centre line so every generation stays above the parents */}
         {upperGens > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1px auto', columnGap: 24, alignItems: 'start' }}>
-            <span style={{ ...SIDE_LABEL, gridRow: 1, gridColumn: 1, visibility: paternal.length ? 'visible' : 'hidden' }}>Côté paternel</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1fr', columnGap: 24, alignItems: 'start' }}>
+            <span style={{ ...SIDE_LABEL, gridRow: 1, gridColumn: 1, justifySelf: 'end', visibility: paternal.length ? 'visible' : 'hidden' }}>Côté paternel</span>
             <div style={{ gridRow: `1 / span ${upperGens * 2 + 1}`, gridColumn: 2, background: '#e0d8c6', alignSelf: 'stretch' }} />
-            <span style={{ ...SIDE_LABEL, gridRow: 1, gridColumn: 3, visibility: maternal.length ? 'visible' : 'hidden' }}>Côté maternel</span>
+            <span style={{ ...SIDE_LABEL, gridRow: 1, gridColumn: 3, justifySelf: 'start', visibility: maternal.length ? 'visible' : 'hidden' }}>Côté maternel</span>
             {Array.from({ length: upperGens }, (_, i) => {
               const idx = upperGens - 1 - i;
               const gen = idx + 2;
               const row = 2 + i * 2;
               return (
                 <Fragment key={`anc-${gen}`}>
-                  <div style={{ ...GEN_LABEL, gridRow: row, gridColumn: 1 }}>{paternal[idx] ? ancestorLabel(gen) : ''}</div>
-                  <div style={{ ...GEN_LABEL, gridRow: row, gridColumn: 3 }}>{maternal[idx] ? ancestorLabel(gen) : ''}</div>
+                  <div style={{ ...GEN_LABEL, gridRow: row, gridColumn: 1, textAlign: 'right', paddingRight: 12 }}>{paternal[idx] ? ancestorLabel(gen) : ''}</div>
+                  <div style={{ ...GEN_LABEL, gridRow: row, gridColumn: 3, textAlign: 'left', paddingLeft: 12 }}>{maternal[idx] ? ancestorLabel(gen) : ''}</div>
                   <div style={{ gridRow: row + 1, gridColumn: 1 }}>
-                    {paternal[idx] && <GroupRow groups={paternal[idx]} centerIds={centerIds} onNav={nav} />}
+                    {paternal[idx] && <GroupRow groups={paternal[idx]} centerIds={centerIds} onNav={nav} justify="flex-end" />}
                   </div>
                   <div style={{ gridRow: row + 1, gridColumn: 3 }}>
-                    {maternal[idx] && <GroupRow groups={maternal[idx]} centerIds={centerIds} onNav={nav} />}
+                    {maternal[idx] && <GroupRow groups={maternal[idx]} centerIds={centerIds} onNav={nav} justify="flex-start" />}
                   </div>
                 </Fragment>
               );
@@ -520,7 +761,6 @@ export default function TreeVertical({ treeData, focusId, onFocus }: TreeVertica
           <>
             {hasAncestors && <Connector />}
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14 }}>
-              {/* Siblings with label */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
                 <span style={{
                   fontSize: 9.5,
@@ -538,10 +778,8 @@ export default function TreeVertical({ treeData, focusId, onFocus }: TreeVertica
                 </div>
               </div>
 
-              {/* Subtle separator */}
               <div style={{ width: 1, height: 56, background: '#ddd5c2', flexShrink: 0 }} />
 
-              {/* Focus + spouse */}
               <div style={{ display: 'flex', gap: 14 }}>
                 {focusRow.map(p => (
                   <PersonCard
@@ -568,7 +806,6 @@ export default function TreeVertical({ treeData, focusId, onFocus }: TreeVertica
           </>
         )}
 
-        {/* Descendant rows */}
         {descendantLevels.map((level, i) => (
           <Fragment key={`desc-${i + 1}`}>
             <Connector />
