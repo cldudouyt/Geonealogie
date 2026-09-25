@@ -472,8 +472,73 @@ const TWO_COL: React.CSSProperties = {
 
 const MOBILE_LABEL: React.CSSProperties = { ...GEN_LABEL, margin: '6px 0 8px' };
 
-function MobileConnector() {
-  return <div aria-hidden="true" style={{ width: 2, height: 16, background: '#d8cfb8', margin: '6px auto' }} />;
+const LINE = '#cdbf9f';
+type Col = 'L' | 'C' | 'R';
+const COL_X: Record<Col, string> = {
+  L: 'calc((100% - 10px) / 4)',
+  C: '50%',
+  R: 'calc(100% - (100% - 10px) / 4)',
+};
+const COL_ORDER: Col[] = ['L', 'C', 'R'];
+
+function Branches({
+  from = [],
+  to = [],
+  height = 30,
+  dashed,
+  joined = true,
+}: {
+  from?: Col[];
+  to?: Col[];
+  height?: number;
+  dashed?: boolean;
+  joined?: boolean;
+}) {
+  const mid = Math.round(height / 2);
+  const all = [...from, ...to];
+  const xs = COL_ORDER.filter(c => all.includes(c));
+  const stroke = dashed ? `2px dashed ${LINE}` : `2px solid ${LINE}`;
+  const vertical = (x: Col, top: number, bottom: number, key: string) => (
+    <div key={key} style={{ position: 'absolute', left: `calc(${COL_X[x]} - 1px)`, top, height: bottom - top, borderLeft: stroke }} />
+  );
+  return (
+    <div aria-hidden="true" style={{ position: 'relative', height }}>
+      {from.map(x => vertical(x, 0, to.length ? mid : height, `f${x}`))}
+      {to.map(x => vertical(x, from.length ? mid : 0, height, `t${x}`))}
+      {joined && xs.length > 1 && (
+        <div style={{
+          position: 'absolute',
+          top: mid - 1,
+          left: COL_X[xs[0]],
+          width: `calc(${COL_X[xs[xs.length - 1]]} - ${COL_X[xs[0]]})`,
+          borderTop: stroke,
+        }} />
+      )}
+    </div>
+  );
+}
+
+function FamilyBox({ caption, children }: { caption: string; children: React.ReactNode }) {
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+      padding: 8,
+      borderRadius: 14,
+      border: `1px solid #e4dac4`,
+      background: 'rgba(47,81,66,.035)',
+      minWidth: 0,
+    }}>
+      <div style={{ fontSize: 10.5, color: '#8a8474', textAlign: 'center', lineHeight: 1.3 }}>{caption}</div>
+      {children}
+    </div>
+  );
+}
+
+function coupleNames(persons: TreeNode[]): string {
+  const names = persons.map(p => firstName(p.displayName));
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} et ${names[names.length - 1]}` : names[0] ?? '';
 }
 
 function CardGrid({ persons, onNav, isSibling }: { persons: TreeNode[]; onNav: (id: string) => void; isSibling?: boolean }) {
@@ -567,16 +632,18 @@ function OlderAncestors({
   );
 }
 
-function GrandparentBlock({ side, persons, onNav }: { side: Side; persons: TreeNode[]; onNav: (id: string) => void }) {
-  if (persons.length === 0) return <div />;
+function GrandparentBlock({ side, group, onNav }: { side: Side; group?: CoupleGroup; onNav: (id: string) => void }) {
+  if (!group) return <div />;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-      <span style={{ ...SIDE_LABEL, fontSize: 9.5, letterSpacing: '.1em', padding: '3px 10px', alignSelf: 'flex-start' }}>
+      <span style={{ ...SIDE_LABEL, fontSize: 9.5, letterSpacing: '.1em', padding: '3px 10px', alignSelf: 'center' }}>
         {side === 'paternal' ? 'Côté paternel' : 'Côté maternel'}
       </span>
-      {persons.map(p => (
-        <PersonCard key={p.id} person={p} isCenter={false} fluid onClick={() => onNav(p.id)} />
-      ))}
+      <FamilyBox caption={`Parents de ${group.childName}`}>
+        {group.parents.map(p => (
+          <PersonCard key={p.id} person={p} isCenter={false} fluid onClick={() => onNav(p.id)} />
+        ))}
+      </FamilyBox>
     </div>
   );
 }
@@ -602,13 +669,18 @@ function MobileTree({ family, onNav }: { family: FamilyView; onNav: (id: string)
     try { sessionStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
   };
 
-  const grandPaternal = paternal[0]?.flatMap(g => g.parents) ?? [];
-  const grandMaternal = maternal[0]?.flatMap(g => g.parents) ?? [];
+  const father = parents.find(p => p.sex === 'M') ?? parents.find(p => p.sex !== 'F');
+  const mother = parents.find(p => p !== father && p.sex !== 'M');
+  const otherParents = parents.filter(p => p !== father && p !== mother);
+  const grandPaternal = paternal[0]?.[0];
+  const grandMaternal = maternal[0]?.[0];
   const olderPaternal = paternal.slice(1);
   const olderMaternal = maternal.slice(1);
   const hasOlder = olderPaternal.length > 0 || olderMaternal.length > 0;
-  const hasGrand = grandPaternal.length + grandMaternal.length > 0;
   const hasParents = parents.length > 0;
+  const parentCols: Col[] = [...(father ? ['L' as Col] : []), ...(mother ? ['R' as Col] : [])];
+  const grandDrops: Col[] = [...(grandPaternal && father ? ['L' as Col] : []), ...(grandMaternal && mother ? ['R' as Col] : [])];
+  const focusFirst = firstName(focusNode.displayName);
 
   return (
     <div style={{ padding: '18px 12px 22px', display: 'flex', flexDirection: 'column' }}>
@@ -619,47 +691,60 @@ function MobileTree({ family, onNav }: { family: FamilyView; onNav: (id: string)
         </div>
       )}
 
-      {hasGrand && (
+      {(grandPaternal || grandMaternal) && (
         <>
           <div style={MOBILE_LABEL}>{ancestorLabel(2)}</div>
           <div style={TWO_COL}>
-            <GrandparentBlock side="paternal" persons={grandPaternal} onNav={onNav} />
-            <GrandparentBlock side="maternal" persons={grandMaternal} onNav={onNav} />
+            <GrandparentBlock side="paternal" group={grandPaternal} onNav={onNav} />
+            <GrandparentBlock side="maternal" group={grandMaternal} onNav={onNav} />
           </div>
-          {hasParents && <MobileConnector />}
+          {grandDrops.length > 0 && <Branches from={grandDrops} to={grandDrops} height={22} joined={false} />}
         </>
       )}
 
       {hasParents && (
         <>
-          <div style={MOBILE_LABEL}>{ancestorLabel(1)}</div>
-          <CardGrid persons={parents} onNav={onNav} />
-          <MobileConnector />
+          {!(grandPaternal || grandMaternal) && <div style={MOBILE_LABEL}>{ancestorLabel(1)}</div>}
+          <div style={TWO_COL}>
+            {father ? <PersonCard person={father} isCenter={false} fluid onClick={() => onNav(father.id)} /> : <div />}
+            {mother ? <PersonCard person={mother} isCenter={false} fluid onClick={() => onNav(mother.id)} /> : <div />}
+            {otherParents.map(p => <PersonCard key={p.id} person={p} isCenter={false} fluid onClick={() => onNav(p.id)} />)}
+          </div>
+          <Branches from={parentCols.length ? parentCols : ['L']} to={['C']} />
         </>
       )}
 
       {!hasParents && <div style={MOBILE_LABEL}>Personne de référence</div>}
-      <PersonCard person={focusNode} isCenter fluid onClick={() => onNav(focusNode.id)} />
 
-      {spouses.length > 0 && (
-        <div style={{ marginTop: 10 }}>
-          <div style={MOBILE_LABEL}>{spouses.length > 1 ? 'Conjoints' : 'Conjoint'}</div>
-          <CardGrid persons={spouses} onNav={onNav} />
-        </div>
+      {siblings.length > 0 ? (
+        <FamilyBox caption={`Enfants de ${coupleNames(parents)}`}>
+          <PersonCard person={focusNode} isCenter fluid onClick={() => onNav(focusNode.id)} />
+          <CardGrid persons={siblings} onNav={onNav} isSibling />
+        </FamilyBox>
+      ) : (
+        <PersonCard person={focusNode} isCenter fluid onClick={() => onNav(focusNode.id)} />
       )}
 
-      {siblings.length > 0 && (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ ...MOBILE_LABEL, color: '#8a8474' }}>Fratrie</div>
-          <CardGrid persons={siblings} onNav={onNav} isSibling />
-        </div>
+      {spouses.length > 0 && (
+        <>
+          <Branches from={['C']} to={['C']} height={18} dashed />
+          <div style={{ ...MOBILE_LABEL, margin: '0 0 8px' }}>{spouses.length > 1 ? 'Conjoints' : 'Conjoint'} de {focusFirst}</div>
+          {spouses.length === 1 ? (
+            <div style={{ width: 'calc(50% - 5px)', margin: '0 auto' }}>
+              <PersonCard person={spouses[0]} isCenter={false} fluid onClick={() => onNav(spouses[0].id)} />
+            </div>
+          ) : (
+            <CardGrid persons={spouses} onNav={onNav} />
+          )}
+        </>
       )}
 
       {descendantLevels.map((level, i) => (
         <Fragment key={`desc-${i + 1}`}>
-          <MobileConnector />
-          <div style={MOBILE_LABEL}>{descendantLabel(i + 1)}</div>
-          <CardGrid persons={level} onNav={onNav} />
+          <Branches from={['C']} to={['C']} height={22} />
+          <FamilyBox caption={i === 0 ? `${descendantLabel(1)} de ${coupleNames(spouses.length === 1 ? [focusNode, spouses[0]] : [focusNode])}` : descendantLabel(i + 1)}>
+            <CardGrid persons={level} onNav={onNav} />
+          </FamilyBox>
         </Fragment>
       ))}
     </div>
