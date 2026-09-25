@@ -31,8 +31,10 @@ export default async function AnniversairesPage({
   const { ancetres } = await searchParams;
   const includeAncestors = ancetres === '1';
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const [py, pm, pd] = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date()).split('-').map(Number);
+  const today = new Date(py, pm - 1, pd);
   const currentYear = today.getFullYear();
 
   const persons = await getAllPersons();

@@ -15,7 +15,8 @@ interface TreeRadialProps {
 }
 
 /* ── Constants ───────────────────────────────────────────────── */
-const MAX_GEN   = 4;
+const MAX_GEN   = 5;
+const MIN_RINGS = 4;
 const ROOT_R    = 38;
 const RING_W    = 90;
 
@@ -62,8 +63,8 @@ function buildRadial(
   ancestors: AncestorNode[],
   mode: RadialMode,
 ): RadialSegment[] {
-  const a0 = mode === 'fan' ? Math.PI  : -Math.PI / 2;  // fan: bottom half reversed => top half
-  const a1 = mode === 'fan' ? 2 * Math.PI : (3 * Math.PI) / 2;
+  const a0 = -Math.PI / 2;
+  const a1 = mode === 'fan' ? Math.PI / 2 : (3 * Math.PI) / 2;
   const span = a1 - a0;
 
   return ancestors
@@ -81,14 +82,16 @@ function buildRadial(
       const path = arcPath(inner, outer, startAngle, endAngle);
       const mid  = polarToXY(midR, midAngle);
 
-      // Rotate text tangent to arc, flip on left hemisphere to stay readable
-      let textRotate = (midAngle * 180) / Math.PI;
+      const arcDeg = ((endAngle - startAngle) * 180) / Math.PI;
+      const radialText = arcDeg <= 9;
+
+      // Tangent text on wide arcs, radial text on narrow outer arcs; flipped to stay readable
+      let textRotate = (midAngle * 180) / Math.PI - (radialText ? 90 : 0);
+      textRotate = ((textRotate % 360) + 540) % 360 - 180;
       if (textRotate > 90 || textRotate < -90) textRotate += 180;
 
-      // Label visibility
-      const arcDeg = ((endAngle - startAngle) * 180) / Math.PI;
       const showFull  = arcDeg > 22 && a.gen <= 3;
-      const showShort = arcDeg > 9  && a.gen <= MAX_GEN;
+      const showShort = a.gen <= MAX_GEN;
       let label = '';
       if (showFull) {
         label = a.displayName;
@@ -116,9 +119,8 @@ function buildRadial(
 }
 
 /* ── SVG dimensions per mode ─────────────────────────────────── */
-function getViewBox(mode: RadialMode): string {
-  // Total radius for MAX_GEN rings
-  const totalR = ROOT_R + 6 + MAX_GEN * RING_W + 10;
+function getViewBox(mode: RadialMode, rings: number): string {
+  const totalR = ROOT_R + 6 + rings * RING_W + 10;
   if (mode === 'fan') {
     // demi-cercle supérieur, pivot en bas
     return `${-totalR} ${-totalR} ${totalR * 2} ${totalR + 20}`;
@@ -135,7 +137,8 @@ export default function TreeRadial({ treeData, mode, onFocus }: TreeRadialProps)
   const segments = useMemo(() => buildRadial(ancestors, mode), [ancestors, mode]);
   const root = ancestors.find(a => a.gen === 0);
 
-  const viewBox = getViewBox(mode);
+  const deepest = segments.reduce((m, seg) => Math.max(m, seg.node.gen), 0);
+  const viewBox = getViewBox(mode, Math.max(MIN_RINGS, deepest));
 
   return (
     <div

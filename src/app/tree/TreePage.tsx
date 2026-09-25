@@ -196,7 +196,12 @@ export default function TreePage({ defaultFocusId, userPersonId }: { defaultFocu
   const router = useRouter();
 
   const reference = useReference();
-  const focusId = searchParams.get('focus') ?? reference?.id ?? userPersonId ?? defaultFocusId;
+  const explicitFocus = searchParams.get('focus');
+  const [missingIds, setMissingIds] = useState<string[]>([]);
+  const homeCandidates = [...new Set([reference?.id, userPersonId, defaultFocusId].filter((id): id is string => Boolean(id)))];
+  const homeId = homeCandidates.find(id => !missingIds.includes(id)) ?? defaultFocusId;
+  const focusId = explicitFocus ?? homeId;
+  const referenceMissing = !explicitFocus && !!reference?.id && missingIds.includes(reference.id) && focusId !== reference.id;
   const viewParam = searchParams.get('view') as ViewMode | null;
   const view: ViewMode = TABS.some(t => t.id === viewParam) ? viewParam! : 'vertical';
   const genParam = parseInt(searchParams.get('gen') ?? '', 10);
@@ -211,27 +216,58 @@ export default function TreePage({ defaultFocusId, userPersonId }: { defaultFocu
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState<string | null>(null);
   const [trail, setTrail] = useState<{id: string; name: string}[]>([{ id: focusId, name: '' }]);
+  const [trailFocus, setTrailFocus] = useState(focusId);
   const [defaultName, setDefaultName] = useState('');
+  const requestRef = useRef<AbortController | null>(null);
 
-  const loadTree = useCallback(async (id: string, gen: number) => {
+  if (trailFocus !== focusId) {
+    setTrailFocus(focusId);
+    setTrail(prev => {
+      if (prev[prev.length - 1]?.id === focusId) return prev;
+      const idx = prev.findIndex(t => t.id === focusId);
+      return idx >= 0 ? prev.slice(0, idx + 1) : [{ id: focusId, name: '' }];
+    });
+  }
+
+  const loadTree = useCallback(async (id: string, gen: number, canFallBack: boolean) => {
     if (!id) return;
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/tree/${encodeURIComponent(id)}?generations=${gen}`);
-      if (!res.ok) throw new Error('Échec du chargement');
-      const data: TreeData = await res.json();
+      const res = await fetch(`/api/tree/${encodeURIComponent(id)}?generations=${gen}`, { signal: controller.signal });
+      const data: TreeData | null = res.ok ? await res.json() : null;
+      if (controller.signal.aborted) return;
+      const found = !!data?.nodes?.some(n => n.id === id);
+      if (res.status === 404 || (data && !found)) {
+        if (canFallBack) {
+          setMissingIds(prev => prev.includes(id) ? prev : [...prev, id]);
+          return;
+        }
+        throw new Error('Cette personne est introuvable (fiche fusionnée ou supprimée ?).');
+      }
+      if (!res.ok || !data) throw new Error(res.status === 401 ? 'Session expirée, reconnectez-vous.' : 'Échec du chargement');
       setTreeData(data);
     } catch (err) {
+      if (controller.signal.aborted) return;
       setError((err as Error).message);
     } finally {
-      setLoading(false);
+      if (requestRef.current === controller) {
+        requestRef.current = null;
+        setLoading(false);
+      }
     }
   }, []);
 
+  const canFallBack = !explicitFocus && homeCandidates.indexOf(focusId) < homeCandidates.length - 1;
+
   useEffect(() => {
-    loadTree(focusId, generations);
-  }, [focusId, generations, loadTree]);
+    loadTree(focusId, generations, canFallBack);
+  }, [focusId, generations, canFallBack, loadTree]);
+
+  useEffect(() => () => requestRef.current?.abort(), []);
 
   // Fill empty trail names and capture defaultFocusId name
   useEffect(() => {
@@ -259,6 +295,18 @@ export default function TreePage({ defaultFocusId, userPersonId }: { defaultFocu
     router.push(`/tree?${params.toString()}`, { scroll: false });
   };
 
+  const recenter = () => {
+    const params = new URLSearchParams();
+    params.set('view', view);
+    params.set('gen', String(generations));
+    router.push(`/tree?${params.toString()}`, { scroll: false });
+  };
+  const homeNode = treeData?.nodes.find(n => n.id === homeId);
+  const homeName = homeId === reference?.id
+    ? reference?.name ?? ''
+    : homeNode ? homeNode.displayName.trim().split(/\s+/)[0] : homeId === defaultFocusId ? defaultName : '';
+  const recenterLabel = `Recentrer${homeName ? ` sur ${homeName}` : ''}`;
+
   const onFocus = useCallback((id: string, name?: string) => {
     const params = new URLSearchParams();
     params.set('focus', id);
@@ -267,6 +315,7 @@ export default function TreePage({ defaultFocusId, userPersonId }: { defaultFocu
     router.push(`/tree?${params.toString()}`, { scroll: false });
 
     const resolvedName = name ?? '';
+    setTrailFocus(id);
     setTrail(prev => {
       const idx = prev.findIndex(t => t.id === id);
       if (idx >= 0) return prev.slice(0, idx + 1);
@@ -277,7 +326,7 @@ export default function TreePage({ defaultFocusId, userPersonId }: { defaultFocu
   return (
     <div className={`tree-page ${fullscreen ? 'tree-fullscreen' : ''}`} style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="tree-top-actions"><button className="secondary-action" onClick={() => setFullscreen(v => !v)}>{fullscreen ? 'Quitter le plein écran' : 'Arbre en plein écran'}</button></div>
-      <dialog ref={previewDialog} className="person-preview" aria-labelledby="person-preview-title"><button className="secondary-action" onClick={() => previewDialog.current?.close()}>Fermer ×</button>{selected && <><h2 id="person-preview-title">{selected.displayName}</h2><p>{[selected.birthYear, selected.deathYear].filter(Boolean).join(' – ')}</p><div className="action-row"><Link className="primary-action" href={`/person/${selected.id}`}>Voir sa fiche</Link><button className="secondary-action" onClick={() => { onFocus(selected.id, selected.displayName); previewDialog.current?.close(); }}>Centrer l’arbre</button></div></>}</dialog>
+      <dialog ref={previewDialog} className="person-preview" aria-labelledby="person-preview-title"><button className="secondary-action" onClick={() => previewDialog.current?.close()}>Fermer ×</button>{selected && <><h2 id="person-preview-title">{selected.displayName}</h2><p>{[selected.birthYear, selected.deathYear].filter(Boolean).join(' – ')}</p><div className="action-row"><Link className="primary-action" href={`/person/${encodeURIComponent(selected.id)}`}>Voir sa fiche</Link><button className="secondary-action" onClick={() => { onFocus(selected.id, selected.displayName); previewDialog.current?.close(); }}>Centrer l’arbre</button></div></>}</dialog>
       {/* ── Page header ─────────────────────────────────────── */}
       <div style={{ padding: '28px 32px 16px' }}>
         <h1 style={{
@@ -397,6 +446,15 @@ export default function TreePage({ defaultFocusId, userPersonId }: { defaultFocu
         ].filter(Boolean).join(' · ');
         return (
           <div style={{ padding: '0 32px 16px' }}>
+            {referenceMissing && (
+              <p role="status" style={{
+                background: '#fbf3e2', border: '1px solid #e7d3a8', color: '#6b5426',
+                borderRadius: 12, padding: '10px 14px', fontSize: 13, margin: '0 0 12px',
+              }}>
+                Votre personne de référence est introuvable, affichage de {focusNode.displayName}.{' '}
+                <Link href="/search?choose=me" style={{ color: '#2f5142', textDecoration: 'underline' }}>Choisir une autre personne</Link>
+              </p>
+            )}
             <div className="tree-focus-card" style={{
               background: '#fffdf9',
               border: '1px solid #e7e0d0',
@@ -434,10 +492,7 @@ export default function TreePage({ defaultFocusId, userPersonId }: { defaultFocu
               {/* Buttons */}
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                 <button
-                  onClick={() => {
-                    onFocus(reference?.id ?? userPersonId ?? defaultFocusId, reference?.name ?? defaultName);
-                    setTrail([{ id: reference?.id ?? userPersonId ?? defaultFocusId, name: reference?.name ?? defaultName }]);
-                  }}
+                  onClick={recenter}
                   style={{
                     height: 36, padding: '0 14px', borderRadius: 10, border: '1px solid #e0d8c6',
                     background: '#fffdf9', color: '#3a4038', fontSize: 13, fontWeight: 600,
@@ -445,10 +500,10 @@ export default function TreePage({ defaultFocusId, userPersonId }: { defaultFocu
                   }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
-                  Recentrer sur {reference?.name || defaultName || firstName}
+                  {homeName ? recenterLabel : `Recentrer sur ${firstName}`}
                 </button>
                 <Link
-                  href={`/person/${focusId}`}
+                  href={`/person/${encodeURIComponent(focusId)}`}
                   style={{
                     height: 36, padding: '0 14px', borderRadius: 10, border: 'none',
                     background: '#1e3a2f', color: '#f1ede2', fontSize: 13, fontWeight: 600,
@@ -559,21 +614,40 @@ export default function TreePage({ defaultFocusId, userPersonId }: { defaultFocu
               Erreur de chargement
             </p>
             <p style={{ fontSize: 13, color: '#b03a2e', margin: '0 0 14px' }}>{error}</p>
-            <button
-              onClick={() => loadTree(focusId, generations)}
-              style={{
-                padding: '8px 16px',
-                background: '#1e3a2f',
-                color: '#f1ede2',
-                border: 'none',
-                borderRadius: 10,
-                cursor: 'pointer',
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              Réessayer
-            </button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => loadTree(focusId, generations, canFallBack)}
+                style={{
+                  padding: '8px 16px',
+                  background: '#1e3a2f',
+                  color: '#f1ede2',
+                  border: 'none',
+                  borderRadius: 10,
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                Réessayer
+              </button>
+              {(explicitFocus || focusId !== homeId) && (
+                <button
+                  onClick={recenter}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#fffdf9',
+                    color: '#3a4038',
+                    border: '1px solid #e0d8c6',
+                    borderRadius: 10,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  {recenterLabel}
+                </button>
+              )}
+            </div>
           </div>
         )}
 

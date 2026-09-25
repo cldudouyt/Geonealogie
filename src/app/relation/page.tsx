@@ -244,6 +244,8 @@ export default function RelationPage() {
   const [toId, setToId] = useState(searchParams.get('to') || '');
   const [result, setResult] = useState<RelationResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [findError, setFindError] = useState<string | null>(null);
+  const findRequest = useRef(0);
   const [editingFrom, setEditingFrom] = useState(false);
   const [editingTo, setEditingTo] = useState(false);
 
@@ -271,7 +273,7 @@ export default function RelationPage() {
 
     async function loadNames() {
       if (initialFrom) {
-        const res = await fetch(`/api/persons/${initialFrom}`);
+        const res = await fetch(`/api/persons/${encodeURIComponent(initialFrom)}`);
         if (res.ok) {
           const data = await res.json();
           const name = data.person?.displayName || initialFrom;
@@ -279,7 +281,7 @@ export default function RelationPage() {
         }
       }
       if (initialTo) {
-        const res = await fetch(`/api/persons/${initialTo}`);
+        const res = await fetch(`/api/persons/${encodeURIComponent(initialTo)}`);
         if (res.ok) {
           const data = await res.json();
           const name = data.person?.displayName || initialTo;
@@ -289,19 +291,34 @@ export default function RelationPage() {
     }
 
     if (initialFrom || initialTo) {
-      loadNames();
+      loadNames().catch(() => {});
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const doFind = useCallback(async (fid: string, tid: string) => {
     if (!fid || !tid) return;
+    const req = ++findRequest.current;
     setLoading(true);
     setResult(null);
-    const res = await fetch(`/api/relation?from=${fid}&to=${tid}`);
-    const data = await res.json();
-    setResult(data);
-    setLoading(false);
+    setFindError(null);
+    try {
+      const res = await fetch(`/api/relation?from=${encodeURIComponent(fid)}&to=${encodeURIComponent(tid)}`);
+      if (!res.ok) {
+        throw new Error(res.status === 401
+          ? 'Votre session a expiré. Reconnectez-vous puis réessayez.'
+          : 'La recherche du lien a échoué. Réessayez dans un instant.');
+      }
+      const data: RelationResult = await res.json();
+      if (req === findRequest.current) setResult(data);
+    } catch (err) {
+      if (req !== findRequest.current) return;
+      setFindError(err instanceof TypeError
+        ? 'Connexion impossible. Vérifiez votre réseau puis réessayez.'
+        : (err as Error).message);
+    } finally {
+      if (req === findRequest.current) setLoading(false);
+    }
   }, []);
 
   // Auto-search when both IDs are set from URL on mount
@@ -417,6 +434,22 @@ export default function RelationPage() {
           </div>
         </div>
 
+        {findError && (
+          <div
+            role="alert"
+            style={{
+              background: '#fae6e3',
+              border: '1px solid #d98b82',
+              borderRadius: '14px',
+              padding: '16px 20px',
+              color: '#b03a2e',
+              fontSize: '14px',
+            }}
+          >
+            {findError}
+          </div>
+        )}
+
         {/* Same person */}
         {result?.samePerson && (
           <div
@@ -503,7 +536,7 @@ export default function RelationPage() {
             {result.path.map((node) => (
               <div key={node.id}>
                 <Link
-                  href={`/person/${node.id}`}
+                  href={`/person/${encodeURIComponent(node.id)}`}
                   className="block"
                   style={{
                     background: '#fffdf9',

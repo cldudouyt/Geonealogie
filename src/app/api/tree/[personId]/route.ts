@@ -7,7 +7,7 @@ export async function GET(
 ) {
   const { personId } = await params;
   const genParam = parseInt(request.nextUrl.searchParams.get('generations') ?? '', 10);
-  const generations = Number.isFinite(genParam) ? Math.min(Math.max(genParam, 1), 8) : 2;
+  const generations = Number.isFinite(genParam) ? Math.min(Math.max(genParam, 1), 8) : 4;
 
   try {
     const tree = await getTreeCentered(personId, generations);
