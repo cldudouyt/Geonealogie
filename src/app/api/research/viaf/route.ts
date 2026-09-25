@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { researchRequest, unavailable } from '../_shared';
 
 export interface ViafResult {
   viafid: string;
@@ -8,20 +9,17 @@ export interface ViafResult {
 }
 
 export async function GET(req: NextRequest) {
-  const q = req.nextUrl.searchParams.get('q') || '';
-  if (!q) return NextResponse.json({ results: [] });
+  const input = await researchRequest(req, 'viaf');
+  if (input instanceof NextResponse) return input;
 
   try {
-    const ctrl = new AbortController();
-    setTimeout(() => ctrl.abort(), 8000);
     const res = await fetch(
-      `https://www.viaf.org/viaf/AutoSuggest?query=${encodeURIComponent(q)}`,
-      { headers: { 'User-Agent': 'Geonealogie/1.0', 'Accept': 'application/json' }, cache: 'no-store', signal: ctrl.signal }
+      `https://www.viaf.org/viaf/AutoSuggest?query=${encodeURIComponent(input.name)}`,
+      { headers: { 'User-Agent': 'Geonealogie/1.0', 'Accept': 'application/json' }, cache: 'no-store', signal: input.signal }
     );
-    if (!res.ok) return NextResponse.json({ results: [] });
+    if (!res.ok) return unavailable();
     const data = await res.json();
 
-    // Deduplicate by viafid, keep only personal names
     const seen = new Set<string>();
     const results: ViafResult[] = [];
     for (const item of (data.result ?? [])) {
@@ -38,7 +36,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ results });
-  } catch (e) {
-    return NextResponse.json({ results: [], error: String(e) });
+  } catch {
+    return unavailable();
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { MaitronResult } from '@/app/api/research/maitron/route';
 import type { WikidataResult } from '@/app/api/research/wikidata/route';
 import type { ViafResult } from '@/app/api/research/viaf/route';
@@ -63,31 +63,49 @@ const EXTERNAL_SOURCES = [
   },
 ];
 
-async function searchWikipedia(lang: 'fr' | 'en', name: string): Promise<WikiResult[]> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 8000);
-  try {
-    const searchRes = await fetch(
-      `https://${lang}.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(name)}&limit=3&format=json&origin=*`,
-      { signal: ctrl.signal }
-    );
-    const [, titles] = await searchRes.json() as [string, string[], string[], string[]];
-    if (!titles?.length) return [];
+const CLIENT_TIMEOUT_MS = 10000;
+const UNAVAILABLE = 'Source indisponible, réessayez plus tard.';
 
-    const results = await Promise.all(
-      titles.slice(0, 2).map(async (title) => {
-        try {
-          const res = await fetch(
-            `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
-            { headers: { 'Api-User-Agent': 'Geonealogie/1.0' }, signal: ctrl.signal }
-          );
-          if (!res.ok) return null;
-          return await res.json() as WikiResult;
-        } catch { return null; }
-      })
-    );
-    return results.filter(Boolean) as WikiResult[];
-  } catch { return []; } finally { clearTimeout(timer); }
+type SourceKey = 'maitron' | 'wikipedia' | 'wikidata' | 'viaf' | 'bnf';
+type SourceErrors = Partial<Record<SourceKey, boolean>>;
+
+async function searchWikipedia(lang: 'fr' | 'en', name: string): Promise<WikiResult[]> {
+  const signal = AbortSignal.timeout(CLIENT_TIMEOUT_MS);
+  const searchRes = await fetch(
+    `https://${lang}.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(name)}&limit=3&format=json&origin=*`,
+    { signal }
+  );
+  if (!searchRes.ok) throw new Error('Wikipedia indisponible');
+  const [, titles] = await searchRes.json() as [string, string[], string[], string[]];
+  if (!titles?.length) return [];
+
+  const results = await Promise.all(
+    titles.slice(0, 2).map(async (title) => {
+      try {
+        const res = await fetch(
+          `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`,
+          { headers: { 'Api-User-Agent': 'Geonealogie/1.0' }, signal }
+        );
+        if (!res.ok) return null;
+        return await res.json() as WikiResult;
+      } catch { return null; }
+    })
+  );
+  return results.filter(Boolean) as WikiResult[];
+}
+
+async function fetchSource<T>(url: string): Promise<T[]> {
+  const r = await fetch(url, { signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS) });
+  const data = await r.json().catch(() => null) as { results?: T[]; error?: string } | null;
+  if (!r.ok || !data || data.error || !Array.isArray(data.results)) throw new Error(data?.error || UNAVAILABLE);
+  return data.results;
+}
+
+function SourceStatus({ loading, searched, failed, count, source, name }: { loading: boolean; searched: boolean; failed?: boolean; count: number; source: string; name: string }) {
+  if (loading || !searched) return null;
+  if (failed) return <p role="status" className="text-sm text-[#9c5a52] py-1">{source} : {UNAVAILABLE}</p>;
+  if (count === 0) return <p className="text-sm text-[#8a8474] py-1">Aucun résultat {source} pour &laquo;{name}&raquo;.</p>;
+  return null;
 }
 
 function Spinner() {
@@ -148,35 +166,40 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
   const [viafResults, setViafResults] = useState<ViafResult[]>([]);
   const [bnfResults, setBnfResults] = useState<BnfResult[]>([]);
   const [searched, setSearched] = useState(false);
+  const [errors, setErrors] = useState<SourceErrors>({});
+  const inFlight = useRef(false);
 
   const firstName = givenNames.split(',')[0].trim();
   const fullName = `${firstName} ${surname}`.trim();
   const nameWithDates = `${fullName}${birthYear ? ` ${birthYear}` : ''}${deathYear ? `-${deathYear}` : ''}`;
 
-  const safeJson = async (url: string) => {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 10000);
-    try {
-      const r = await fetch(url, { signal: ctrl.signal });
-      return r.ok ? await r.json() : {};
-    } catch { return {}; } finally { clearTimeout(timer); }
-  };
+  const query = new URLSearchParams({ q: fullName, given: firstName, surname: surname.trim() }).toString();
 
   const runSearch = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setLoading(true);
     try {
-      const [frWiki, enWiki, maitronData, wikidataData, viafData, bnfData] = await Promise.all([
-        searchWikipedia('fr', fullName).catch(() => [] as WikiResult[]),
-        searchWikipedia('en', fullName).catch(() => [] as WikiResult[]),
-        safeJson(`/api/research/maitron?q=${encodeURIComponent(fullName)}`),
-        safeJson(`/api/research/wikidata?q=${encodeURIComponent(fullName)}`),
-        safeJson(`/api/research/viaf?q=${encodeURIComponent(fullName)}`),
-        safeJson(`/api/research/bnf?q=${encodeURIComponent(fullName)}`),
+      const [frWiki, enWiki, maitron, wikidata, viaf, bnf] = await Promise.allSettled([
+        searchWikipedia('fr', fullName),
+        searchWikipedia('en', fullName),
+        fetchSource<MaitronResult>(`/api/research/maitron?${query}`),
+        fetchSource<WikidataResult>(`/api/research/wikidata?${query}`),
+        fetchSource<ViafResult>(`/api/research/viaf?${query}`),
+        fetchSource<BnfResult>(`/api/research/bnf?${query}`),
       ]);
+      const value = <T,>(r: PromiseSettledResult<T[]>): T[] => r.status === 'fulfilled' ? r.value : [];
+      setErrors({
+        wikipedia: frWiki.status === 'rejected' && enWiki.status === 'rejected',
+        maitron: maitron.status === 'rejected',
+        wikidata: wikidata.status === 'rejected',
+        viaf: viaf.status === 'rejected',
+        bnf: bnf.status === 'rejected',
+      });
 
       const combined: { lang: string; result: WikiResult }[] = [
-        ...frWiki.map((r: WikiResult) => ({ lang: 'fr', result: r })),
-        ...enWiki.map((r: WikiResult) => ({ lang: 'en', result: r })),
+        ...value(frWiki).map((r: WikiResult) => ({ lang: 'fr', result: r })),
+        ...value(enWiki).map((r: WikiResult) => ({ lang: 'en', result: r })),
       ];
       const seen = new Set<string>();
       setWikiResults(combined.filter(({ result }) => {
@@ -184,11 +207,12 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
         seen.add(result.title);
         return true;
       }));
-      setMaitronResults(maitronData.results ?? []);
-      setWikidataResults(wikidataData.results ?? []);
-      setViafResults(viafData.results ?? []);
-      setBnfResults(bnfData.results ?? []);
+      setMaitronResults(value(maitron));
+      setWikidataResults(value(wikidata));
+      setViafResults(value(viaf));
+      setBnfResults(value(bnf));
     } finally {
+      inFlight.current = false;
       setSearched(true);
       setLoading(false);
     }
@@ -196,7 +220,7 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
 
   const toggle = () => {
     setOpen(v => !v);
-    if (!searched && !open) runSearch();
+    if (!searched && !open && !loading) runSearch();
   };
 
   const maitronDirectUrl = `https://maitron.fr/?s=${encodeURIComponent(fullName)}`;
@@ -247,9 +271,7 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
               badgeCls="bg-red-100 text-red-700"
               externalHref={maitronDirectUrl} externalLabel="Maitron" externalCls="text-red-700"
             />
-            {!loading && searched && maitronResults.length === 0 && (
-              <p className="text-sm text-[#8a8474] py-1">Aucun résultat Maitron pour &laquo;{fullName}&raquo;.</p>
-            )}
+            <SourceStatus loading={loading} searched={searched} failed={errors.maitron} count={maitronResults.length} source="Maitron" name={fullName} />
             {!loading && maitronResults.length > 0 && (
               <div className="space-y-2">
                 {maitronResults.map((r) => (
@@ -259,7 +281,12 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
                       <span className="text-xs font-bold text-red-700">M</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-red-800 group-hover:underline leading-tight">{r.title}</p>
+                      <p className="text-sm font-medium text-red-800 group-hover:underline leading-tight">
+                        {r.title}
+                        {r.namesake && (
+                          <span className="ml-2 align-middle text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-[#f6ecd9] text-[#7a5a1f] no-underline inline-block" title="Même nom de famille : il peut s’agir d’une autre personne.">homonyme possible</span>
+                        )}
+                      </p>
                       <p className="text-xs text-[#8a8474] mt-1 line-clamp-2 leading-relaxed">{r.excerpt}</p>
                     </div>
                     <ExtIcon className="text-red-300 group-hover:text-red-600" />
@@ -279,9 +306,7 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
               externalHref={`https://fr.wikipedia.org/w/index.php?search=${encodeURIComponent(fullName)}`}
               externalLabel="Wikipedia" externalCls="text-[#2f5142]"
             />
-            {!loading && searched && wikiResults.length === 0 && (
-              <p className="text-sm text-[#8a8474] py-1">Aucun résultat Wikipedia pour &laquo;{fullName}&raquo;.</p>
-            )}
+            <SourceStatus loading={loading} searched={searched} failed={errors.wikipedia} count={wikiResults.length} source="Wikipedia" name={fullName} />
             {!loading && wikiResults.length > 0 && (
               <div className="space-y-2">
                 {wikiResults.map(({ lang, result }) => (
@@ -316,9 +341,7 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
               badgeCls="bg-blue-100 text-blue-700"
               externalHref={wikidataSearchUrl} externalLabel="Wikidata" externalCls="text-blue-600"
             />
-            {!loading && searched && wikidataResults.length === 0 && (
-              <p className="text-sm text-[#8a8474] py-1">Aucun résultat Wikidata pour &laquo;{fullName}&raquo;.</p>
-            )}
+            <SourceStatus loading={loading} searched={searched} failed={errors.wikidata} count={wikidataResults.length} source="Wikidata" name={fullName} />
             {!loading && wikidataResults.length > 0 && (
               <div className="space-y-2">
                 {wikidataResults.map((r) => (
@@ -346,9 +369,7 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
               badgeCls="bg-violet-100 text-violet-700"
               externalHref={viafSearchUrl} externalLabel="VIAF" externalCls="text-violet-600"
             />
-            {!loading && searched && viafResults.length === 0 && (
-              <p className="text-sm text-[#8a8474] py-1">Aucun résultat VIAF pour &laquo;{fullName}&raquo;.</p>
-            )}
+            <SourceStatus loading={loading} searched={searched} failed={errors.viaf} count={viafResults.length} source="VIAF" name={fullName} />
             {!loading && viafResults.length > 0 && (
               <div className="space-y-2">
                 {viafResults.map((r) => (
@@ -375,9 +396,7 @@ export default function ResearchPanel({ givenNames, surname, birthYear, deathYea
               badgeCls="bg-blue-100 text-blue-800"
               externalHref={bnfSearchUrl} externalLabel="BnF" externalCls="text-blue-800"
             />
-            {!loading && searched && bnfResults.length === 0 && (
-              <p className="text-sm text-[#8a8474] py-1">Aucun résultat BnF pour &laquo;{fullName}&raquo;.</p>
-            )}
+            <SourceStatus loading={loading} searched={searched} failed={errors.bnf} count={bnfResults.length} source="BnF" name={fullName} />
             {!loading && bnfResults.length > 0 && (
               <div className="space-y-2">
                 {bnfResults.map((r) => (

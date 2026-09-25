@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDocumentsForPerson } from '@/lib/documents-store';
 
+function contentDisposition(name: string): string {
+  const fallback = name.normalize('NFKD').replace(/[^\x20-\x7e]/g, '').replace(/["\\]/g, '_').trim() || 'document';
+  const encoded = encodeURIComponent(name).replace(/['()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+  return `inline; filename="${fallback}"; filename*=UTF-8''${encoded}`;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; docId: string }> },
@@ -23,7 +29,7 @@ export async function GET(
     return new NextResponse(result.stream, {
       headers: {
         'Content-Type': result.blob.contentType,
-        'Content-Disposition': `inline; filename="${encodeURIComponent(doc.originalName)}"`,
+        'Content-Disposition': contentDisposition(doc.originalName),
         'Cache-Control': 'private, no-store',
       },
     });

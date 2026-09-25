@@ -54,7 +54,8 @@ export default function DocumentsSection({
 
     try {
       if (USE_BLOB) {
-        const blob = await upload(file.name, file, {
+        const safeName = file.name.normalize('NFKD').replace(/[^\w.-]+/g, '_').replace(/^[._]+/, '').slice(-100) || 'document';
+        const blob = await upload(`documents/${personId}/${safeName}`, file, {
           access: 'private',
           handleUploadUrl: '/api/blob-upload',
         });

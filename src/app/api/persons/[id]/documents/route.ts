@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import {
   getDocumentsForPerson,
+  listAllDocuments,
   saveDocumentMeta,
   uploadToStorage,
 } from '@/lib/documents-store';
@@ -49,9 +50,19 @@ export async function POST(
     if (!body.url || !body.originalName || !body.mimeType || !body.size) {
       return NextResponse.json({ error: 'Champs manquants' }, { status: 400 });
     }
+    let pathname: string;
     try {
       const url = new URL(body.url);
-      if (url.protocol !== 'https:' || !/^[a-z0-9-]+\.private\.blob\.vercel-storage\.com$/.test(url.hostname)) throw new Error('URL privée requise.');
+      if (url.protocol !== 'https:' || !/^[a-z0-9-]+\.private\.blob\.vercel-storage\.com$/.test(url.hostname) || url.search || url.hash) throw new Error('URL privée requise.');
+      pathname = decodeURIComponent(url.pathname);
+    } catch { return NextResponse.json({ error: 'URL de fichier privée invalide.' }, { status: 400 }); }
+    if (!pathname.startsWith(`/documents/${id}/`) || pathname.includes('/../')) {
+      return NextResponse.json({ error: 'Ce fichier n’appartient pas à cette fiche.' }, { status: 400 });
+    }
+    if ((await listAllDocuments()).some(d => d.url === body.url || d.legacyPublicUrl === body.url)) {
+      return NextResponse.json({ error: 'Ce fichier est déjà rattaché à une fiche.' }, { status: 409 });
+    }
+    try {
       const { head } = await import('@vercel/blob');
       const stored = await head(body.url, { token: process.env.BLOB_PRIVATE_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN });
       if (stored.size !== body.size || stored.size > MAX_SIZE || !ALLOWED_TYPES.has(stored.contentType)) throw new Error('Fichier invalide.');

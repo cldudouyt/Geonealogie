@@ -7,17 +7,26 @@ import { requireRole } from '@/lib/session';
 import { generateText } from '@/lib/ai';
 
 type Context = { params: Promise<{ id: string }> };
+class NotFound extends Error {}
 async function context(id: string) {
   const person = await getPerson(id);
-  if (!person) throw new Error('Personne introuvable');
+  if (!person) throw new NotFound('Personne introuvable');
   const overrides = await loadOverrides();
   const sources = (overrides.newPersons.find(p => p.id === id) ?? overrides.persons[id])?.sources ?? [];
   return { person, fingerprint: narrativeFingerprint(person, sources), facts: narrativeFacts(person) };
 }
+async function contributor() {
+  try { return await requireRole('contributor'); } catch { return null; }
+}
+const forbidden = () => NextResponse.json({ error: 'Vous ne disposez pas des droits nécessaires.' }, { status: 403 });
+const notFound = () => NextResponse.json({ error: 'Personne introuvable' }, { status: 404 });
 export async function POST(_req: NextRequest, { params }: Context) {
-  await requireRole('contributor');
+  if (!await contributor()) return forbidden();
   const { id } = await params;
-  const { person, fingerprint, facts } = await context(id);
+  let initial: Awaited<ReturnType<typeof context>>;
+  try { initial = await context(id); }
+  catch (error) { if (error instanceof NotFound) return notFound(); throw error; }
+  const { person, fingerprint, facts } = initial;
   if (!person.deathDateRaw && !person.deathYear) return NextResponse.json({ error: 'Pour préserver les personnes dont le décès n’est pas renseigné, rédigez ce portrait manuellement.' }, { status: 400 });
   const previous = await getNarrative(id);
   if (previous && Date.now() - Date.parse(previous.generatedAt) < 60_000) return NextResponse.json({ error: 'Patientez une minute avant de régénérer.' }, { status: 429 });
@@ -36,10 +45,11 @@ export async function POST(_req: NextRequest, { params }: Context) {
     const entry = { text, generatedAt: new Date().toISOString(), fingerprint, facts, revision: (previous?.revision ?? 0) + 1 };
     await updateNarrative(id, entry, previous?.revision ?? 0);
     return NextResponse.json(entry);
-  } catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 409 }); }
+  } catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: error instanceof NotFound ? 404 : 409 }); }
 }
 export async function PATCH(req: NextRequest, { params }: Context) {
-  const session = await requireRole('contributor');
+  const session = await contributor();
+  if (!session) return forbidden();
   const { id } = await params;
   try {
     const body = await req.json();
@@ -49,5 +59,9 @@ export async function PATCH(req: NextRequest, { params }: Context) {
     const entry = { text: body.text.trim(), generatedAt: new Date().toISOString(), fingerprint, facts, reviewedAt: new Date().toISOString(), reviewedBy: session.name, revision: body.revision + 1 };
     await updateNarrative(id, entry, body.revision);
     return NextResponse.json(entry);
-  } catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 409 }); }
+  } catch (error) {
+    if (error instanceof NotFound) return notFound();
+    if (error instanceof SyntaxError) return NextResponse.json({ error: 'Corps JSON invalide.' }, { status: 400 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 409 });
+  }
 }
