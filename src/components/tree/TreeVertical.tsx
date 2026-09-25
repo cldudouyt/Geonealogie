@@ -25,7 +25,8 @@ interface TreeVerticalProps {
 /* ── card dimensions (spec) ─────────────────────────────────── */
 const CARD_W_NORMAL  = 178;
 const CARD_W_CENTRAL = 204;
-const CONNECTOR_H    = 30;
+
+interface CardSize { w: number; h: number; font: number; meta: number; pad: string }
 
 /* ── Render person name with surname highlighted green ─────── */
 function renderName(displayName: string, isCenter: boolean): React.ReactNode {
@@ -80,6 +81,7 @@ function PersonCard({
   onClick,
   anchorRef,
   fluid,
+  size,
 }: {
   person: TreeNode;
   isCenter: boolean;
@@ -87,11 +89,13 @@ function PersonCard({
   onClick: () => void;
   anchorRef?: React.Ref<HTMLDivElement>;
   fluid?: boolean;
+  size?: CardSize;
 }) {
   const w = isCenter ? CARD_W_CENTRAL : CARD_W_NORMAL;
   const s = person.sex ?? 'U';
   const nameColor = isCenter ? '#f4efe3' : '#1c1f1c';
   const metaColor = isCenter ? '#9fb0a1' : '#8a8474';
+  const inlineAdopted = (fluid || !!size) && person.isAdopted && !isCenter;
 
   const meta = [
     person.birthYear && person.deathYear
@@ -115,12 +119,14 @@ function PersonCard({
       onClick={onClick}
       title={isCenter ? `Voir la fiche de ${person.displayName}` : `Centrer sur ${person.displayName}`}
       style={{
-        width: fluid ? '100%' : isSibling ? 148 : w,
+        width: size ? size.w : fluid ? '100%' : isSibling ? 148 : w,
         minWidth: 0,
         minHeight: fluid ? 48 : undefined,
+        height: size?.h,
         boxSizing: 'border-box',
         borderRadius: 13,
-        padding: fluid ? (isCenter ? '12px 14px' : '9px 10px') : isSibling ? 10 : 13,
+        padding: size ? size.pad : fluid ? (isCenter ? '12px 14px' : '9px 10px') : isSibling ? 10 : 13,
+        ...(size ? { display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' } : {}),
         boxShadow: '0 4px 14px -10px rgba(0,0,0,.4)',
         cursor: 'pointer',
         flexShrink: 0,
@@ -159,7 +165,7 @@ function PersonCard({
           Focus
         </span>
       )}
-      {person.isAdopted && !isCenter && !fluid && (
+      {person.isAdopted && !isCenter && !fluid && !size && (
         <span style={{
           position: 'absolute',
           top: 6,
@@ -178,35 +184,35 @@ function PersonCard({
       )}
 
       <p style={{
-        fontSize: fluid ? (isCenter ? 14.5 : 12.5) : isSibling ? 12.5 : 13.5,
+        fontSize: size ? size.font : fluid ? (isCenter ? 14.5 : 12.5) : isSibling ? 12.5 : 13.5,
         fontWeight: 700,
         color: nameColor,
         margin: 0,
         lineHeight: 1.3,
         overflow: 'hidden',
         paddingRight: isCenter ? 52 : 0,
-        ...(fluid
+        ...(fluid || size
           ? { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflowWrap: 'anywhere' }
           : { textOverflow: 'ellipsis', whiteSpace: 'nowrap' }),
       }}>
         {renderName(person.displayName, isCenter)}
       </p>
 
-      {(meta || (fluid && person.isAdopted && !isCenter)) && (
+      {(meta || inlineAdopted) && (
         <p style={{
-          fontSize: isSibling ? 11 : 11.5,
+          fontSize: size ? size.meta : isSibling ? 11 : 11.5,
           color: metaColor,
           margin: '4px 0 0',
           lineHeight: 1.3,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
-          display: fluid ? 'flex' : undefined,
+          display: fluid || size ? 'flex' : undefined,
           alignItems: 'center',
           gap: 6,
         }}>
           {meta}
-          {fluid && person.isAdopted && !isCenter && (
+          {inlineAdopted && (
             <span style={{
               fontSize: 9.5,
               fontWeight: 600,
@@ -226,65 +232,6 @@ function PersonCard({
   );
 }
 
-/* ── Connector (vertical line between generations) ───────────── */
-function Connector() {
-  return (
-    <div style={{
-      width: 2,
-      height: CONNECTOR_H,
-      background: '#d8cfb8',
-      margin: '0 auto',
-    }} />
-  );
-}
-
-/* ── Generation row ─────────────────────────────────────────── */
-function GenRow({
-  persons,
-  centerIds,
-  onNav,
-  label,
-  isSiblings,
-  anchorRef,
-}: {
-  persons: TreeNode[];
-  centerIds: Set<string>;
-  onNav: (id: string) => void;
-  label?: string;
-  isSiblings?: boolean;
-  anchorRef?: React.Ref<HTMLDivElement>;
-}) {
-  if (persons.length === 0) return null;
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      {label && (
-        <div style={{
-          fontSize: 10.5,
-          letterSpacing: '.14em',
-          textTransform: 'uppercase',
-          color: isSiblings ? '#b0a892' : '#8a8474',
-          textAlign: 'center',
-          marginBottom: 8,
-        }}>
-          {label}
-        </div>
-      )}
-      <div style={{ display: 'flex', gap: isSiblings ? 10 : 14, flexWrap: 'nowrap' }}>
-        {persons.map(p => (
-          <PersonCard
-            key={p.id}
-            person={p}
-            isCenter={centerIds.has(p.id)}
-            isSibling={isSiblings}
-            onClick={() => onNav(p.id)}
-            anchorRef={centerIds.has(p.id) ? anchorRef : undefined}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /* ── Pedigree grouping ──────────────────────────────────────── */
 interface CoupleGroup {
   childName: string;
@@ -298,60 +245,6 @@ function sortParents(parents: TreeNode[]): TreeNode[] {
 
 function firstName(displayName: string): string {
   return displayName.trim().split(/\s+/)[0] ?? displayName;
-}
-
-function CoupleBox({
-  group,
-  centerIds,
-  onNav,
-}: {
-  group: CoupleGroup;
-  centerIds: Set<string>;
-  onNav: (id: string) => void;
-}) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-      <div style={{ display: 'flex', gap: 8 }}>
-        {group.parents.map(p => (
-          <PersonCard key={p.id} person={p} isCenter={centerIds.has(p.id)} onClick={() => onNav(p.id)} />
-        ))}
-      </div>
-      {group.parents.length > 1 && (
-        <div aria-hidden="true" style={{
-          alignSelf: 'stretch',
-          margin: '0 60px',
-          height: 8,
-          borderLeft: '2px solid #d8cfb8',
-          borderRight: '2px solid #d8cfb8',
-          borderBottom: '2px solid #d8cfb8',
-          borderRadius: '0 0 6px 6px',
-        }} />
-      )}
-      <div style={{ fontSize: 10.5, color: '#8a8474', marginTop: 4, whiteSpace: 'nowrap' }}>
-        Parents de {group.childName}
-      </div>
-    </div>
-  );
-}
-
-function GroupRow({
-  groups,
-  centerIds,
-  onNav,
-  justify,
-}: {
-  groups: CoupleGroup[];
-  centerIds: Set<string>;
-  onNav: (id: string) => void;
-  justify: 'flex-start' | 'flex-end';
-}) {
-  return (
-    <div style={{ display: 'flex', gap: 28, justifyContent: justify, alignItems: 'flex-start', padding: '0 12px' }}>
-      {groups.map((g, i) => (
-        <CoupleBox key={`${g.childName}-${i}-${g.parents[0]?.id}`} group={g} centerIds={centerIds} onNav={onNav} />
-      ))}
-    </div>
-  );
 }
 
 const SIDE_LABEL: React.CSSProperties = {
@@ -384,6 +277,9 @@ interface FamilyView {
   spouses: TreeNode[];
   siblings: TreeNode[];
   descendantLevels: TreeNode[][];
+  upParents: Map<string, TreeNode[]>;
+  childToParents: Map<string, string[]>;
+  spouseMap: Map<string, string[]>;
 }
 
 function deriveFamily({ nodes, links, rootId }: TreeData, focusId: string): FamilyView | null {
@@ -413,8 +309,12 @@ function deriveFamily({ nodes, links, rootId }: TreeData, focusId: string): Fami
     [...new Set(ids)].map(id => nodeMap.get(id)).filter(Boolean) as TreeNode[];
 
   const seenUp = new Set<string>([focusNode.id]);
-  const parentsOf = (id: string): TreeNode[] =>
-    sortParents(byIds((childToParents.get(id) ?? []).filter(pid => !seenUp.has(pid))));
+  const upParents = new Map<string, TreeNode[]>();
+  const parentsOf = (id: string): TreeNode[] => {
+    const ps = sortParents(byIds((childToParents.get(id) ?? []).filter(pid => !seenUp.has(pid))));
+    upParents.set(id, ps);
+    return ps;
+  };
 
   const parents = parentsOf(focusNode.id);
   for (const p of parents) seenUp.add(p.id);
@@ -457,7 +357,7 @@ function deriveFamily({ nodes, links, rootId }: TreeData, focusId: string): Fami
   const spouses = byIds(spouseMap.get(focusNode.id) ?? []);
   const siblings = byIds(parents.flatMap(p => parentToChildren.get(p.id) ?? []).filter(id => id !== focusNode.id));
 
-  return { nodeMap, focusNode, parents, paternal, maternal, spouses, siblings, descendantLevels };
+  return { nodeMap, focusNode, parents, paternal, maternal, spouses, siblings, descendantLevels, upParents, childToParents, spouseMap };
 }
 
 /* ── Mobile layout ──────────────────────────────────────────── */
@@ -751,13 +651,514 @@ function MobileTree({ family, onNav }: { family: FamilyView; onNav: (id: string)
   );
 }
 
+/* ── Desktop pedigree ───────────────────────────────────────── */
+const FOCUS_SIZE: CardSize = { w: 208, h: 88, font: 14.5, meta: 11.5, pad: '12px 14px' };
+const KIN_SIZE: CardSize = { w: 180, h: 80, font: 13, meta: 11, pad: '10px 12px' };
+const GEN_SIZES: CardSize[] = [
+  FOCUS_SIZE,
+  { w: 200, h: 84, font: 13.5, meta: 11.5, pad: '11px 13px' },
+  { w: 170, h: 80, font: 13, meta: 11, pad: '10px 12px' },
+  { w: 150, h: 76, font: 12.5, meta: 11, pad: '9px 11px' },
+  { w: 140, h: 74, font: 12, meta: 10.5, pad: '9px 10px' },
+];
+const genSize = (gen: number) => GEN_SIZES[Math.min(gen, GEN_SIZES.length - 1)];
+
+const V_GAP = 52;
+const COUPLE_GAP = 28;
+const BRANCH_GAP = 40;
+const BOX_PAD = 10;
+const CAPTION_H = 16;
+const CAPTION_GAP = 8;
+const CARD_GAP = 14;
+const ROW_MAX = 5;
+const SPOUSE_GAP = 56;
+const EDGE = 24;
+const GUTTER = 132;
+const TAG_H = 22;
+const TAG_W = 130;
+
+type Pt = [number, number];
+type CardKind = 'focus' | 'kin' | 'sibling' | 'stub';
+interface DeskCard { person: TreeNode; x: number; y: number; size: CardSize; kind: CardKind }
+interface DeskBox { x: number; y: number; w: number; h: number; caption: string; captionW: number; align: 'left' | 'center' }
+interface DeskLine { pts: Pt[]; dashed?: boolean }
+interface DeskText { x: number; y: number; text: string; w: number }
+interface DeskLayout {
+  width: number;
+  height: number;
+  cards: DeskCard[];
+  boxes: DeskBox[];
+  lines: DeskLine[];
+  notes: DeskText[];
+  tags: DeskText[];
+  rowLabels: { y: number; text: string }[];
+}
+
+interface ANode {
+  person: TreeNode;
+  gen: number;
+  stub: boolean;
+  parents: ANode[];
+  block: number;
+  width: number;
+  left: number;
+  x: number;
+}
+
+function buildAncestors({ nodeMap, focusNode, upParents, childToParents }: FamilyView): ANode {
+  const displayed = new Set([...upParents.values()].flat().map(p => p.id));
+  const build = (person: TreeNode, gen: number, stub: boolean): ANode => {
+    const shown = stub ? [] : upParents.get(person.id) ?? [];
+    const shownIds = new Set(shown.map(p => p.id));
+    const collapsed = stub
+      ? []
+      : [...new Set(childToParents.get(person.id) ?? [])]
+          .filter(id => !shownIds.has(id) && displayed.has(id))
+          .map(id => nodeMap.get(id))
+          .filter((p): p is TreeNode => Boolean(p));
+    const parents = sortParents([...shown, ...collapsed]).map(p => build(p, gen + 1, !shownIds.has(p.id)));
+    return { person, gen, stub, parents, block: 0, width: 0, left: 0, x: 0 };
+  };
+  return build(focusNode, 0, false);
+}
+
+const branchGap = (a: ANode, b: ANode) => (a.parents.length || b.parents.length ? BRANCH_GAP : COUPLE_GAP);
+
+function measure(n: ANode) {
+  n.parents.forEach(measure);
+  n.block = n.parents.reduce((sum, p, i) => sum + p.width + (i ? branchGap(n.parents[i - 1], p) : 0), 0);
+  n.width = Math.max(genSize(n.gen).w, n.block);
+}
+
+function place(n: ANode, left: number) {
+  n.left = left;
+  if (n.parents.length === 0) {
+    n.x = left + n.width / 2;
+    return;
+  }
+  let cursor = left + (n.width - n.block) / 2;
+  n.parents.forEach((p, i) => {
+    if (i) cursor += branchGap(n.parents[i - 1], p);
+    place(p, cursor);
+    cursor += p.width;
+  });
+  const half = genSize(n.gen).w / 2;
+  const mid = (n.parents[0].x + n.parents[n.parents.length - 1].x) / 2;
+  n.x = Math.min(Math.max(mid, left + half), left + n.width - half);
+}
+
+function chunk<T>(list: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+  return out;
+}
+
+const rowWidth = (n: number, size: CardSize = KIN_SIZE) => n * size.w + Math.max(0, n - 1) * CARD_GAP;
+const captionWidth = (text: string) => Math.ceil(text.length * 6) + 8;
+
+function drop(from: Pt, to: Pt, elbowY: number): Pt[] {
+  if (Math.abs(from[0] - to[0]) < 1) return [from, [from[0], to[1]]];
+  return [from, [from[0], elbowY], [to[0], elbowY], to];
+}
+
+function layoutDesktop(family: FamilyView): DeskLayout {
+  const { nodeMap, focusNode, parents, siblings, spouses, descendantLevels, childToParents, spouseMap } = family;
+  const cards: DeskCard[] = [];
+  const boxes: DeskBox[] = [];
+  const lines: DeskLine[] = [];
+  const notes: DeskText[] = [];
+  const tags: DeskText[] = [];
+  const rowLabels: { y: number; text: string }[] = [];
+
+  const root = buildAncestors(family);
+  measure(root);
+  place(root, 0);
+  const all: ANode[] = [];
+  const walk = (n: ANode) => { all.push(n); n.parents.forEach(walk); };
+  walk(root);
+  const maxGen = Math.max(...all.map(n => n.gen));
+  const topGen = (n: ANode): number => Math.max(n.gen, ...n.parents.map(topGen));
+
+  const sideRoots = root.parents.filter(p => !p.stub && p.parents.length > 0 && p.person.sex !== 'U');
+  let y = sideRoots.length ? TAG_H + 18 : 8;
+  const rowY: number[] = [];
+  for (let g = maxGen; g >= 1; g--) {
+    rowY[g] = y;
+    rowLabels.push({ y: y + genSize(g).h / 2, text: ancestorLabel(g) });
+    y += genSize(g).h + V_GAP;
+  }
+  const rowTop = y;
+
+  for (const p of sideRoots) {
+    tags.push({
+      x: p.left + p.width / 2 - TAG_W / 2,
+      y: rowY[topGen(p)] - TAG_H - 8,
+      w: TAG_W,
+      text: p.person.sex === 'M' ? 'Côté paternel' : 'Côté maternel',
+    });
+  }
+
+  for (const n of all) {
+    if (n.gen === 0) continue;
+    const size = genSize(n.gen);
+    cards.push({ person: n.person, x: n.x - size.w / 2, y: rowY[n.gen], size, kind: n.stub ? 'stub' : 'kin' });
+  }
+
+  const focusX = root.x;
+  let focusY = rowTop;
+  let blockBottom: number;
+  if (siblings.length > 0) {
+    const first = siblings.slice(0, ROW_MAX - 1);
+    const rest = chunk(siblings.slice(ROW_MAX - 1), ROW_MAX - 1);
+    const row1W = first.length * (KIN_SIZE.w + CARD_GAP) + FOCUS_SIZE.w;
+    const boxX = focusX + FOCUS_SIZE.w / 2 - row1W - BOX_PAD;
+    focusY = rowTop + BOX_PAD + CAPTION_H + CAPTION_GAP;
+    first.forEach((p, i) => cards.push({
+      person: p,
+      x: boxX + BOX_PAD + i * (KIN_SIZE.w + CARD_GAP),
+      y: focusY + (FOCUS_SIZE.h - KIN_SIZE.h) / 2,
+      size: KIN_SIZE,
+      kind: 'sibling',
+    }));
+    let ry = focusY + FOCUS_SIZE.h + CARD_GAP;
+    for (const row of rest) {
+      row.forEach((p, i) => cards.push({ person: p, x: boxX + BOX_PAD + i * (KIN_SIZE.w + CARD_GAP), y: ry, size: KIN_SIZE, kind: 'sibling' }));
+      ry += KIN_SIZE.h + CARD_GAP;
+    }
+    const boxH = ry - CARD_GAP + BOX_PAD - rowTop;
+    boxes.push({
+      x: boxX,
+      y: rowTop,
+      w: row1W + 2 * BOX_PAD,
+      h: boxH,
+      caption: `Enfants de ${coupleNames(parents)}`,
+      captionW: row1W - FOCUS_SIZE.w / 2 - 12,
+      align: 'left',
+    });
+    blockBottom = rowTop + boxH;
+  } else {
+    blockBottom = focusY + FOCUS_SIZE.h;
+  }
+  cards.push({ person: focusNode, x: focusX - FOCUS_SIZE.w / 2, y: focusY, size: FOCUS_SIZE, kind: 'focus' });
+  rowLabels.push({ y: focusY + FOCUS_SIZE.h / 2, text: 'Personne de référence' });
+
+  for (const n of all) {
+    if (n.stub || n.parents.length === 0) continue;
+    const ps = genSize(n.gen + 1);
+    const py = rowY[n.gen + 1];
+    const childTop = n.gen === 0 ? focusY : rowY[n.gen];
+    const elbowY = py + ps.h + V_GAP / 2;
+    let start: Pt;
+    if (n.parents.length > 1) {
+      const barY = py + ps.h / 2;
+      for (let i = 1; i < n.parents.length; i++) {
+        lines.push({ pts: [[n.parents[i - 1].x + ps.w / 2, barY], [n.parents[i].x - ps.w / 2, barY]] });
+      }
+      const mid = (n.parents[0].x + n.parents[n.parents.length - 1].x) / 2;
+      const inside = n.parents.find(p => Math.abs(p.x - mid) < ps.w / 2);
+      start = inside ? [inside.x, py + ps.h] : [mid, barY];
+    } else {
+      start = [n.parents[0].x, py + ps.h];
+    }
+    lines.push({ pts: drop(start, [n.x, childTop], elbowY) });
+  }
+
+  const focusFirst = firstName(focusNode.displayName);
+  const midY = focusY + FOCUS_SIZE.h / 2;
+  let edge = focusX + FOCUS_SIZE.w / 2;
+  for (const sp of spouses) {
+    const left = edge + SPOUSE_GAP;
+    const cy = focusY + (FOCUS_SIZE.h - KIN_SIZE.h) / 2;
+    lines.push({ pts: [[edge, midY], [left, midY]], dashed: true });
+    cards.push({ person: sp, x: left, y: cy, size: KIN_SIZE, kind: 'kin' });
+    notes.push({ x: left, y: cy - 20, w: KIN_SIZE.w, text: `Conjoint de ${focusFirst}` });
+    edge = left + KIN_SIZE.w;
+    blockBottom = Math.max(blockBottom, cy + KIN_SIZE.h);
+  }
+
+  const parentOf = new Map<string, string>();
+  descendantLevels.forEach((level, i) => {
+    if (i === 0) return;
+    const prevIds = new Set(descendantLevels[i - 1].map(p => p.id));
+    for (const c of level) {
+      const pid = (childToParents.get(c.id) ?? []).find(id => prevIds.has(id)) ?? descendantLevels[i - 1][0].id;
+      parentOf.set(c.id, pid);
+    }
+  });
+  const hasKids = new Set(parentOf.values());
+  const withSpouse = (p: TreeNode): TreeNode[] => {
+    const sps = [...new Set(spouseMap.get(p.id) ?? [])].map(id => nodeMap.get(id)).filter((n): n is TreeNode => Boolean(n));
+    return sps.length === 1 ? [p, sps[0]] : [p];
+  };
+
+  interface Group { anchor: Pt; caption: string; members: TreeNode[] }
+  let prevCards = new Map<string, DeskCard>();
+  let levelTop = blockBottom + V_GAP;
+  descendantLevels.forEach((level, i) => {
+    let groups: Group[];
+    if (i === 0) {
+      const anchor: Pt = spouses.length
+        ? [focusX + FOCUS_SIZE.w / 2 + SPOUSE_GAP / 2, midY]
+        : [focusX, focusY + FOCUS_SIZE.h];
+      const couple = spouses.length === 1 ? [focusNode, spouses[0]] : [focusNode];
+      groups = [{ anchor, caption: `${descendantLabel(1)} de ${coupleNames(couple)}`, members: level }];
+    } else {
+      const byParent = new Map<string, TreeNode[]>();
+      for (const c of level) {
+        const pid = parentOf.get(c.id)!;
+        byParent.set(pid, [...(byParent.get(pid) ?? []), c]);
+      }
+      groups = [...byParent.entries()].map(([pid, members]) => {
+        const pc = prevCards.get(pid)!;
+        return {
+          anchor: [pc.x + pc.size.w / 2, pc.y + pc.size.h] as Pt,
+          caption: `Enfants de ${coupleNames(withSpouse(pc.person))}`,
+          members,
+        };
+      });
+      groups.sort((a, b) => a.anchor[0] - b.anchor[0]);
+    }
+
+    const sized = groups.map(g => {
+      const perRow = g.members.some(m => hasKids.has(m.id)) ? g.members.length : Math.min(ROW_MAX, g.members.length);
+      const rows = chunk(g.members, perRow);
+      const inner = Math.max(rowWidth(perRow), captionWidth(g.caption));
+      const h = 2 * BOX_PAD + CAPTION_H + CAPTION_GAP + rows.length * KIN_SIZE.h + (rows.length - 1) * CARD_GAP;
+      return { ...g, rows, inner, w: inner + 2 * BOX_PAD, h };
+    });
+    let cursor = -Infinity;
+    const lefts = sized.map(g => {
+      const l = Math.max(g.anchor[0] - g.w / 2, cursor + BRANCH_GAP);
+      cursor = l + g.w;
+      return l;
+    });
+    const disp = lefts.map((l, k) => l + sized[k].w / 2 - sized[k].anchor[0]);
+    const shift = -(Math.max(...disp) + Math.min(...disp)) / 2;
+
+    const nextCards = new Map<string, DeskCard>();
+    let bottom = levelTop;
+    let elbowIdx = 0;
+    sized.forEach((g, k) => {
+      const bx = lefts[k] + shift;
+      boxes.push({ x: bx, y: levelTop, w: g.w, h: g.h, caption: g.caption, captionW: g.inner, align: 'center' });
+      let ry = levelTop + BOX_PAD + CAPTION_H + CAPTION_GAP;
+      for (const row of g.rows) {
+        const rx = bx + BOX_PAD + (g.inner - rowWidth(row.length)) / 2;
+        row.forEach((p, j) => {
+          const card: DeskCard = { person: p, x: rx + j * (KIN_SIZE.w + CARD_GAP), y: ry, size: KIN_SIZE, kind: 'kin' };
+          cards.push(card);
+          nextCards.set(p.id, card);
+        });
+        ry += KIN_SIZE.h + CARD_GAP;
+      }
+      const cx = bx + g.w / 2;
+      const straight = Math.abs(cx - g.anchor[0]) < 1;
+      const elbowY = levelTop - V_GAP / 2 + (straight ? 0 : ((elbowIdx++ % 5) - 2) * 6);
+      lines.push({ pts: drop(g.anchor, [cx, levelTop], elbowY) });
+      bottom = Math.max(bottom, levelTop + g.h);
+    });
+    rowLabels.push({ y: levelTop + BOX_PAD + CAPTION_H + CAPTION_GAP + KIN_SIZE.h / 2, text: descendantLabel(i + 1) });
+    prevCards = nextCards;
+    levelTop = bottom + V_GAP;
+  });
+
+  const xs = [
+    ...cards.flatMap(c => [c.x, c.x + c.size.w]),
+    ...boxes.flatMap(b => [b.x, b.x + b.w]),
+    ...[...notes, ...tags].flatMap(t => [t.x, t.x + t.w]),
+  ];
+  const minX = Math.min(...xs);
+  const dx = EDGE - minX;
+  const r = (v: number) => Math.round(v);
+  const bottoms = [...cards.map(c => c.y + c.size.h), ...boxes.map(b => b.y + b.h)];
+  return {
+    width: r(Math.max(...xs) - minX + 2 * EDGE),
+    height: r(Math.max(...bottoms) + EDGE),
+    cards: cards.map(c => ({ ...c, x: r(c.x + dx), y: r(c.y) })),
+    boxes: boxes.map(b => ({ ...b, x: r(b.x + dx), y: r(b.y), w: r(b.w), h: r(b.h) })),
+    lines: lines.map(l => ({ ...l, pts: l.pts.map(([px, py]) => [r(px + dx), r(py)] as Pt) })),
+    notes: notes.map(t => ({ ...t, x: r(t.x + dx), y: r(t.y) })),
+    tags: tags.map(t => ({ ...t, x: r(t.x + dx), y: r(t.y) })),
+    rowLabels: rowLabels.map(l => ({ ...l, y: r(l.y) })),
+  };
+}
+
+function StubCard({ person, size, onClick }: { person: TreeNode; size: CardSize; onClick: () => void }) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={`${person.displayName}, déjà présent dans l'arbre : centrer sur cette personne`}
+      title={`${person.displayName} apparaît déjà dans l'arbre`}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+      onClick={onClick}
+      style={{
+        width: size.w,
+        height: size.h,
+        boxSizing: 'border-box',
+        padding: size.pad,
+        borderRadius: 13,
+        border: `1.5px dashed ${LINE}`,
+        background: '#fffdf9',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        overflow: 'hidden',
+      }}
+    >
+      <p style={{ margin: 0, fontSize: size.font - 0.5, fontWeight: 600, color: '#5d5a50', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflowWrap: 'anywhere' }}>
+        {person.displayName}
+      </p>
+      <p style={{ margin: '4px 0 0', fontSize: 10.5, color: '#9a8c74', lineHeight: 1.3 }}>↑ Déjà dans l&apos;arbre</p>
+    </div>
+  );
+}
+
+const NOTE_STYLE: React.CSSProperties = {
+  position: 'absolute',
+  height: CAPTION_H,
+  fontSize: 10.5,
+  lineHeight: `${CAPTION_H}px`,
+  color: '#8a8474',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+};
+
+function DesktopTree({
+  layout,
+  onNav,
+  focusRef,
+}: {
+  layout: DeskLayout;
+  onNav: (id: string) => void;
+  focusRef: React.Ref<HTMLDivElement>;
+}) {
+  const { width, height, cards, boxes, lines, notes, tags } = layout;
+  return (
+    <div style={{ position: 'relative', width, height, flexShrink: 0, margin: '0 auto' }}>
+      {boxes.map((b, i) => (
+        <div
+          key={`box-${i}`}
+          style={{
+            position: 'absolute',
+            left: b.x,
+            top: b.y,
+            width: b.w,
+            height: b.h,
+            boxSizing: 'border-box',
+            borderRadius: 14,
+            border: '1px solid #e4dac4',
+            background: 'rgba(47,81,66,.035)',
+          }}
+        >
+          <div style={{ ...NOTE_STYLE, top: BOX_PAD - 1, left: BOX_PAD - 1, width: b.captionW, textAlign: b.align }} title={b.caption}>
+            {b.caption}
+          </div>
+        </div>
+      ))}
+      <svg aria-hidden="true" width={width} height={height} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+        {lines.map((l, i) => (
+          <polyline
+            key={i}
+            points={l.pts.map(p => p.join(',')).join(' ')}
+            fill="none"
+            stroke={LINE}
+            strokeWidth={2}
+            strokeDasharray={l.dashed ? '6 5' : undefined}
+            strokeLinejoin="round"
+          />
+        ))}
+      </svg>
+      {tags.map(t => (
+        <span
+          key={t.text}
+          style={{
+            ...SIDE_LABEL,
+            position: 'absolute',
+            left: t.x,
+            top: t.y,
+            width: t.w,
+            height: TAG_H,
+            boxSizing: 'border-box',
+            lineHeight: `${TAG_H - 6}px`,
+            textAlign: 'center',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {t.text}
+        </span>
+      ))}
+      {notes.map((t, i) => (
+        <div key={`note-${i}`} style={{ ...NOTE_STYLE, left: t.x, top: t.y, width: t.w }}>{t.text}</div>
+      ))}
+      {cards.map((c, i) => (
+        <div key={`${c.kind}-${c.person.id}-${i}`} style={{ position: 'absolute', left: c.x, top: c.y, zIndex: c.kind === 'focus' ? 2 : 1 }}>
+          {c.kind === 'stub' ? (
+            <StubCard person={c.person} size={c.size} onClick={() => onNav(c.person.id)} />
+          ) : (
+            <PersonCard
+              person={c.person}
+              isCenter={c.kind === 'focus'}
+              isSibling={c.kind === 'sibling'}
+              size={c.size}
+              onClick={() => onNav(c.person.id)}
+              anchorRef={c.kind === 'focus' ? focusRef : undefined}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RowLabels({ layout, scrolled }: { layout: DeskLayout; scrolled: boolean }) {
+  return (
+    <div style={{
+      position: 'sticky',
+      left: 0,
+      zIndex: 3,
+      width: GUTTER,
+      height: layout.height,
+      flexShrink: 0,
+      pointerEvents: 'none',
+      background: scrolled ? 'linear-gradient(90deg, #fbf9f3 84%, rgba(251,249,243,0))' : undefined,
+      transition: 'background .2s',
+    }}>
+      {layout.rowLabels.map(l => (
+        <div
+          key={`${l.text}-${l.y}`}
+          style={{
+            position: 'absolute',
+            top: l.y,
+            left: 20,
+            right: 8,
+            transform: 'translateY(-50%)',
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '.1em',
+            lineHeight: 1.35,
+            textTransform: 'uppercase',
+            color: '#8a8474',
+          }}
+        >
+          {l.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ── Main component ─────────────────────────────────────────── */
 export default function TreeVertical({ treeData, focusId, onFocus }: TreeVerticalProps) {
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
   const focusCardRef = useRef<HTMLDivElement>(null);
   const isNarrow = useIsNarrow();
+  const [scrolled, setScrolled] = useState(false);
   const family = useMemo(() => deriveFamily(treeData, focusId), [treeData, focusId]);
+  const layout = useMemo(() => (family && !isNarrow ? layoutDesktop(family) : null), [family, isNarrow]);
 
   useLayoutEffect(() => {
     const container = scrollRef.current;
@@ -776,127 +1177,25 @@ export default function TreeVertical({ treeData, focusId, onFocus }: TreeVertica
     );
   }
 
-  const { nodeMap, focusNode, parents, paternal, maternal, spouses, siblings, descendantLevels } = family;
-
   const nav = (id: string) => {
     if (onFocus) {
-      onFocus(id, nodeMap.get(id)?.displayName);
+      onFocus(id, family.nodeMap.get(id)?.displayName);
     } else {
       router.push(`/person/${encodeURIComponent(id)}`);
     }
   };
 
-  if (isNarrow) return <MobileTree key={focusNode.id} family={family} onNav={nav} />;
-
-  const centerIds = new Set([focusNode.id]);
-  const focusRow: TreeNode[] = [focusNode, ...spouses];
-  const upperGens = Math.max(paternal.length, maternal.length);
-  const hasSiblings = siblings.length > 0;
-  const hasAncestors = parents.length > 0;
+  if (isNarrow || !layout) return <MobileTree key={family.focusNode.id} family={family} onNav={nav} />;
 
   return (
-    <div ref={scrollRef} style={{ overflowX: 'auto', padding: '32px 0 24px' }}>
-      <div
-        style={{
-          width: 'max-content',
-          minWidth: '100%',
-          padding: '0 24px',
-          boxSizing: 'border-box',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 0,
-        }}
-      >
-        {/* Sides share equal widths and hug the centre line so every generation stays above the parents */}
-        {upperGens > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1fr', columnGap: 24, alignItems: 'start' }}>
-            <span style={{ ...SIDE_LABEL, gridRow: 1, gridColumn: 1, justifySelf: 'end', visibility: paternal.length ? 'visible' : 'hidden' }}>Côté paternel</span>
-            <div style={{ gridRow: `1 / span ${upperGens * 2 + 1}`, gridColumn: 2, background: '#e0d8c6', alignSelf: 'stretch' }} />
-            <span style={{ ...SIDE_LABEL, gridRow: 1, gridColumn: 3, justifySelf: 'start', visibility: maternal.length ? 'visible' : 'hidden' }}>Côté maternel</span>
-            {Array.from({ length: upperGens }, (_, i) => {
-              const idx = upperGens - 1 - i;
-              const gen = idx + 2;
-              const row = 2 + i * 2;
-              return (
-                <Fragment key={`anc-${gen}`}>
-                  <div style={{ ...GEN_LABEL, gridRow: row, gridColumn: 1, textAlign: 'right', paddingRight: 12 }}>{paternal[idx] ? ancestorLabel(gen) : ''}</div>
-                  <div style={{ ...GEN_LABEL, gridRow: row, gridColumn: 3, textAlign: 'left', paddingLeft: 12 }}>{maternal[idx] ? ancestorLabel(gen) : ''}</div>
-                  <div style={{ gridRow: row + 1, gridColumn: 1 }}>
-                    {paternal[idx] && <GroupRow groups={paternal[idx]} centerIds={centerIds} onNav={nav} justify="flex-end" />}
-                  </div>
-                  <div style={{ gridRow: row + 1, gridColumn: 3 }}>
-                    {maternal[idx] && <GroupRow groups={maternal[idx]} centerIds={centerIds} onNav={nav} justify="flex-start" />}
-                  </div>
-                </Fragment>
-              );
-            })}
-          </div>
-        )}
-
-        {hasAncestors && (
-          <>
-            {upperGens > 0 && <Connector />}
-            <GenRow persons={parents} centerIds={centerIds} onNav={nav} label={ancestorLabel(1)} />
-          </>
-        )}
-
-        {/* Focus generation — [fratrie …, FOCUS, conjoint] in one row */}
-        {hasSiblings ? (
-          <>
-            {hasAncestors && <Connector />}
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
-                <span style={{
-                  fontSize: 9.5,
-                  fontWeight: 700,
-                  letterSpacing: '.14em',
-                  textTransform: 'uppercase',
-                  color: '#b5a890',
-                }}>
-                  Fratrie
-                </span>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  {siblings.map(s => (
-                    <PersonCard key={s.id} person={s} isCenter={false} isSibling onClick={() => nav(s.id)} />
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ width: 1, height: 56, background: '#ddd5c2', flexShrink: 0 }} />
-
-              <div style={{ display: 'flex', gap: 14 }}>
-                {focusRow.map(p => (
-                  <PersonCard
-                    key={p.id}
-                    person={p}
-                    isCenter={centerIds.has(p.id)}
-                    onClick={() => nav(p.id)}
-                    anchorRef={centerIds.has(p.id) ? focusCardRef : undefined}
-                  />
-                ))}
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            {hasAncestors && <Connector />}
-            <GenRow
-              persons={focusRow}
-              centerIds={centerIds}
-              onNav={nav}
-              label={hasAncestors ? undefined : 'Personne de référence'}
-              anchorRef={focusCardRef}
-            />
-          </>
-        )}
-
-        {descendantLevels.map((level, i) => (
-          <Fragment key={`desc-${i + 1}`}>
-            <Connector />
-            <GenRow persons={level} centerIds={centerIds} onNav={nav} label={descendantLabel(i + 1)} />
-          </Fragment>
-        ))}
+    <div
+      ref={scrollRef}
+      onScroll={e => setScrolled(e.currentTarget.scrollLeft > 4)}
+      style={{ overflowX: 'auto', padding: '28px 0 12px' }}
+    >
+      <div style={{ display: 'flex', width: 'max-content', minWidth: '100%', paddingRight: GUTTER / 2, boxSizing: 'border-box' }}>
+        <RowLabels layout={layout} scrolled={scrolled} />
+        <DesktopTree layout={layout} onNav={nav} focusRef={focusCardRef} />
       </div>
     </div>
   );
